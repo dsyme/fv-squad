@@ -38,7 +38,7 @@
 #
 # Source: githubnext/agentics/workflows/lean-squad.md@851905c06e905bf362a9f6cc54f912e3df747d55
 #
-# gh-aw-metadata: {"schema_version":"v2","frontmatter_hash":"efe0e90dd179e5b4cbd8c7f36058d7fc814f38ab4e3eb21e4370efd4d097c294","compiler_version":"v0.61.1","strict":true}
+# gh-aw-metadata: {"schema_version":"v2","frontmatter_hash":"da6fc1572b45d332926c074497ea4d980cca5c72ebc8acc9f89f97ef707a7188","compiler_version":"v0.61.1","strict":true}
 
 name: "Lean Squad"
 "on":
@@ -716,7 +716,7 @@ jobs:
       - name: Execute GitHub Copilot CLI
         id: agentic_execution
         # Copilot CLI tool arguments (sorted):
-        timeout-minutes: 20
+        timeout-minutes: 120
         run: |
           set -o pipefail
           touch /tmp/gh-aw/agent-step-summary.md
@@ -1106,7 +1106,7 @@ jobs:
           GH_AW_REPO_MEMORY_PATCH_SIZE_EXCEEDED_default: ${{ needs.push_repo_memory.outputs.patch_size_exceeded_default }}
           GH_AW_GROUP_REPORTS: "false"
           GH_AW_FAILURE_REPORT_AS_ISSUE: "true"
-          GH_AW_TIMEOUT_MINUTES: "20"
+          GH_AW_TIMEOUT_MINUTES: "120"
         with:
           github-token: ${{ secrets.GH_AW_GITHUB_TOKEN || secrets.GITHUB_TOKEN }}
           script: |

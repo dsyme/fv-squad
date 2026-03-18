@@ -47,6 +47,8 @@ safe-outputs:
     max: 3
     target: "*"
 
+timeout-minutes: 120
+
 tools:
   web-fetch:
   github:
