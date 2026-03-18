@@ -1,0 +1,15 @@
+{
+  "last_run": "2026-03-18",
+  "run_id": "23264510315",
+  "fv_tool": "Lean 4 + Mathlib",
+  "targets": [
+    {"id": "majority_vote_result", "files": ["src/util.rs", "src/quorum/majority.rs"], "phase": 2, "informal_spec": "formal-verification/specs/majority_quorum_informal.md", "lean_file": null},
+    {"id": "committed_index", "files": ["src/quorum/majority.rs"], "phase": 1},
+    {"id": "unstable_log", "files": ["src/log_unstable.rs"], "phase": 1},
+    {"id": "inflights", "files": ["src/tracker/inflights.rs"], "phase": 1},
+    {"id": "limit_size", "files": ["src/util.rs"], "phase": 1}
+  ],
+  "proved_theorems": [],
+  "bugs_found": [],
+  "next_steps": ["Write Lean 4 spec (Task 3)", "Write informal spec for committed_index"]
+}
