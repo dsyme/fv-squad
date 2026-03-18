@@ -4,8 +4,8 @@
 
 | Priority | Target | File(s) | Phase | Status | Notes |
 |----------|--------|---------|-------|--------|-------|
-| 1 | `majority` + `MajorityConfig::vote_result` | `src/util.rs`, `src/quorum/majority.rs` | 2 — Informal Spec | 🔄 In progress | Informal spec written; Lean spec next |
-| 2 | `MajorityConfig::committed_index` | `src/quorum/majority.rs` | 1 — Research | ⬜ Not started | Core quorum commit algorithm |
+| 1 | `majority` + `MajorityConfig::vote_result` | `src/util.rs`, `src/quorum/majority.rs` | 3 — Lean Spec | 🔄 In progress | Lean spec in `FVSquad/MajorityQuorum.lean`; proofs next |
+| 2 | `MajorityConfig::committed_index` | `src/quorum/majority.rs` | 2 — Informal Spec | 🔄 In progress | Informal spec written; Lean spec next |
 | 3 | `Unstable` log buffer | `src/log_unstable.rs` | 1 — Research | ⬜ Not started | Index-offset rep invariant |
 | 4 | `Inflights` ring buffer | `src/tracker/inflights.rs` | 1 — Research | ⬜ Not started | Circular buffer invariants |
 | 5 | `limit_size` utility | `src/util.rs` | 1 — Research | ⬜ Not started | Good warmup; simple list truncation |
