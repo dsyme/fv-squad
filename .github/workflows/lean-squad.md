@@ -220,7 +220,7 @@ done
 
 If a PR merges cleanly, treat its content as the baseline for your new work — do not recreate or duplicate it. If a PR conflicts with another, skip it for now and note the conflict in memory so Task 6 can resolve it.
 
-**Execute both selected tasks**, then always do the mandatory **Task 7: Update Lean Squad Status Issue**.
+**Execute both selected tasks**, then always do the mandatory **Task 6: Update Lean Squad Status Issue**.
 
 Use your memory to refine task selection: if a selected task is not yet applicable (e.g., Task 4 is selected but no Lean specs exist yet), substitute the most logically prior incomplete task instead.
 
@@ -378,18 +378,7 @@ formal-verification/
 
 ---
 
-### Task 6: Maintain Open Lean Squad PRs
-
-1. List all open PRs with the `[Lean Squad]` title prefix.
-2. For each:
-   - Fix CI failures caused by your changes (Lean syntax errors, `lake build` failures, wrong file paths).
-   - Resolve merge conflicts by rebasing off the default branch.
-3. If a PR has been stuck after multiple retry attempts, add a comment explaining the blocker and leave it for maintainer review.
-4. Update memory.
-
----
-
-### Task 7: Update Lean Squad Status Issue *(ALWAYS DO THIS EVERY RUN)*
+### Task 6: Update Lean Squad Status Issue *(ALWAYS DO THIS EVERY RUN)*
 
 Maintain a single open issue titled `[Lean Squad] Formal Verification Status` as a continuously-updated dashboard for maintainers.
 
