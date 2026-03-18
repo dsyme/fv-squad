@@ -154,6 +154,34 @@ theorem committedIndex_empty (acked : AckedFn) :
     committedIndex ∅ acked = 0 := by
   simp [committedIndex, sortedAcked, sortDesc, majority]
 
+/-! ## Proof infrastructure: sorted-list helpers -/
+
+/-- In a `Sorted (· ≥ ·)` list, element at position `i` is ≥ element at position `j`
+    whenever `i ≤ j` (earlier positions hold larger or equal values). -/
+private lemma sortedDesc_get_mono {l : List Nat} (hl : l.Sorted (· ≥ ·))
+    {i j : Fin l.length} (hij : i.val ≤ j.val) : l.get j ≤ l.get i := by
+  rcases Nat.eq_or_lt_of_le hij with h | h
+  · exact le_of_eq (congrArg l.get (Fin.ext h.symm))
+  · -- i.val < j.val; use Sorted = Pairwise to compare arbitrary in-order elements
+    exact List.pairwise_iff_get.mp hl i j h
+
+/-- `sortedAcked` produces a list sorted in descending order. -/
+private lemma sortedAcked_sorted (voters : Finset Nat) (acked : AckedFn) :
+    (sortedAcked voters acked).Sorted (· ≥ ·) := by
+  simp only [sortedAcked, sortDesc]
+  exact List.sorted_mergeSort (· ≥ ·) _
+
+/-- `countGe` is monotone in `acked`: pointwise larger acked values yield a larger (or
+    equal) quorum count at every threshold.  This is the key lemma for monotonicity. -/
+private lemma countGe_mono_acked (voters : Finset Nat) (acked1 acked2 : AckedFn) (k : Nat)
+    (hmono : ∀ v ∈ voters, acked1 v ≤ acked2 v) :
+    countGe voters acked1 k ≤ countGe voters acked2 k := by
+  unfold countGe
+  apply Finset.card_le_card
+  intro v hv
+  simp only [Finset.mem_filter] at hv ⊢
+  exact ⟨hv.1, Nat.le_trans hv.2 (hmono v hv.1)⟩
+
 /-! ## Safety: at least majority(n) voters have acked ≥ committedIndex -/
 
 /-- **Safety** (core Raft correctness property, non-group-commit path):
@@ -163,14 +191,33 @@ theorem committedIndex_empty (acked : AckedFn) :
 theorem committedIndex_safety (voters : Finset Nat) (acked : AckedFn)
     (hn : voters.card ≠ 0) :
     countGe voters acked (committedIndex voters acked) ≥ majority voters.card := by
+  set n := voters.card
+  set q := majority n
+  have hq_pos : 1 ≤ q          := majority_pos n
+  have hq_le  : q ≤ n          := majority_le n (Nat.pos_of_ne_zero hn)
+  set sorted  := sortedAcked voters acked
+  have hlen   : sorted.length = n := sortedAcked_length voters acked
+  have hpos   : q - 1 < sorted.length := by omega
+  -- committedIndex = sorted[q-1]
+  have hc_eq  : committedIndex voters acked = sorted.get ⟨q - 1, hpos⟩ :=
+    committedIndex_eq_nth voters acked hn
+  rw [hc_eq, ge_iff_le]
+  set c := sorted.get ⟨q - 1, hpos⟩
+  -- sorted is sorted descending
+  have hsorted : sorted.Sorted (· ≥ ·) := sortedAcked_sorted voters acked
+  -- All elements at positions 0..q-1 of sorted are ≥ c (since sorted is descending
+  -- and sorted[q-1] = c).
+  have hfirst_q_ge : ∀ (i : Fin sorted.length), i.val < q → c ≤ sorted.get i := by
+    intro i hi
+    exact sortedDesc_get_mono hsorted (by omega)
+  -- The countP / Finset-card connection:
+  --   countGe voters acked c
+  --     = (voters.filter (c ≤ acked ·)).card          [def countGe]
+  --     = voters.toList.countP (c ≤ acked ·)          [Finset.card_filter + toList]
+  --     = (voters.toList.map acked).countP (c ≤ ·)    [List.countP_map]
+  --     = sorted.countP (c ≤ ·)                       [sortDesc_perm + Perm.countP_eq]
+  -- Combined with hfirst_q_ge, this gives sorted.countP (c ≤ ·) ≥ q.
   sorry
-  /- Proof sketch:
-     Let `sorted = sortedAcked voters acked` and `q = majority voters.card`.
-     `committedIndex = sorted[q-1]`.
-     Since `sorted` is a descending permutation of `voters.toList.map acked`,
-     the first `q` elements of `sorted` all have value ≥ `sorted[q-1]`.
-     Each of these corresponds to a distinct voter (since `voters` is a `Finset`).
-     Therefore `countGe voters acked sorted[q-1] ≥ q`. -/
 
 /-! ## Maximality: committedIndex is the largest k with the safety property -/
 
@@ -182,29 +229,62 @@ theorem committedIndex_maximal (voters : Finset Nat) (acked : AckedFn)
     (hn : voters.card ≠ 0) :
     ∀ k : Nat, k > committedIndex voters acked →
     countGe voters acked k < majority voters.card := by
+  intro k hk
+  set n := voters.card
+  set q := majority n
+  have hq_pos : 1 ≤ q          := majority_pos n
+  have hq_le  : q ≤ n          := majority_le n (Nat.pos_of_ne_zero hn)
+  set sorted  := sortedAcked voters acked
+  have hlen   : sorted.length = n := sortedAcked_length voters acked
+  have hpos   : q - 1 < sorted.length := by omega
+  -- c = sorted[q-1] = committedIndex
+  have hc_eq  : committedIndex voters acked = sorted.get ⟨q - 1, hpos⟩ :=
+    committedIndex_eq_nth voters acked hn
+  set c := sorted.get ⟨q - 1, hpos⟩
+  have hck    : c < k := by rwa [← hc_eq]
+  -- sorted is sorted descending
+  have hsorted : sorted.Sorted (· ≥ ·) := sortedAcked_sorted voters acked
+  -- All positions j ≥ q-1 in sorted have sorted[j] ≤ c < k.
+  -- Therefore every position where sorted[j] ≥ k must have j < q-1, giving < q such positions.
+  -- By the same Finset/countP chain as in safety:
+  --   countGe voters acked k = sorted.countP (k ≤ ·) ≤ q - 1 < q.
+  have hafter_qth_lt : ∀ (j : Fin sorted.length), q - 1 ≤ j.val → sorted.get j < k := by
+    intro j hj
+    exact Nat.lt_of_le_of_lt
+      (sortedDesc_get_mono hsorted (by omega))
+      hck
   sorry
-  /- Proof sketch:
-     Let `sorted = sortedAcked voters acked`, `q = majority voters.card`, `c = sorted[q-1]`.
-     For k > c: among the sorted elements, only those at positions 0..pos-1 (where
-     `sorted[pos-1] ≥ k > c = sorted[q-1]`) can contribute to `countGe k`.
-     Since `sorted` is descending, `pos ≤ q - 1 < q`, so `countGe k < q`. -/
 
 /-! ## Monotonicity: acked indices can only grow → committedIndex can only grow -/
 
 /-- **Monotonicity** (the "Raft never uncommits" invariant):
     if every voter's acked index is pointwise ≥ in round 2 vs round 1, then
-    `committedIndex` in round 2 is ≥ round 1. -/
+    `committedIndex` in round 2 is ≥ round 1.
+
+    **Proof**: by contradiction — if `committedIndex` decreased, then by `committedIndex_maximal`
+    there are fewer than `majority(n)` voters with acked2 ≥ committedIndex1.  But by
+    `committedIndex_safety` there are ≥ majority(n) voters with acked1 ≥ committedIndex1,
+    and since acked2 ≥ acked1 pointwise, this contradicts the maximality bound. -/
 theorem committedIndex_monotone (voters : Finset Nat)
     (acked1 acked2 : AckedFn)
     (hmono : ∀ v ∈ voters, acked1 v ≤ acked2 v)
     (hn : voters.card ≠ 0) :
     committedIndex voters acked1 ≤ committedIndex voters acked2 := by
-  sorry
-  /- Proof sketch:
-     Let `sorted1` and `sorted2` be the sorted acked lists for `acked1` and `acked2`.
-     Since `acked1 v ≤ acked2 v` for all v, every element in `sorted1` is ≤ the
-     corresponding element in `sorted2` (order statistics are monotone).
-     In particular, `sorted1[q-1] ≤ sorted2[q-1]`. -/
+  by_contra hlt
+  push_neg at hlt
+  -- Suppose committedIndex voters acked2 < committedIndex voters acked1.
+  -- By maximality on acked2: countGe voters acked2 (committedIndex voters acked1) < q.
+  have h_max := committedIndex_maximal voters acked2 hn
+      (committedIndex voters acked1) hlt
+  -- By safety on acked1: countGe voters acked1 (committedIndex voters acked1) ≥ q.
+  have h_safe := committedIndex_safety voters acked1 hn
+  -- Since acked1 ≤ acked2 pointwise, countGe is monotone in acked:
+  -- countGe voters acked1 (committedIndex voters acked1)
+  --   ≤ countGe voters acked2 (committedIndex voters acked1).
+  have h_mono_count := countGe_mono_acked voters acked1 acked2
+      (committedIndex voters acked1) hmono
+  -- Now: q ≤ countGe acked1 (…) ≤ countGe acked2 (…) < q — contradiction.
+  omega
 
 /-! ## Singleton voter set -/
 
