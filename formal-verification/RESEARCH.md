@@ -195,6 +195,74 @@ and `omega` for arithmetic (min properties). Zero induction required.
 - `AckedIndexer` trait abstracted: majority committed index passed as a `Nat` argument.
 - `u64` modelled as `Nat`.
 
+---
+
+### Target 8 — `is_up_to_date` + `find_conflict_by_term` Log Ordering (★★★★ Priority)
+
+**Files**: `src/raft_log.rs` (lines 222–251, 437–441)
+
+**What it does**: Two functions that govern Raft log comparison and conflict resolution:
+- `is_up_to_date(last_index, term)` determines whether a candidate's log is at least as
+  up-to-date as the voter's, implementing the Raft election restriction (§5.4.1).
+- `find_conflict_by_term(index, term)` scans backward from `index` to find the largest log
+  position with term ≤ the given term, enabling fast AppendEntries conflict resolution.
+
+**Why FV**: The election restriction is a foundational Raft safety property — violations
+cause split-brain. The preorder properties of `is_up_to_date` (reflexive, total, transitive,
+antisymmetric) are exactly the Raft election safety conditions and can be fully proved in Lean.
+`find_conflict_by_term` has a subtle potential `u64` underflow if the dummy-entry invariant
+is violated, making it a good target for finding latent bugs.
+
+**Key properties to verify**:
+1. **Total preorder**: `isUpToDate` is reflexive, transitive, total, antisymmetric.
+2. **Lex equivalence**: `isUpToDate(i,t) ↔ (t,i) ≥_lex (selfT, selfI)`.
+3. **findConflict_le**: result ≤ input index (backward-bounded).
+4. **findConflict_term_le**: the term at the result satisfies the term constraint.
+5. **findConflict_maximality**: all entries strictly above the result have term > query.
+6. **findConflict_mono**: monotone in index and term.
+
+**Spec size**: ~250 Lean lines (no imports beyond Mathlib.Tactic)
+**Proof tractability**: `omega` dominates for preorder; structural induction for scan.
+**Approximations**:
+- Log abstracted as `logTerm : Nat → Option Nat` (ignores storage/snapshot layout).
+- `u64` modelled as `Nat` (no overflow).
+- `index > last_index` guard omitted (modelled as precondition).
+
+---
+
+### Target 9 — `RaftLog::maybe_append` + `maybe_commit` Log Append (★★★ Priority)
+
+**Files**: `src/raft_log.rs` (lines 262–336, 525–536)
+
+**What it does**: The core AppendEntries RPC handler at the log level:
+- `maybe_append(idx, term, committed, ents)` checks if the local log matches the leader
+  at `(idx, term)`, finds any conflict in `ents`, appends the suffix, and advances the
+  commit index. Returns `Some((conflict_idx, last_new_index))` on success, `None` on mismatch.
+- `maybe_commit(max_index, term)` advances `committed` to `max_index` iff
+  `log[max_index].term == term` and `max_index > committed`.
+
+**Why FV**: These are the most safety-critical log operations. Key properties include:
+- `commit_to` is monotone (committed never decreases).
+- `maybe_commit` only advances when the term check passes (Leader Completeness).
+- `maybe_append` never truncates already-committed entries.
+- The `persisted` adjustment after conflict is correct (does not go past the conflict point).
+
+**Key properties to verify**:
+1. **Commit monotonicity**: `committed` only increases after `commit_to` / `maybe_commit`.
+2. **Commit safety**: `maybe_commit` only advances if `log[max_index].term = term`.
+3. **Append validity**: `maybe_append` returns `None` if terms don't match at `idx`.
+4. **No-truncate-committed**: `find_conflict` never returns index ≤ committed (asserted, not proved).
+5. **Persisted bound**: after conflict truncation, `persisted ≤ conflict_idx - 1`.
+6. **Commit upper bound**: `commit_to(min(committed_from_leader, last_new_index))` ≤ last_new_index.
+
+**Spec size**: ~200 Lean lines
+**Proof tractability**: mostly `omega` + case analysis; requires modelling the log state.
+**Approximations**:
+- Log state modelled as a simple `Array Nat` (terms); no storage/snapshot layer.
+- `find_conflict` modelled abstractly (its result is a free variable with spec constraints).
+- `u64` modelled as `Nat`; panics (fatal!) modelled as precondition violations.
+- `persisted` tracking included; `applied` tracking omitted as separate concern.
+
 ## Mathlib Modules of Interest
 
 - `Mathlib.Data.List.Basic` — list lemmas for `truncate_and_append`
