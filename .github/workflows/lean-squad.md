@@ -30,6 +30,16 @@ network:
     - "leanprover-community.github.io"
     - "release.leanlang.org"
 
+tools:
+  web-fetch:
+  github:
+    toolsets: [default]
+    min-integrity: none # BUG: so we can update our own issue for reporting
+    repos: all
+  bash: true
+  repo-memory:
+    max-patch-size: 102400  # 100KB max (default 10KB)
+
 safe-outputs:
   create-issue:
     title-prefix: "[Lean Squad] "
@@ -48,14 +58,6 @@ safe-outputs:
     target: "*"
 
 timeout-minutes: 120
-
-tools:
-  web-fetch:
-  github:
-    toolsets: [default]
-  bash: true
-  repo-memory:
-    max-patch-size: 102400  # 100KB max (default 10KB)
 
 steps:
   - name: Assess FV state and compute task weights
