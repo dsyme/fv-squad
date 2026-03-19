@@ -121,9 +121,15 @@ theorem findConflict_nonzero_no_match
         simp [findConflict, hm] at h)
       exact ⟨t, Or.inr ht_mem, ht_mismatch⟩
 
-/-- If `findConflict` returns 0, every entry matches the log. -/
+/-- If `findConflict` returns 0, every entry matches the log.
+
+    Requires that all entry indices are nonzero (`hpos`), which holds in Raft because
+    log indices start at 1 (index 0 is a sentinel for "no entry"). Without this
+    precondition the sentinel value 0 is ambiguous: `findConflict` returns 0 both for
+    "no conflict found" and "conflict at index 0". -/
 theorem findConflict_zero_all_match
     (s : RaftState) (ents : List (Nat × Nat))
+    (hpos : ∀ e ∈ ents, e.1 ≠ 0)
     (h : findConflict s ents = 0) :
     ∀ idx term, (idx, term) ∈ ents → matchTerm s idx term = true := by
   induction ents with
@@ -131,16 +137,15 @@ theorem findConflict_zero_all_match
   | cons hd tl ih =>
     simp [findConflict] at h
     split_ifs with hm at h
-    · -- head's term didn't match — but conflict_idx = head.1, not 0
-      -- This case is impossible when h : findConflict = 0 because the head has non-zero index
-      -- (we cannot prove this without knowing hd.1 ≠ 0; leave as sorry)
-      sorry
+    · -- hm : !matchTerm s hd.1 hd.2 = true, so findConflict returned hd.1
+      -- h : hd.1 = 0, but hpos says hd.1 ≠ 0 — contradiction
+      exact absurd h (hpos hd (List.mem_cons_self _ _))
     · simp at hm
       intro idx term hmem
       simp at hmem
       rcases hmem with rfl | hmem
       · exact hm
-      · exact ih h idx term hmem
+      · exact ih (fun e he => hpos e (List.mem_cons_of_mem _ he)) h idx term hmem
 
 /-- `findConflict` result is either 0 or is the index of some entry in `ents`. -/
 theorem findConflict_mem_or_zero
@@ -298,22 +303,52 @@ theorem maybeAppend_committed_monotone (s : RaftState) (idx term committed : Nat
       split_ifs <;> simp [applyEntries]
   · rfl
 
-/-- If `maybeAppend` returns matched, the new commit is bounded by the leader's commit. -/
+/-- If `maybeAppend` returns matched, the new commit is bounded by the leader's commit.
+
+    Requires `hle : s.committed ≤ committed` — a protocol invariant: a follower cannot
+    already be committed beyond a valid leader message. -/
 theorem maybeAppend_commit_le_leader (s : RaftState) (idx term committed : Nat)
-    (ents : List (Nat × Nat)) (hm : matchTerm s idx term) :
+    (ents : List (Nat × Nat)) (hm : matchTerm s idx term)
+    (hle : s.committed ≤ committed) :
     (maybeAppend s idx term committed ents).newState.committed ≤ committed := by
   simp [maybeAppend, hm]
-  apply le_trans (commitTo_monotone _ _)
-  simp [commitTo, applyEntries]
-  sorry -- requires knowing commitTo result ≤ min(committed, lastNew) ≤ committed
+  -- goal: (commitTo (if findConflict s ents == 0 then s else applyEntries ...) (min committed (idx+ents.length))).committed ≤ committed
+  have hap : (applyEntries s (findConflict s ents) idx ents).committed = s.committed := by
+    simp [applyEntries]
+  split_ifs with hc
+  · -- no-conflict branch: s' = s
+    rcases commitTo_exact_or_unchanged s (min committed (idx + ents.length)) with h | h
+    · rw [h]; exact Nat.min_le_left _ _
+    · rw [h]; exact hle
+  · -- conflict branch: s' = applyEntries ...
+    rcases commitTo_exact_or_unchanged (applyEntries s (findConflict s ents) idx ents)
+        (min committed (idx + ents.length)) with h | h
+    · rw [h]; exact Nat.min_le_left _ _
+    · rw [h, hap]; exact hle
 
-/-- If `maybeAppend` returns matched, the new commit is bounded by `lastNewIdx`. -/
+/-- If `maybeAppend` returns matched, the new commit is bounded by `lastNewIdx`.
+
+    Requires `hle : s.committed ≤ idx + ents.length` — entries must span at least as
+    far as the follower's current commit, which holds for any valid append message. -/
 theorem maybeAppend_commit_le_lastNew (s : RaftState) (idx term committed : Nat)
-    (ents : List (Nat × Nat)) (hm : matchTerm s idx term) :
+    (ents : List (Nat × Nat)) (hm : matchTerm s idx term)
+    (hle : s.committed ≤ idx + ents.length) :
     (maybeAppend s idx term committed ents).newState.committed ≤
     (maybeAppend s idx term committed ents).lastNewIdx := by
   simp [maybeAppend, hm]
-  sorry -- requires unfolding commitTo bound
+  -- goal: (commitTo (if ...) (min committed (idx+ents.length))).committed ≤ idx+ents.length
+  have hap : (applyEntries s (findConflict s ents) idx ents).committed = s.committed := by
+    simp [applyEntries]
+  split_ifs with hc
+  · -- no-conflict branch: s' = s
+    rcases commitTo_exact_or_unchanged s (min committed (idx + ents.length)) with h | h
+    · rw [h]; exact Nat.min_le_right _ _
+    · rw [h]; exact hle
+  · -- conflict branch: s' = applyEntries ...
+    rcases commitTo_exact_or_unchanged (applyEntries s (findConflict s ents) idx ents)
+        (min committed (idx + ents.length)) with h | h
+    · rw [h]; exact Nat.min_le_right _ _
+    · rw [h, hap]; exact hle
 
 /-- The `lastNewIdx` returned equals `idx + ents.length` when matched. -/
 theorem maybeAppend_lastNewIdx (s : RaftState) (idx term committed : Nat)

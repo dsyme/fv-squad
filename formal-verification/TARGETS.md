@@ -12,12 +12,8 @@
 | 6 | `Progress` state machine | `src/tracker/progress.rs`, `src/tracker/state.rs` | 5 — Proofs | ✅ Done | All theorems proved (0 `sorry`). ~45 theorems including master invariant `valid_preserved_by_all_ops`. See `FVSquad/Progress.lean`. |
 | 7 | `JointConfig` joint quorum | `src/quorum/joint.rs` | 5 — Proofs | ✅ Done | All theorems proved (0 `sorry`). 20+ theorems covering `jointVoteResult` and `jointCommittedIndex` safety/monotonicity. See `FVSquad/JointQuorum.lean`. |
 
-| 8 | `is_up_to_date` + `find_conflict_by_term` | `src/raft_log.rs` | 4 — Implementation | 🔄 In progress | Informal spec written. Lean 4 spec + implementation model: `isUpToDate` (total preorder, 7 theorems), `findConflictByTerm` (structural recursion, 9 theorems incl. maximality). 0 `sorry`. See `FVSquad/LogOrdering.lean`. |
-<<<<<<< lean-squad/task2-3-4-maybeappend-run31-08a51b9c7724d2a4
-| 9 | `RaftLog::maybe_append` + `maybe_commit` | `src/raft_log.rs` | 4 — Implementation | 🔄 In progress | Informal spec written (`specs/maybe_append_informal.md`). Lean 4 spec + implementation model: `maybeCommit` (4 theorems, 0 `sorry`), `findConflict` (4 theorems, 1 `sorry`), `maybeAppend` (5 theorems, 2 `sorry`). See `FVSquad/MaybeAppend.lean`. |
-=======
-| 9 | `RaftLog::maybe_append` + `maybe_commit` | `src/raft_log.rs` | 1 — Research | ⬜ Not started | New target identified this run. Key properties: commit monotonicity, append validity, no-truncate-committed. See `RESEARCH.md` Target 9. |
->>>>>>> main
+| 8 | `is_up_to_date` + `find_conflict_by_term` | `src/raft_log.rs` | 5 — Proofs | ✅ Done | 16 theorems, 0 `sorry`. `isUpToDate` (total preorder, 8 theorems), `findConflictByTerm` (8 theorems incl. maximality). See `FVSquad/LogOrdering.lean`. |
+| 9 | `RaftLog::maybe_append` + `maybe_commit` | `src/raft_log.rs` | 5 — Proofs | ✅ Done | All sorrys removed. `findConflict_zero_all_match` (with `hpos` precondition), `maybeAppend_commit_le_leader` (with `hle`), `maybeAppend_commit_le_lastNew` (with `hle`) fully proved via `commitTo_exact_or_unchanged`. See `FVSquad/MaybeAppend.lean`. |
 
 ## Phase Legend
 
