@@ -178,6 +178,28 @@ theorem recvAck_queue_unchanged (s : ReadOnlyState) (id ctx : Nat) :
 
 /-! ## `advance` -/
 
+/-- **Auxiliary lemma**: `a` is a member of `l.take (l.indexOf a + 1)` whenever `a ∈ l`.
+    Proof is by structural induction on `l`: at the head the element is found immediately;
+    otherwise indexOf recurses and take peels off one more cons cell. -/
+private lemma mem_take_indexOf (l : List Nat) (a : Nat) (h : a ∈ l) :
+    a ∈ l.take (l.indexOf a + 1) := by
+  induction l with
+  | nil => simp at h
+  | cons hd tl ih =>
+    simp only [List.mem_cons] at h
+    by_cases heq : hd = a
+    · -- head matches: indexOf = 0, take 1 = [hd = a]
+      subst heq; simp
+    · -- head differs: a ∈ tl, indexOf (hd::tl) a = indexOf tl a + 1
+      have hmem : a ∈ tl := h.resolve_left (fun e => heq e.symm)
+      have hind : (hd :: tl).indexOf a = tl.indexOf a + 1 := by
+        simp [List.indexOf_cons, show hd ≠ a from heq]
+      rw [hind]
+      -- (hd::tl).take (tl.indexOf a + 1 + 1)  =  hd :: tl.take (tl.indexOf a + 1)
+      -- by the definition of List.take (third clause: take (n+1) (a::l) = a :: take n l)
+      show a ∈ hd :: tl.take (tl.indexOf a + 1)
+      exact List.mem_cons_of_mem hd (ih hmem)
+
 /-- Helper: find the 0-based position of `ctx` in `queue`, or `queue.length` if absent.
     Wraps `List.indexOf` which has this exact semantics in Lean 4. -/
 abbrev findPos (queue : List Nat) (ctx : Nat) : Nat := queue.indexOf ctx
@@ -243,16 +265,12 @@ theorem advance_returns_prefix (s : ReadOnlyState) (ctx : Nat)
     List.indexOf_lt_length.mpr hmem
   simp [hlt]
 
-/-- **PROP-19**: When ctx is in the queue, it appears in the returned prefix.
-    (Relies on `List.getElem_indexOf` and `List.mem_take`.) -/
+/-- **PROP-19**: When ctx is in the queue, it appears in the returned prefix. -/
 theorem advance_ctx_in_prefix (s : ReadOnlyState) (ctx : Nat)
     (hmem : ctx ∈ s.queue) :
     ctx ∈ (advance s ctx).2 := by
   rw [advance_returns_prefix s ctx hmem]
-  -- Need: ctx ∈ s.queue.take (s.queue.indexOf ctx + 1)
-  -- ctx is at position indexOf ctx, which is < indexOf ctx + 1.
-  -- Proof: use List.mem_take_iff and indexOf properties.
-  sorry
+  exact mem_take_indexOf s.queue ctx hmem
 
 /-- **PROP-20**: After advance, ctx is no longer in the remaining queue.
     Key steps: queue.Nodup implies ctx appears exactly once;
@@ -271,8 +289,8 @@ theorem advance_removes_ctx (s : ReadOnlyState) (ctx : Nat)
   have hone : s.queue.count ctx ≤ 1 := hwf.count_le_one ctx
   have hdrop : 0 < (s.queue.drop (s.queue.indexOf ctx + 1)).count ctx :=
     List.count_pos_iff_mem.mpr hmem'
-  have htake : 0 < (s.queue.take (s.queue.indexOf ctx + 1)).count ctx := by
-    sorry -- requires List.getElem_indexOf or List.indexOf_getElem
+  have htake : 0 < (s.queue.take (s.queue.indexOf ctx + 1)).count ctx :=
+    List.count_pos_iff_mem.mpr (mem_take_indexOf s.queue ctx hmem)
   have hsplit : s.queue.count ctx =
       (s.queue.take (s.queue.indexOf ctx + 1)).count ctx +
       (s.queue.drop  (s.queue.indexOf ctx + 1)).count ctx := by
