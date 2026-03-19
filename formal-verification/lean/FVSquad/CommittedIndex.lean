@@ -182,6 +182,36 @@ private lemma countGe_mono_acked (voters : Finset Nat) (acked1 acked2 : AckedFn)
   simp only [Finset.mem_filter] at hv ⊢
   exact ⟨hv.1, Nat.le_trans hv.2 (hmono v hv.1)⟩
 
+/-! ## Bridge: countGe ↔ sortedAcked countP -/
+
+/-- **Bridge**: `countGe voters acked k` equals the `countP` of the sorted acked list
+    at threshold `k`.  Both sides count voters whose acked index is ≥ `k`.
+
+    Proof chain:
+    1. `sortedAcked` is a permutation of `voters.toList.map acked`
+       → permutations preserve `countP` (List.Perm.countP_eq).
+    2. `List.countP_map` pushes countP through the `acked` map.
+    3. Finset card of a filter = toList countP:
+       `(s.filter p).card`
+       `= (s.filter p).toList.length`          [← Finset.length_toList]
+       `= (s.toList.filter (decide∘p)).length` [Finset.toList_filter perm + length_eq]
+       `= s.toList.countP (decide∘p)`          [← List.length_filter] -/
+private lemma countGe_eq_sorted_countP (voters : Finset Nat) (acked : AckedFn) (k : Nat) :
+    countGe voters acked k = (sortedAcked voters acked).countP (fun x => decide (k ≤ x)) := by
+  unfold countGe sortedAcked sortDesc
+  -- Step 1: sorting is a permutation → preserves countP
+  rw [(List.perm_mergeSort (· ≥ ·) _).countP_eq]
+  -- Step 2: push countP through the acked map
+  rw [List.countP_map]
+  simp only [Function.comp]
+  -- Goal: (voters.filter (fun v => k ≤ acked v)).card =
+  --       voters.toList.countP (fun v => decide (k ≤ acked v))
+  -- Step 3: Finset card of a filter = toList countP
+  rw [← Finset.length_toList, ← List.length_filter (p := fun v => decide (k ≤ acked v))]
+  -- Goal: (voters.filter (fun v => k ≤ acked v)).toList.length =
+  --       (voters.toList.filter (fun v => decide (k ≤ acked v))).length
+  exact (Finset.toList_filter voters (fun v => k ≤ acked v)).length_eq
+
 /-! ## Safety: at least majority(n) voters have acked ≥ committedIndex -/
 
 /-- **Safety** (core Raft correctness property, non-group-commit path):
@@ -210,27 +240,6 @@ theorem committedIndex_safety (voters : Finset Nat) (acked : AckedFn)
   have hfirst_q_ge : ∀ (i : Fin sorted.length), i.val < q → c ≤ sorted.get i := by
     intro i hi
     exact sortedDesc_get_mono hsorted (by omega)
-  -- The countP / Finset-card connection. We need:
-  --   countGe voters acked c ≥ q
-  -- which expands to:
-  --   (voters.filter (c ≤ acked ·)).card ≥ q
-  --
-  -- Proof chain:
-  -- Step A: sorted.countP (fun x => c ≤ x) ≥ q
-  --         (the first q positions of sorted satisfy c ≤ ·, by hfirst_q_ge)
-  -- Step B: sorted.countP (fun x => c ≤ x)
-  --         = (voters.toList.map acked).countP (fun x => c ≤ x)
-  --         (by List.Perm.countP_eq applied to sortDesc_perm)
-  -- Step C: (voters.toList.map acked).countP (fun x => c ≤ x)
-  --         = voters.toList.countP (fun v => c ≤ acked v)
-  --         (by List.countP_map)
-  -- Step D: voters.toList.countP (fun v => c ≤ acked v)
-  --         = (voters.filter (c ≤ acked ·)).card
-  --         (via Finset.card_filter + Multiset.countP_coe / Finset.toList_filter)
-  --
-  -- Steps B, C, D require exact Mathlib 4.14.0 API names for Multiset/List countP bridge.
-  -- Step A is proved below. The full chain is left as sorry pending API verification.
-
   -- Step A: at least q elements of sorted are ≥ c
   have hstep_A : q ≤ sorted.countP (fun x => decide (c ≤ x)) := by
     -- sorted.take q has length q and all elements ≥ c (by hfirst_q_ge)
@@ -251,10 +260,9 @@ theorem committedIndex_safety (voters : Finset Nat) (acked : AckedFn)
          _ ≤ sorted.countP (fun x => decide (c ≤ x)) :=
                List.Sublist.countP_le (fun x => decide (c ≤ x)) (List.take_sublist q sorted)
 
-  -- Full chain (Steps B+C+D): sorry pending Mathlib API verification
-  -- TODO: fill in using List.Perm.countP_eq, List.countP_map,
-  --       and the Finset.card_filter / Multiset.countP_coe bridge.
-  sorry
+  -- Apply the bridge lemma: countGe voters acked c = sorted.countP (decide (c ≤ ·))
+  rw [countGe_eq_sorted_countP]
+  exact hstep_A
 
 /-! ## Maximality: committedIndex is the largest k with the safety property -/
 
@@ -292,7 +300,6 @@ theorem committedIndex_maximal (voters : Finset Nat) (acked : AckedFn)
       (sortedDesc_get_mono hsorted (by omega))
       hck
   -- Step B: sorted.countP (k ≤ ·) ≤ q - 1 < q
-  --         (only positions 0..q-2 can have sorted[j] ≥ k, by hafter_qth_lt)
   have hstep_B : sorted.countP (fun x => decide (k ≤ x)) ≤ q - 1 := by
     -- Elements at positions ≥ q-1 in sorted are all < k (by hafter_qth_lt),
     -- so (sorted.drop (q-1)).countP (k ≤ ·) = 0.
@@ -310,10 +317,10 @@ theorem committedIndex_maximal (voters : Finset Nat) (acked : AckedFn)
     have hle := List.countP_le_length (fun x => decide (k ≤ x)) (sorted.take (q - 1))
     have htake_len := List.length_take_of_le (n := q - 1) (l := sorted) (by omega)
     omega
-  -- Full chain (Steps C+D): countGe voters acked k = sorted.countP (k ≤ ·)
-  -- (same bridge as in safety: sorry pending Mathlib API verification)
-  -- Combined with hstep_B: countGe voters acked k ≤ q - 1 < q.
-  sorry
+  -- Apply the bridge lemma: countGe voters acked k = sorted.countP (decide (k ≤ ·))
+  -- Then hstep_B gives the required strict upper bound.
+  rw [countGe_eq_sorted_countP]
+  omega  -- hstep_B: sorted.countP ≤ q-1; hq_pos: 1 ≤ q → sorted.countP < q
 
 /-! ## Monotonicity: acked indices can only grow → committedIndex can only grow -/
 
