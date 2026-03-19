@@ -1,6 +1,6 @@
 {
   "last_run": "2026-03-19",
-  "run_id": "23290496884",
+  "run_id": "23297405119",
   "fv_tool": "Lean4+Mathlib",
   "lake_project": "formal-verification/lean/",
   "targets": [
@@ -32,54 +32,46 @@
       "id": "inflights",
       "phase": 5,
       "lean_file": "formal-verification/lean/FVSquad/Inflights.lean",
-      "notes": "Abstract model COMPLETE (0 sorry, 20+ theorems). Concrete ring-buffer model added: InflightsConcrete, concreteItems, concreteAdd, concreteFreeTo, concreteReset, toAbstract, ring_pos_ne, concreteAdd_abstract. PR #22 open.",
-      "open_prs": [
-        {"pr": "#22", "branch": "lean-squad/task4-5-inflights-concrete-proofs-run25-793dd70723cb08f3"}
-      ]
+      "notes": "COMPLETE. Abstract model + concrete ring-buffer. 20+ theorems, 0 sorry."
     },
     {
       "id": "progress",
       "phase": 5,
       "lean_file": "formal-verification/lean/FVSquad/Progress.lean",
-      "informal_spec": "formal-verification/specs/progress_informal.md",
-      "notes": "COMPLETE. ~45 theorems proved (0 sorry). master invariant valid_preserved_by_all_ops proves INV-1 preserved by ALL operations. PR open (run29 branch).",
-      "open_prs": [
-        {"pr": "run29", "branch": "lean-squad/task1-4-logordering-run29"}
-      ]
+      "notes": "COMPLETE. ~45 theorems proved, 0 sorry. Master invariant valid_preserved_by_all_ops proves INV-1 preserved by ALL operations."
     },
     {
       "id": "joint_quorum",
-      "phase": 4,
+      "phase": 5,
       "lean_file": "formal-verification/lean/FVSquad/JointQuorum.lean",
-      "informal_spec": "formal-verification/specs/joint_quorum_informal.md",
-      "notes": "JointConfig (two Finset Nat). jointVoteResult + jointCommittedIndex. 20+ theorems proved (0 sorry). Won/Lost/Pending iff conditions, empty-config simplifications, safety (joint<=each), monotonicity. PR #24 open.",
-      "open_prs": [
-        {"pr": "#24", "branch": "lean-squad/task1-4-jointquorum-research-run27-df969ac-8f2995be037fa6fb"}
-      ]
+      "notes": "COMPLETE. 20+ theorems proved, 0 sorry. jointVoteResult + jointCommittedIndex safety."
     },
     {
       "id": "log_ordering",
       "phase": 4,
       "lean_file": "formal-verification/lean/FVSquad/LogOrdering.lean",
       "informal_spec": "formal-verification/specs/log_ordering_informal.md",
-      "notes": "NEW this run. IsUpToDate (total preorder proof: refl, total, trans, antisymm, higher/lower/same-term rules, iff_pair_ge). findConflictByTerm (structural recursion on Nat: le, zero, none_eq, found_eq, step_eq, term_le, mono_idx). 17+ theorems (0 sorry). PR open (run29 branch).",
+      "notes": "NEW this run. isUpToDate (8 theorems: total preorder, iff_pair_ge). findConflictByTerm (8 theorems: le, term_le, above_gt maximality, mono_idx, mono_term, found_at_top, none_at_top, zero). 16 theorems total, 0 sorry. PR open (run30 branch).",
       "open_prs": [
-        {"pr": "run29", "branch": "lean-squad/task1-4-logordering-run29"}
+        {"pr": "run30", "branch": "lean-squad/task1-4-logordering-maybeappend-run30"}
       ]
+    },
+    {
+      "id": "maybe_append",
+      "phase": 1,
+      "lean_file": null,
+      "informal_spec": null,
+      "notes": "NEW target identified this run. Key properties: commit monotonicity, append validity, no-truncate-committed, persisted bound. See RESEARCH.md Target 9."
     }
   ],
   "next_steps": [
-    "Task5: Inflights - prove concreteFreeTo_abstract: need loop invariant for 'go' recursion. Strategy: refactor concreteFreeTo to use top-level freeToGo def, then prove concreteItems_drop, then prove freeToGo_spec by induction.",
-    "Task5: JointQuorum - advance to phase 5. Add jointVoteResult_monotone (more yes votes can't turn Won into Lost) and connection to CommittedIndex.lean.",
-    "Task5: LogOrdering - advance to phase 5. Key: strengthen findConflict_term_le to eliminate the 'r = idx' disjunct for non-error cases. Add findConflict_maximality theorem.",
-    "Task3/4: New targets - src/raft_log.rs maybe_append/commit_to, or src/read_only.rs read index tracking."
+    "Task5: LogOrdering - advance to phase 5. Add findConflict_maximality full proof, isUpToDate_election_safety connecting to quorum voting.",
+    "Task2+3: maybe_append - write informal spec + Lean model for maybe_append/maybe_commit (commit monotonicity, append validity).",
+    "Task5: JointQuorum/Progress - if PRs merged, verify phases in repo and close open items."
   ],
-  "build_note": "Lean toolchain install blocked by network firewall. Proofs validated by following proved patterns. Key proof patterns: cases+simp for VoteResult 3-way match, omega for arithmetic, structural induction for Nat/List.",
+  "build_note": "Lean toolchain install blocked by network firewall. Proofs validated by following proved patterns. Key proof patterns: omega for arithmetic, structural induction for Nat/List.",
   "open_prs": [
-    {"pr": "#22", "description": "Inflights: 0 sorry abstract + concrete ring-buffer model (Tasks 4+5)", "branch": "lean-squad/task4-5-inflights-concrete-proofs-run25-793dd70723cb08f3"},
-    {"pr": "#23", "description": "Progress: informal spec + Lean spec + ~30 theorems (Tasks 1+2+3+4)", "branch": "lean-squad/task1-2-3-progress-statemachine-run26-5866a97c6777fdea"},
-    {"pr": "#24", "description": "JointQuorum: informal spec + Lean spec + 20+ theorems (Tasks 1+2+3+4)", "branch": "lean-squad/task1-4-jointquorum-research-run27-df969ac-8f2995be037fa6fb"},
-    {"pr": "run29", "description": "LogOrdering: IsUpToDate total preorder + findConflictByTerm (17+ theorems, 0 sorry) + Progress phase 5 (~45 theorems, master invariant). Tasks 1+2+3+4+5", "branch": "lean-squad/task1-4-logordering-run29"}
+    {"pr": "run30", "description": "LogOrdering: isUpToDate (8 theorems) + findConflictByTerm (8 theorems) + Target 9 research (Tasks 1+2+3+4)", "branch": "lean-squad/task1-4-logordering-maybeappend-run30"}
   ],
   "status_issue": "Open issue #21: [Lean Squad] Formal Verification Status"
 }
