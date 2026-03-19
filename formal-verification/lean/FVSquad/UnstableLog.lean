@@ -490,6 +490,138 @@ theorem maybeTerm_snapshot (u : Unstable) (snap : SnapMeta) (idx : Nat)
     maybeTerm u idx = some snap.term := by
   simp [maybeTerm, hlt, hsnap, hidx]
 
+/-! ## wellFormed preservation theorems (Task 5) -/
+
+/-- Helper: `truncateAndAppend` never changes the `snapshot` field. -/
+theorem truncateAndAppend_snapshot (u : Unstable) (e : Entry) (rest : List Entry) :
+    (truncateAndAppend u (e :: rest)).snapshot = u.snapshot := by
+  simp only [truncateAndAppend]
+  split_ifs <;> rfl
+
+/-- `stableEntries` preserves `wellFormed`.
+    Both INV-1 and INV-2 hold trivially because the entries list becomes empty. -/
+theorem stableEntries_wellFormed (u : Unstable) (h : wellFormed u) :
+    wellFormed (stableEntries u) := by
+  constructor
+  · exact stableEntries_indexCoherent u
+  · intro _ hemp
+    simp [stableEntries] at hemp
+
+/-- `stableSnap` preserves `wellFormed`.
+    INV-1 is unchanged (entries unchanged); INV-2 holds trivially since `snapshot = none`. -/
+theorem stableSnap_wellFormed (u : Unstable) (h : wellFormed u) :
+    wellFormed (stableSnap u) := by
+  obtain ⟨hcoh, _⟩ := h
+  constructor
+  · exact stableSnap_indexCoherent u hcoh
+  · intro hsome
+    simp [stableSnap] at hsome
+
+/-- INV-2 (`snapCoherent`) is preserved by `truncateAndAppend`, given:
+    - `hscoh`: INV-2 held for the original buffer.
+    - `hsnap_lt`: the first new entry's index exceeds the snapshot index (Raft protocol).
+    - `hsnap_offset`: the snapshot index is strictly below `offset` (holds unconditionally
+      in well-formed Raft state; stronger than INV-2 which only requires this when
+      `entries ≠ []`, needed to handle the `entries = []` + gap case).
+
+    The `snapshot` field is preserved by all cases of `truncateAndAppend`. -/
+theorem truncateAndAppend_snapCoherent
+    (u : Unstable) (e : Entry) (rest : List Entry)
+    (hscoh : snapCoherent u.offset u.entries u.snapshot)
+    (hsnap_lt : u.snapshot.isSome → u.snapshot.get! .index < e.index)
+    (hsnap_offset : u.snapshot.isSome → u.snapshot.get! .index < u.offset) :
+    snapCoherent (truncateAndAppend u (e :: rest)).offset
+                 (truncateAndAppend u (e :: rest)).entries
+                 (truncateAndAppend u (e :: rest)).snapshot := by
+  rw [truncateAndAppend_snapshot]
+  intro hsome _
+  -- Case-split on which branch of `truncateAndAppend` applies
+  by_cases hA : e.index = u.offset + u.entries.length
+  · -- Case A: pure append; offset unchanged
+    obtain ⟨hoff, _⟩ := truncateAndAppend_caseA u e rest hA
+    rw [hoff]
+    by_cases hemp : u.entries = []
+    · -- entries was empty: e.index = u.offset, so hsnap_lt gives snap.index < e.index = u.offset
+      have heq : e.index = u.offset := by simp [hemp] at hA; exact hA
+      linarith [hsnap_lt hsome]
+    · -- entries non-empty: INV-2 directly gives snap.index < u.offset
+      exact hscoh hsome hemp
+  · by_cases hB : e.index ≤ u.offset
+    · -- Case B: full replacement; new offset = e.index
+      obtain ⟨hoff, _⟩ := truncateAndAppend_caseB u e rest hB
+      rw [hoff]
+      exact hsnap_lt hsome
+    · push_neg at hB
+      -- Either Case C (u.offset < e.index < u.offset + entries.length)
+      -- or the over-extension case (e.index > u.offset + entries.length).
+      by_cases hC2 : e.index < u.offset + u.entries.length
+      · -- Case C: truncate then append; offset unchanged
+        obtain ⟨hoff, _⟩ := truncateAndAppend_caseC u e rest hB hC2
+        rw [hoff]
+        -- u.entries must be non-empty (since u.offset < e.index < u.offset + len)
+        have hnonempty : u.entries ≠ [] := fun h => by simp [h] at hB
+        exact hscoh hsome hnonempty
+      · -- Over-extension: e.index > u.offset + entries.length
+        -- Implementation: take(e.index - u.offset, entries) = entries (full take),
+        -- so result = { offset := u.offset, entries := entries ++ (e :: rest) }
+        -- We need snap.index < u.offset, which hsnap_offset provides.
+        have hoff : (truncateAndAppend u (e :: rest)).offset = u.offset := by
+          simp only [truncateAndAppend]
+          split_ifs with h1 h2
+          · simp [List.length_cons] at h1; omega
+          · omega
+          · rfl
+        rw [hoff]
+        exact hsnap_offset hsome
+
+/-- `truncateAndAppend` preserves `wellFormed`, given:
+    - `hwf`: the original buffer is well-formed.
+    - `hents_coh`: the new entries are index-coherent (starting at `e.index`).
+    - `hsnap_lt`: the first new entry's index > snapshot index (Raft protocol invariant).
+    - `hsnap_offset`: the snapshot index is always strictly below `offset`.
+      This is a Raft invariant stronger than INV-2 alone (which only requires this
+      when `entries ≠ []`); it is established by `restore` (`offset = snap.index + 1`)
+      and maintained by all other operations. -/
+theorem truncateAndAppend_wellFormed
+    (u : Unstable) (e : Entry) (rest : List Entry)
+    (hwf : wellFormed u)
+    (hents_coh : indexCoherent e.index (e :: rest))
+    (hsnap_lt : u.snapshot.isSome → u.snapshot.get! .index < e.index)
+    (hsnap_offset : u.snapshot.isSome → u.snapshot.get! .index < u.offset) :
+    wellFormed (truncateAndAppend u (e :: rest)) := by
+  obtain ⟨hcoh, hscoh⟩ := hwf
+  exact ⟨truncateAndAppend_coherent u e rest hcoh hents_coh,
+         truncateAndAppend_snapCoherent u e rest hscoh hsnap_lt hsnap_offset⟩
+
+/-! ## Notes on proof completeness -/
+
+/-
+**Proof status (Task 5 additions)**:
+
+wellFormed preservation:
+- `truncateAndAppend_snapshot` (helper): ✅ proved
+- `stableEntries_wellFormed`: ✅ proved
+- `stableSnap_wellFormed`: ✅ proved
+- `truncateAndAppend_snapCoherent`: ✅ proved (with `hsnap_offset` precondition)
+- `truncateAndAppend_wellFormed`: ✅ proved
+
+Note on `hsnap_offset` precondition in `truncateAndAppend_wellFormed`:
+  The standard `wellFormed` invariant (INV-2 = `snapCoherent`) only requires
+  `snap.index < offset` when `entries ≠ []`. For the over-extension case
+  (`e.index > offset + entries.length` with `entries = []`), an extra precondition
+  `snap.index < offset` is needed. This holds unconditionally in any correctly
+  initialised Raft state (since `restore` sets `offset = snap.index + 1`).
+  A future refactoring could strengthen INV-2 to remove the `entries ≠ []` guard.
+
+Prior task completions (from Task 4):
+- `truncateAndAppend_caseA/B/C_coherent`: ✅
+- `truncateAndAppend_coherent` (all cases): ✅
+- `maybeTerm_correct`, `maybeTerm_snapshot`: ✅
+
+API names used from Lean 4 Mathlib:
+`List.get_append_left`, `List.get_append_right`, `List.take_succ_cons`,
+`List.sum_cons`, `List.get_cons_succ`, `List.get?_eq_get`.
+These follow the same patterns used in `CommittedIndex.lean` (fully proved).
 /-! ## Notes on proof completeness -/
 
 /-
