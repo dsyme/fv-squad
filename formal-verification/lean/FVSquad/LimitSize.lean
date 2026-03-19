@@ -149,32 +149,79 @@ lemma limitSizeCount_le_length (lim : Nat) (sizes : SizeList) :
   have h := limitSizeGo_le_count_plus_length lim 0 0 sizes
   simpa using h
 
-/-! ## Safety invariant for `limitSizeGo`
+/-! ## Auxiliary lemmas for budget and maximality proofs -/
 
-Once the running total `acc` becomes positive, the budget constraint holds: `acc ≤ lim`.
--/
+/-- **Count shift**: `limitSizeGo` with initial count `c + k` equals the count-zero
+    version plus `k`. This lets us relate `limitSizeGo lim acc 1 xs` to
+    `limitSizeGo lim acc 0 xs + 1`. -/
+private lemma limitSizeGo_count_add (lim acc c k : Nat) (l : SizeList) :
+    limitSizeGo lim acc (c + k) l = limitSizeGo lim acc c l + k := by
+  induction l generalizing acc c with
+  | nil => simp [limitSizeGo]
+  | cons x xs ih =>
+    simp only [limitSizeGo]
+    split_ifs with h
+    · have heq : c + k + 1 = (c + 1) + k := by omega
+      rw [heq]; exact ih _ _
+    · rfl
 
-/-- **Budget invariant**: starting with `acc ≤ lim` (or `acc = 0`), after `limitSizeGo`
-    accepts some additional entries, the final accumulator value is still ≤ lim (or 0).
-    We track this as an existential: there is a final accumulator `acc_f` such that
-    `acc_f = 0 ∨ acc_f ≤ lim` and the accepted entries sum to `acc_f - acc` (on top of `acc`).
+/-- **Budget lemma** (positive accumulator): when `acc > 0` and `acc ≤ lim`, the sum of
+    every entry accepted by `limitSizeGo lim acc 0 l` plus `acc` is at most `lim`.
 
-    **Proof strategy**: by induction on `l`. When an entry `x` is accepted:
-    - If via `acc = 0 ∨ acc + x ≤ lim`: new acc = `acc + x ≤ lim` (or = x which might exceed lim
-      in the forced-first-entry case). In the forced case, `acc_f = x` (may exceed lim).
-    - When declined: `acc_f = acc` and no additional entries were taken.
+    Core invariant: once the first nonzero entry sets `acc > 0 ≤ lim`, subsequent entries
+    are only accepted if `acc + x ≤ lim`, so the total never exceeds `lim`. -/
+private lemma limitSizeGo_budget' (lim acc : Nat) (l : SizeList)
+    (hacc_pos : 0 < acc) (hacc_le : acc ≤ lim) :
+    (l.take (limitSizeGo lim acc 0 l)).sum + acc ≤ lim := by
+  induction l generalizing acc with
+  | nil => simp [limitSizeGo, hacc_le]
+  | cons x xs ih =>
+    unfold limitSizeGo
+    by_cases h : acc = 0 ∨ acc + x ≤ lim
+    · simp only [h, ↓reduceIte]
+      rcases h with heq | hle
+      · exact absurd heq (Nat.ne_of_gt hacc_pos)
+      · -- Accepted: acc + x ≤ lim
+        have hcount : limitSizeGo lim (acc + x) 1 xs = limitSizeGo lim (acc + x) 0 xs + 1 := by
+          have := limitSizeGo_count_add lim (acc + x) 0 1 xs; simpa using this
+        rw [hcount]
+        -- (x :: xs).take (n' + 1) = x :: xs.take n'  (List.take, definitional)
+        simp only [List.take_succ_cons, List.sum_cons]
+        have := ih (acc + x) (by omega) hle
+        omega
+    · simp only [h, ↓reduceIte, List.take, List.sum_nil, hacc_le]
 
-    Note: This invariant does NOT hold without the `first-entry exception` case:
-    the very first non-zero-sized entry can have `size > lim` and still be accepted. -/
-private lemma limitSizeGo_sum_le (lim acc count : Nat) (l : SizeList)
-    (hacc : 0 < acc → acc ≤ lim) :
-    -- The number of entries taken beyond `count` satisfies a sum bound:
-    -- every acceptance after `acc` became positive kept `acc ≤ lim`.
-    let n := limitSizeGo lim acc count l
-    count ≤ n ∧ n ≤ count + l.length := by
-  constructor
-  · exact limitSizeGo_count_ge lim acc count l
-  · exact limitSizeGo_le_count_plus_length lim acc count l
+/-- **Stop condition**: when `limitSizeGo` terminates early (accepted fewer entries
+    than `l.length`), the rejected entry at position `n` would overflow the budget.
+    Formally: the running total `(l.take n).sum + acc` is positive, and adding
+    `l[n]` would push it above `lim`. -/
+private lemma limitSizeGo_stop_condition (lim acc : Nat) (l : SizeList)
+    (hlt : limitSizeGo lim acc 0 l < l.length) :
+    0 < (l.take (limitSizeGo lim acc 0 l)).sum + acc ∧
+    (l.take (limitSizeGo lim acc 0 l)).sum + acc +
+      l.get ⟨limitSizeGo lim acc 0 l, hlt⟩ > lim := by
+  induction l generalizing acc with
+  | nil => simp [limitSizeGo] at hlt
+  | cons x xs ih =>
+    unfold limitSizeGo at hlt ⊢
+    by_cases h : acc = 0 ∨ acc + x ≤ lim
+    · -- Accepted branch
+      simp only [h, ↓reduceIte] at hlt ⊢
+      have hcount : limitSizeGo lim (acc + x) 1 xs = limitSizeGo lim (acc + x) 0 xs + 1 := by
+        have := limitSizeGo_count_add lim (acc + x) 0 1 xs; simpa using this
+      rw [hcount] at hlt ⊢
+      have hlt' : limitSizeGo lim (acc + x) 0 xs < xs.length := by
+        simp only [List.length_cons] at hlt; omega
+      obtain ⟨hpos, hgt⟩ := ih (acc + x) hlt'
+      -- (x :: xs).take (n' + 1) = x :: xs.take n'; get at n'+1 = xs.get at n'
+      simp only [List.take_succ_cons, List.sum_cons, List.get_cons_succ]
+      omega
+    · -- Rejected branch: n = 0; l[0] = x; acc > 0; acc + x > lim
+      simp only [h, ↓reduceIte] at hlt ⊢
+      push_neg at h
+      obtain ⟨hne, hgt⟩ := h
+      simp only [List.take, List.sum_nil, List.get_cons_zero]
+      omega
 
 /-! ## Main specification theorems -/
 
@@ -226,7 +273,35 @@ theorem limitSize_sum_le (sizes : SizeList) (lim : Nat)
     (hlen : 2 ≤ (limitSize sizes (some lim)).length)
     (hfirst : ∀ x xs, sizes = x :: xs → 0 < x) :
     (limitSize sizes (some lim)).sum ≤ lim := by
-  sorry
+  -- sizes must be non-empty (output ≥ 2 entries ⇒ input non-empty)
+  match sizes with
+  | [] => simp [limitSize] at hlen
+  | x :: xs =>
+    simp only [limitSize, limitSizeCount] at hlen ⊢
+    have hx_pos : 0 < x := hfirst x xs rfl
+    -- Step 1: unfold the first step of limitSizeGo (first entry always accepted: acc = 0)
+    have hfirst_step : limitSizeGo lim 0 0 (x :: xs) = limitSizeGo lim x 1 xs := by
+      simp [limitSizeGo]
+    have hcount_eq : limitSizeGo lim x 1 xs = limitSizeGo lim x 0 xs + 1 := by
+      have := limitSizeGo_count_add lim x 0 1 xs; simpa using this
+    -- Step 2: output length ≥ 2 implies limitSizeGo lim x 0 xs ≥ 1
+    rw [hfirst_step, hcount_eq] at hlen
+    have hn' : 1 ≤ limitSizeGo lim x 0 xs := by omega
+    -- Step 3: ≥ 1 entries accepted from xs means the first entry of xs was accepted.
+    --         Since x > 0, acceptance required x + y ≤ lim, so x ≤ lim.
+    have hx_le_lim : x ≤ lim := by
+      match xs with
+      | [] => simp [limitSizeGo] at hn'
+      | y :: ys =>
+        -- First entry y was accepted: condition (x = 0 ∨ x + y ≤ lim) must hold
+        by_contra hc
+        push_neg at hc
+        simp [limitSizeGo, show ¬(x = 0 ∨ x + y ≤ lim) from by push_neg; omega] at hn'
+    -- Step 4: apply budget lemma with acc = x > 0, x ≤ lim
+    have hbudget := limitSizeGo_budget' lim x xs hx_pos hx_le_lim
+    -- Output = (x :: xs).take (limitSizeGo lim x 0 xs + 1) = x :: xs.take (limitSizeGo lim x 0 xs)
+    rw [hfirst_step, hcount_eq, List.take_succ_cons, List.sum_cons]
+    omega
 
 /-! ### T4: Maximality — adding one more entry would exceed the budget -/
 
@@ -241,7 +316,25 @@ theorem limitSize_maximal (sizes : SizeList) (lim : Nat)
     (htrunc : (limitSize sizes (some lim)).length < sizes.length) :
     lim < (limitSize sizes (some lim)).sum +
           sizes.get ⟨(limitSize sizes (some lim)).length, htrunc⟩ := by
-  sorry
+  simp only [limitSize, limitSizeCount]
+  -- n = limitSizeGo lim 0 0 sizes
+  set n := limitSizeGo lim 0 0 sizes with hn_def
+  -- n < sizes.length (from htrunc, since (sizes.take n).length = min n sizes.length)
+  have hlt : n < sizes.length := by
+    simp only [List.length_take] at htrunc; omega
+  -- Apply stop condition: the entry at position n was rejected
+  obtain ⟨_, hgt⟩ := limitSizeGo_stop_condition lim 0 sizes hlt
+  -- With acc = 0: (sizes.take n).sum + 0 + sizes.get ⟨n, _⟩ > lim
+  simp only [List.sum_nil, zero_add] at hgt
+  -- (sizes.take n).length = n  (since n < sizes.length ⇒ min n sizes.length = n)
+  have hlen_eq : (sizes.take n).length = n :=
+    List.length_take_of_lt hlt
+  -- sizes.get ⟨(sizes.take n).length, htrunc⟩ = sizes.get ⟨n, hlt⟩ (same position)
+  have hget_eq : sizes.get ⟨(sizes.take n).length, htrunc⟩ = sizes.get ⟨n, hlt⟩ :=
+    congrArg sizes.get (Fin.ext hlen_eq)
+  rw [hget_eq]
+  -- Now goal and hgt both involve (sizes.take n).sum + sizes.get ⟨n, hlt⟩ and lim
+  omega
 
 /-! ### T5–T7: Simple structural theorems -/
 
