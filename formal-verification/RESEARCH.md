@@ -161,6 +161,40 @@ state discrimination. Very tractable — no induction required.
 - `committed_index` and `pending_request_snapshot` fields omitted.
 - `u64` modelled as `Nat`.
 
+---
+
+### Target 7 — `JointConfig` Joint Quorum (★★★★ Priority)
+
+**Files**: `src/quorum/joint.rs`
+
+**What it does**: `JointConfig` holds two `MajorityConfig`s (incoming and outgoing). During
+a Raft membership change (joint consensus), *both* majorities must agree on any decision.
+`vote_result` returns Won only if both sub-quorums vote Won; Lost if either votes Lost;
+Pending otherwise. `committed_index` returns `min(incoming_committed, outgoing_committed)`.
+
+**Why FV**: Joint consensus is the mechanism Raft uses to safely change cluster membership —
+getting it wrong leads to split-brain. The key safety property is that the joint committed
+index is always ≤ either individual committed index (ensuring joint quorum is stricter than
+a simple quorum). The vote aggregation logic (Won∧Won→Won, Lost∨Lost→Lost) is a clean
+algebraic property amenable to exhaustive case analysis.
+
+**Key properties to verify**:
+1. **Vote-Won**: joint Won iff both incoming=Won and outgoing=Won.
+2. **Vote-Lost**: joint Lost iff incoming=Lost OR outgoing=Lost.
+3. **Vote-Pending**: joint Pending iff not Won and not Lost.
+4. **Empty-config**: when outgoing is empty, joint result = incoming result.
+5. **Commit-safety**: `jointCommittedIndex ≤ incoming` and `≤ outgoing`.
+6. **Commit-monotone**: joint committed is monotone in both arguments.
+7. **Commit-min**: joint committed = min(i_idx, o_idx).
+
+**Spec size**: ~150 Lean lines (types + 20+ theorems)
+**Proof tractability**: all proofs by `cases`/`simp` (3×3 = 9-case analysis for vote)
+and `omega` for arithmetic (min properties). Zero induction required.
+**Approximations**:
+- `use_group_commit` flag and group-commit algorithm omitted (separate concern).
+- `AckedIndexer` trait abstracted: majority committed index passed as a `Nat` argument.
+- `u64` modelled as `Nat`.
+
 ## Mathlib Modules of Interest
 
 - `Mathlib.Data.List.Basic` — list lemmas for `truncate_and_append`
