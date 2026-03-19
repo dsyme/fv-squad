@@ -123,6 +123,44 @@
 **Proof tractability**: Easy — `omega` + list reasoning. Good warmup.  
 **Approximations**: Abstract away protobuf `compute_size`; model entry size as a natural number.
 
+---
+
+### Target 6 — `Progress` Replication State Machine (★★★★ Priority)
+
+**Files**: `src/tracker/progress.rs`, `src/tracker/state.rs`
+
+**What it does**: `Progress` is the Raft leader's per-follower view of the
+replication pipeline. It is a three-state machine (Probe/Replicate/Snapshot)
+with two key fields: `matched` (highest acknowledged log index) and `next_idx`
+(next index to send). State transitions and the `maybe_update`/`maybe_decr_to`
+operations update these fields with strict ordering constraints.
+
+**Why FV**: The core invariant `matched + 1 ≤ next_idx` is critical for Raft
+safety — violating it would cause the leader to send entries with incorrect
+indices, breaking log consistency. The state transition logic (especially
+`become_probe` from Snapshot state) has subtle max-of-two-bounds reasoning that
+is easy to get wrong.
+
+**Key properties to verify**:
+1. **INV-1 (index ordering)**: `matched + 1 ≤ next_idx` — always holds.
+2. `maybe_update(n)` sets `matched = max(old.matched, n)` and
+   `next_idx = max(old.next_idx, n+1)`.
+3. `maybe_update` returns `true` iff `n > old.matched`.
+4. `become_probe` from Snapshot state sets `next_idx = max(matched+1, pending_snapshot+1)`.
+5. All state transitions preserve INV-1.
+6. `maybe_decr_to` in Replicate state never moves `next_idx` below `matched+1`.
+7. `maybe_update` is monotone: if `n₁ ≤ n₂`, updating with `n₂` after `n₁`
+   gives the same `matched` as updating directly with `n₂`.
+
+**Spec size**: ~120 Lean lines (types + theorems)
+**Proof tractability**: `omega` handles all arithmetic; `simp` + `cases` for
+state discrimination. Very tractable — no induction required.
+**Approximations**:
+- `Inflights` (in-flight message tracker) omitted from model; `is_paused` in
+  Replicate state approximated as always `false`.
+- `committed_index` and `pending_request_snapshot` fields omitted.
+- `u64` modelled as `Nat`.
+
 ## Mathlib Modules of Interest
 
 - `Mathlib.Data.List.Basic` — list lemmas for `truncate_and_append`
