@@ -10,6 +10,7 @@
 | 4 | `Inflights` ring buffer | `src/tracker/inflights.rs` | 5 — Proofs | 🔄 In progress | Informal spec + Lean 4 abstract model (0 `sorry`): 20+ theorems proved (incl. `freeTo_all_gt`, `freeTo_suffix`, `freeTo_monotone_idempotent`). Concrete ring-buffer model (`InflightsConcrete`, `concreteAdd_abstract`, `ring_pos_ne`) added. See `FVSquad/Inflights.lean`. |
 | 5 | `limit_size` utility | `src/util.rs` | 5 — Proofs | ✅ Done | All theorems proved (0 `sorry`). Budget helpers `limitSizeGo_count_add`, `limitSizeGo_budget'`, `limitSizeGo_stop_condition` enable proofs of `limitSize_sum_le` (budget safety) and `limitSize_maximal` (maximality). See `FVSquad/LimitSize.lean`. |
 | 6 | `Progress` state machine | `src/tracker/progress.rs`, `src/tracker/state.rs` | 4 — Implementation | 🔄 In progress | Informal spec + Lean 4 spec + full implementation model (0 `sorry`). 25+ theorems proved covering `maybeUpdate`, `becomeProbe`, `becomeReplicate`, `becomeSnapshot`, `maybeDecrTo`. See `FVSquad/Progress.lean`. |
+| 7 | `JointConfig` joint quorum | `src/quorum/joint.rs` | 4 — Implementation | 🔄 In progress | Lean 4 spec + full implementation model (0 `sorry`). 20+ theorems proved covering `jointVoteResult` (Won/Lost/Pending/empty) and `jointCommittedIndex` (safety, monotone, min). See `FVSquad/JointQuorum.lean`. |
 
 ## Phase Legend
 

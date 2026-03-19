@@ -178,6 +178,31 @@ state discrimination. Very tractable — no induction required.
 4. Explicitly document what the model does NOT capture (networking, storage I/O, failure modes).
 5. Leave `sorry` as a placeholder for hard sub-goals; prefer partial proofs over no proofs.
 
+---
+
+### Target 7 — `JointConfig` Joint Quorum (★★★★ Priority)
+
+**Files**: `src/quorum/joint.rs`
+
+**What it does**: `JointConfig` holds two `MajorityConfig`s (incoming and outgoing). During
+a Raft membership change (joint consensus), *both* majorities must agree on any decision.
+`vote_result` returns Won only if both sub-quorums vote Won; Lost if either votes Lost;
+Pending otherwise. `committed_index` returns `min(incoming_committed, outgoing_committed)`.
+
+**Why FV**: Joint consensus is the mechanism Raft uses to safely change cluster membership —
+getting it wrong leads to split-brain. The key safety property is that the joint committed
+index is always ≤ either individual committed index.
+
+**Key properties to verify**:
+1. **Vote-Won**: joint Won iff both incoming=Won and outgoing=Won.
+2. **Vote-Lost**: joint Lost iff incoming=Lost OR outgoing=Lost.
+3. **Commit-safety**: `jointCommittedIndex ≤ incoming` and `≤ outgoing`.
+4. **Commit-min**: joint committed = min(i_idx, o_idx).
+
+**Spec size**: ~150 Lean lines (types + 20+ theorems)
+**Proof tractability**: `cases`/`simp` (3×3 analysis for vote) and `omega` for arithmetic.
+**Approximations**: `use_group_commit` flag omitted; `u64` modelled as `Nat`.
+
 ## Web References Consulted
 
 - [Raft paper](https://raft.github.io/raft.pdf) — original algorithm specification
