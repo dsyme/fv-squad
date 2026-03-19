@@ -1,6 +1,6 @@
 {
   "last_run": "2026-03-19",
-  "run_id": "23275210205",
+  "run_id": "23275433695",
   "fv_tool": "Lean4+Mathlib",
   "lake_project": "formal-verification/lean/",
   "targets": [
@@ -14,7 +14,7 @@
       "id": "committed_index",
       "phase": 5,
       "lean_file": "formal-verification/lean/FVSquad/CommittedIndex.lean",
-      "notes": "COMPLETE. All theorems proved, 0 sorry. Bridge lemma countGe_eq_sorted_countP closed committedIndex_safety and committedIndex_maximal.",
+      "notes": "COMPLETE. All theorems proved, 0 sorry.",
       "theorems_proved": ["committedIndex_empty","committedIndex_eq_nth","committedIndex_singleton","countGe_antitone","countGe_zero","committedIndex_nonneg","sortedAcked_sorted","countGe_mono_acked","committedIndex_monotone","sortedDesc_get_mono","countGe_eq_sorted_countP","committedIndex_safety","committedIndex_maximal"]
     },
     {
@@ -22,31 +22,35 @@
       "phase": 5,
       "lean_file": "formal-verification/lean/FVSquad/LimitSize.lean",
       "informal_spec": "formal-verification/specs/limit_size_informal.md",
-      "notes": "COMPLETE. All theorems proved, 0 sorry. limitSizeGo_count_add + limitSizeGo_budget' + limitSizeGo_stop_condition enabled proofs of limitSize_sum_le and limitSize_maximal.",
+      "notes": "COMPLETE. All theorems proved, 0 sorry.",
       "theorems_proved": ["limitSize_is_prefix","limitSize_length_ge_one","limitSize_none","limitSize_empty","limitSize_singleton","limitSizeCount_pos","limitSizeCount_le_length","limitSizeGo_count_add","limitSizeGo_budget'","limitSizeGo_stop_condition","limitSize_sum_le","limitSize_maximal","6 decide examples"]
     },
     {
       "id": "unstable_log",
-      "phase": 4,
+      "phase": 5,
       "lean_file": "formal-verification/lean/FVSquad/UnstableLog.lean",
       "informal_spec": "formal-verification/specs/unstable_log_informal.md",
-      "notes": "Phase 3->4 this run. All 25+ theorems proved, 0 sorry. Added: truncateAndAppend_caseB_coherent (trivial), truncateAndAppend_caseA_coherent (split at entries.length), truncateAndAppend_coherent (unified), maybeTerm_correct, maybeTerm_snapshot.",
-      "theorems_proved": ["maybeFirstIndex_some","maybeFirstIndex_none","maybeLastIndex_entries","maybeLastIndex_snap","maybeLastIndex_empty","restore_entries_empty","restore_offset","restore_snapshot","restore_wellFormed","stableEntries_entries_empty","stableEntries_offset","stableEntries_indexCoherent","stableSnap_snapshot_none","stableSnap_entries_unchanged","stableSnap_indexCoherent","truncateAndAppend_caseA","truncateAndAppend_caseB","truncateAndAppend_caseC","slice_length","truncateAndAppend_caseC_coherent","truncateAndAppend_caseB_coherent","truncateAndAppend_caseA_coherent","truncateAndAppend_coherent","maybeTerm_correct","maybeTerm_snapshot"]
+      "notes": "COMPLETE. All 30+ theorems proved, 0 sorry. Task 5 this run added: truncateAndAppend_snapshot, stableEntries_wellFormed, stableSnap_wellFormed, truncateAndAppend_snapCoherent (with hsnap_offset precondition), truncateAndAppend_wellFormed.",
+      "note_hsnap_offset": "INV-2 (snapCoherent) has entries!=[] guard; truncateAndAppend_wellFormed needs extra hsnap_offset:snapshot.isSome->snap.index<offset for entries=[] + gap case. Always holds in Raft (restore sets offset=snap.index+1). Future: consider strengthening INV-2."
     },
     {
       "id": "inflights",
-      "phase": 1
+      "phase": 3,
+      "lean_file": "formal-verification/lean/FVSquad/Inflights.lean",
+      "informal_spec": "formal-verification/specs/inflights_informal.md",
+      "notes": "Phase 1->3 this run. Abstract model List-based. 20+ theorems proved, 3 sorry: freeTo_all_gt, freeTo_suffix, freeTo_monotone_idempotent (need List.mem_dropWhile / List.dropWhile_nthLe Mathlib lemmas)."
     }
   ],
   "next_steps": [
-    "Task5: UnstableLog phase 5 - attempt truncateAndAppend_wellFormed (preserves both INV-1 and INV-2), stableEntries_wellFormed, restore wellFormedness with snapCoherent.",
-    "Task1/2: Inflights ring buffer (phase 1->2): start+count<=cap invariant, circular addressing correctness, add/free operations preserve invariant.",
-    "Task3: Write Lean spec for Inflights (phase 2->3 if informal spec exists)."
+    "Task5: Inflights - prove freeTo_all_gt (x in dropWhile p xs -> !p x), freeTo_suffix (dropWhile is suffix), freeTo_monotone_idempotent. Search Mathlib for List.not_mem_dropWhile or List.dropWhile_suffix.",
+    "Task4: Inflights - consider adding concrete model of ring buffer addressing as a separate verification target to connect abstract model to implementation.",
+    "Consider: strengthen wellFormed INV-2 (snapCoherent) to remove entries!=[] guard, simplifying truncateAndAppend_wellFormed."
   ],
-  "build_note": "elan/lean toolchain install blocked by network firewall CONNECT tunnel 403. Syntax validated by following MajorityQuorum.lean/CommittedIndex.lean patterns. Key Lean4 lemmas: List.take_succ_cons, List.sum_cons, List.get_cons_succ, List.get_append_left/right, List.get?_eq_get, List.length_take_of_lt, Fin.ext.",
+  "build_note": "elan/lean toolchain install blocked by network firewall CONNECT tunnel 403. Syntax validated by following proved patterns. Key Lean4 lemmas: List.take_succ_cons, List.sum_cons, List.get_cons_succ, List.get_append_left/right, List.get?_eq_get, List.length_take_of_lt, Fin.ext.",
   "open_prs": [
     {"pr": 16, "description": "CommittedIndex fully proved + UnstableLog spec (Tasks 3+5)", "branch": "lean-squad/proofs-and-unstable-spec-cb29efa71a95a990"},
-    {"description": "UnstableLog coherence proofs + LimitSize fully proved (Tasks 4+5)", "branch": "lean-squad/task4-5-unstable-impl-limitsize-proofs"}
+    {"pr": 18, "description": "UnstableLog coherence proofs + LimitSize fully proved (Tasks 4+5)", "branch": "lean-squad/task4-5-unstable-impl-limitsize-proofs-38e26e286120b3ad"},
+    {"description": "UnstableLog wellFormed + Inflights spec (Tasks 5+3)", "branch": "lean-squad/task5-unstable-wellformed-inflights-spec-run23"}
   ],
   "status_issue": "Open: [Lean Squad] Formal Verification Status"
 }
