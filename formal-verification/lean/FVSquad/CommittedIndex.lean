@@ -210,13 +210,50 @@ theorem committedIndex_safety (voters : Finset Nat) (acked : AckedFn)
   have hfirst_q_ge : ∀ (i : Fin sorted.length), i.val < q → c ≤ sorted.get i := by
     intro i hi
     exact sortedDesc_get_mono hsorted (by omega)
-  -- The countP / Finset-card connection:
-  --   countGe voters acked c
-  --     = (voters.filter (c ≤ acked ·)).card          [def countGe]
-  --     = voters.toList.countP (c ≤ acked ·)          [Finset.card_filter + toList]
-  --     = (voters.toList.map acked).countP (c ≤ ·)    [List.countP_map]
-  --     = sorted.countP (c ≤ ·)                       [sortDesc_perm + Perm.countP_eq]
-  -- Combined with hfirst_q_ge, this gives sorted.countP (c ≤ ·) ≥ q.
+  -- The countP / Finset-card connection. We need:
+  --   countGe voters acked c ≥ q
+  -- which expands to:
+  --   (voters.filter (c ≤ acked ·)).card ≥ q
+  --
+  -- Proof chain:
+  -- Step A: sorted.countP (fun x => c ≤ x) ≥ q
+  --         (the first q positions of sorted satisfy c ≤ ·, by hfirst_q_ge)
+  -- Step B: sorted.countP (fun x => c ≤ x)
+  --         = (voters.toList.map acked).countP (fun x => c ≤ x)
+  --         (by List.Perm.countP_eq applied to sortDesc_perm)
+  -- Step C: (voters.toList.map acked).countP (fun x => c ≤ x)
+  --         = voters.toList.countP (fun v => c ≤ acked v)
+  --         (by List.countP_map)
+  -- Step D: voters.toList.countP (fun v => c ≤ acked v)
+  --         = (voters.filter (c ≤ acked ·)).card
+  --         (via Finset.card_filter + Multiset.countP_coe / Finset.toList_filter)
+  --
+  -- Steps B, C, D require exact Mathlib 4.14.0 API names for Multiset/List countP bridge.
+  -- Step A is proved below. The full chain is left as sorry pending API verification.
+
+  -- Step A: at least q elements of sorted are ≥ c
+  have hstep_A : q ≤ sorted.countP (fun x => decide (c ≤ x)) := by
+    -- sorted.take q has length q and all elements ≥ c (by hfirst_q_ge)
+    have htake_len : (sorted.take q).length = q :=
+      List.length_take_of_le (by omega)
+    have hall_ge : ∀ x ∈ sorted.take q, c ≤ x := by
+      intro x hx
+      rw [List.mem_iff_get] at hx
+      obtain ⟨i, hi, rfl⟩ := hx
+      have hi' : i.val < q := by rwa [List.length_take_of_le (by omega)] at hi
+      have hi'' : i.val < sorted.length := by omega
+      rw [List.get_take _ (by omega)]
+      exact hfirst_q_ge ⟨i.val, hi''⟩ hi'
+    have hcp_take : (sorted.take q).countP (fun x => decide (c ≤ x)) = q := by
+      rw [List.countP_eq_length.mpr (fun x hx => decide_eq_true (hall_ge x hx)),
+          htake_len]
+    calc q = (sorted.take q).countP (fun x => decide (c ≤ x)) := hcp_take.symm
+         _ ≤ sorted.countP (fun x => decide (c ≤ x)) :=
+               List.Sublist.countP_le (fun x => decide (c ≤ x)) (List.take_sublist q sorted)
+
+  -- Full chain (Steps B+C+D): sorry pending Mathlib API verification
+  -- TODO: fill in using List.Perm.countP_eq, List.countP_map,
+  --       and the Finset.card_filter / Multiset.countP_coe bridge.
   sorry
 
 /-! ## Maximality: committedIndex is the largest k with the safety property -/
@@ -248,11 +285,34 @@ theorem committedIndex_maximal (voters : Finset Nat) (acked : AckedFn)
   -- Therefore every position where sorted[j] ≥ k must have j < q-1, giving < q such positions.
   -- By the same Finset/countP chain as in safety:
   --   countGe voters acked k = sorted.countP (k ≤ ·) ≤ q - 1 < q.
+  -- Step A: positions ≥ q-1 in sorted all have values < k
   have hafter_qth_lt : ∀ (j : Fin sorted.length), q - 1 ≤ j.val → sorted.get j < k := by
     intro j hj
     exact Nat.lt_of_le_of_lt
       (sortedDesc_get_mono hsorted (by omega))
       hck
+  -- Step B: sorted.countP (k ≤ ·) ≤ q - 1 < q
+  --         (only positions 0..q-2 can have sorted[j] ≥ k, by hafter_qth_lt)
+  have hstep_B : sorted.countP (fun x => decide (k ≤ x)) ≤ q - 1 := by
+    -- Elements at positions ≥ q-1 in sorted are all < k (by hafter_qth_lt),
+    -- so (sorted.drop (q-1)).countP (k ≤ ·) = 0.
+    have hnil : (sorted.drop (q - 1)).countP (fun x => decide (k ≤ x)) = 0 := by
+      apply List.countP_eq_zero.mpr
+      intro x hx
+      rw [List.mem_iff_get] at hx
+      obtain ⟨i, hi, rfl⟩ := hx
+      rw [List.get_drop]
+      have hj : (q - 1 + i.val) < sorted.length :=
+        Nat.lt_of_lt_of_le i.isLt (by simp [List.length_drop]; omega)
+      have hlt := hafter_qth_lt ⟨q - 1 + i.val, hj⟩ (by omega)
+      exact decide_eq_false (Nat.not_le.mpr hlt)
+    rw [← List.take_append_drop (q - 1) sorted, List.countP_append] at *
+    have hle := List.countP_le_length (fun x => decide (k ≤ x)) (sorted.take (q - 1))
+    have htake_len := List.length_take_of_le (n := q - 1) (l := sorted) (by omega)
+    omega
+  -- Full chain (Steps C+D): countGe voters acked k = sorted.countP (k ≤ ·)
+  -- (same bridge as in safety: sorry pending Mathlib API verification)
+  -- Combined with hstep_B: countGe voters acked k ≤ q - 1 < q.
   sorry
 
 /-! ## Monotonicity: acked indices can only grow → committedIndex can only grow -/
