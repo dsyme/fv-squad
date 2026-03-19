@@ -1,6 +1,6 @@
 {
   "last_run": "2026-03-19",
-  "run_id": "23273395029",
+  "run_id": "23273978520",
   "fv_tool": "Lean4+Mathlib",
   "lake_project": "formal-verification/lean/",
   "targets": [
@@ -15,31 +15,27 @@
       "phase": 4,
       "lean_file": "formal-verification/lean/FVSquad/CommittedIndex.lean",
       "informal_spec": "formal-verification/specs/committed_index_informal.md",
-      "notes": "PR open. New sub-lemmas added: hfirst_q_ge (proved), hstep_A (structured, needs API), hafter_qth_lt (proved), hstep_B (structured, needs API). committedIndex_monotone FULLY PROVED. Remaining sorry: committedIndex_safety and committedIndex_maximal - only blocker is Finset.card_filter <-> List.countP bridge. Steps B+C+D of the countP chain need exact Mathlib 4.14.0 lemma names: List.Perm.countP_eq, List.countP_map, Finset.card_filter (Multiset.countP form), Multiset.countP_coe.",
+      "notes": "PR #14 open. committedIndex_monotone FULLY PROVED. Remaining sorry: committedIndex_safety and committedIndex_maximal - blocker is Finset.card_filter <-> List.countP bridge. Need exact Mathlib 4.14.0 lemma names: List.Perm.countP_eq, List.countP_map, Finset.card_filter (Multiset.countP form), Multiset.countP_coe.",
       "theorems_proved": ["committedIndex_empty","committedIndex_eq_nth","committedIndex_singleton","countGe_antitone","countGe_zero","committedIndex_nonneg","sortedAcked_sorted","countGe_mono_acked","committedIndex_monotone","sortedDesc_get_mono"],
-      "theorems_sorry": ["committedIndex_safety","committedIndex_maximal"],
-      "proof_steps_remaining": {
-        "bridge": "Need exact Lean4 Mathlib 4.14.0 names for: (voters.filter p).card = voters.toList.countP (decide o p). Chain: Finset.card_filter -> Multiset.countP -> Multiset.countP_coe -> List.countP -> List.countP_map -> List.Perm.countP_eq (via sortDesc_perm)",
-        "committedIndex_safety": "hstep_A proved (sorted.countP (c<=.) >= q using List.Sublist.countP_le + List.take_sublist). Need bridge to connect countGe = sorted.countP.",
-        "committedIndex_maximal": "hstep_B proved (sorted.countP (k<=.) <= q-1 using countP_eq_zero + countP_le_length). Need same bridge."
-      }
+      "theorems_sorry": ["committedIndex_safety","committedIndex_maximal"]
     },
     {
       "id": "limit_size",
       "phase": 4,
       "lean_file": "formal-verification/lean/FVSquad/LimitSize.lean",
       "informal_spec": "formal-verification/specs/limit_size_informal.md",
-      "notes": "PR open. Lean spec + implementation model written. limitSizeGo (core accumulator) + limitSizeCount + limitSize. Key: acc=0 OR acc+x<=lim semantics correctly models Rust size==0 branch. Proved: is_prefix, length_ge_one, none/empty/singleton, 6 decide examples. Sorry: limitSize_sum_le (T3) and limitSize_maximal (T4).",
-      "theorems_proved": ["limitSize_is_prefix","limitSize_length_ge_one","limitSize_none","limitSize_empty","limitSize_singleton","limitSizeCount_pos","limitSizeCount_le_length","limitSizeGo_count_ge","limitSizeGo_le_count_plus_length","limitSizeGo_init_pos","6 decide examples"],
-      "theorems_sorry": ["limitSize_sum_le","limitSize_maximal"],
-      "proof_steps_remaining": {
-        "T3_sum_le": "Induction on limitSizeGo with invariant: once acc>0, acc<=lim. First entry accepted via acc=0 branch may exceed lim (minimum-one guarantee). T3 requires precondition: sizes[0] > 0.",
-        "T4_maximal": "When limitSizeGo stops (returns count without incrementing), condition acc=0 OR acc+x<=lim was false, meaning acc>0 AND acc+x>lim. Since acc<=lim at that point, result.sum + next > lim."
-      }
+      "notes": "PR #14 open. Basic theorems proved. Budget/maximality theorems still sorry. T3 requires precondition: sizes[0] > 0. T4: when stop condition met, result.sum + next > lim.",
+      "theorems_proved": ["limitSize_is_prefix","limitSize_length_ge_one","limitSize_none","limitSize_empty","limitSize_singleton","limitSizeCount_pos","limitSizeCount_le_length","6 decide examples"],
+      "theorems_sorry": ["limitSize_sum_le","limitSize_maximal"]
     },
     {
       "id": "unstable_log",
-      "phase": 1
+      "phase": 3,
+      "lean_file": "formal-verification/lean/FVSquad/UnstableLog.lean",
+      "informal_spec": "formal-verification/specs/unstable_log_informal.md",
+      "notes": "NEW THIS RUN. Informal spec + Lean spec written. Types: Entry, SnapMeta, Unstable. Invariants: indexCoherent (INV-1), snapCoherent (INV-2), wellFormed. All 6 methods modelled. 20 decide examples. 15 theorems fully proved. 3 sorry theorems remain: slice_indices, maybeTerm_last (entries branch), truncateAndAppend_caseA_coherent. All blocked on exact Lean 4 Mathlib 4.14.0 API names for List.get_drop, List.get?_eq_get, List.get_append.",
+      "theorems_proved": ["maybeFirstIndex_some","maybeFirstIndex_none","maybeLastIndex_entries","maybeLastIndex_snap","maybeLastIndex_empty","restore_entries_empty","restore_offset","restore_snapshot","restore_wellFormed","stableEntries_entries_empty","stableEntries_offset","stableEntries_indexCoherent","stableSnap_snapshot_none","stableSnap_entries_unchanged","stableSnap_indexCoherent","truncateAndAppend_caseA","truncateAndAppend_caseB","truncateAndAppend_caseC","slice_length","20 decide examples"],
+      "theorems_sorry": ["slice_indices","maybeTerm_last (entries branch)","truncateAndAppend_caseA_coherent"]
     },
     {
       "id": "inflights",
@@ -47,13 +43,15 @@
     }
   ],
   "next_steps": [
-    "Task5: Fix committedIndex_safety and committedIndex_maximal by completing the Finset.card_filter -> List.countP bridge. Use Lean toolchain once available. Key: List.Perm.countP_eq, List.countP_map, Finset.card_filter (Multiset form), Multiset.countP_coe.",
-    "Task5: Fix limitSize_sum_le (T3) and limitSize_maximal (T4) by induction on limitSizeGo. Key invariant: 0 < acc -> acc <= lim (holds after first non-zero entry). Precondition: sizes[0] > 0 for T3.",
-    "Task3: Consider writing Lean spec for Unstable log buffer (phase 1->3). Key invariants: offset + entries.len() = last_index, snapshot_index <= offset."
+    "Task5: Fix unstable_log sorry theorems: List.get_drop (for slice_indices), List.get?_eq_get (for maybeTerm_last), List.get_append_left/right (for truncateAndAppend_caseA_coherent).",
+    "Task5: Fix committedIndex_safety and committedIndex_maximal by completing the Finset.card_filter -> List.countP bridge.",
+    "Task5: Fix limitSize_sum_le (T3) and limitSize_maximal (T4) by induction on limitSizeGo.",
+    "Task3/4: Consider writing Lean spec for Inflights ring buffer (phase 1->3). Key invariants: start+count <= cap, circular addressing."
   ],
-  "build_note": "elan/lean toolchain install blocked by network firewall CONNECT tunnel 403. Syntax validated by following MajorityQuorum.lean patterns. Lean toolchain domain: release.leanlang.org needs to be allowlisted.",
+  "build_note": "elan/lean toolchain install blocked by network firewall CONNECT tunnel 403. Syntax validated by following MajorityQuorum.lean/CommittedIndex.lean patterns. Lean toolchain domain: release.leanlang.org needs to be allowlisted.",
   "open_prs": [
-    {"branch": "lean-squad/limit-size-and-proofs", "description": "LimitSize Lean spec+impl (T3+4) + CommittedIndex proof improvements (T5)"}
+    {"number": 14, "branch": "lean-squad/limit-size-and-proofs-0f38d1213aaa5b3a", "description": "LimitSize Lean spec+impl (T3+4) + CommittedIndex proof improvements (T5)"},
+    {"branch": "lean-squad/unstable-log-spec", "description": "UnstableLog informal spec + Lean 4 spec (Tasks 2+3)"}
   ],
   "status_issue": "Open: [Lean Squad] Formal Verification Status"
 }
