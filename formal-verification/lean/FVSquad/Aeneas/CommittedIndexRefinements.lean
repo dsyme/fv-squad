@@ -42,23 +42,25 @@ import Mathlib.Tactic
 import FVSquad.MajorityQuorum
 import FVSquad.CommittedIndex
 import FVSquad.Aeneas.UtilRefinements  -- for AResult, AUsize, AU64
+import FVSquad.Aeneas.HashSetModel     -- for AHashSet (= Finset ℕ)
 
 namespace FVSquad.Aeneas.CommittedIndexRefinements
 
 open FVSquad.CommittedIndex
 open FVSquad.Aeneas.UtilRefinements (AResult AUsize AU64)
+open FVSquad.Aeneas.HashSetModel (AHashSet ofList)
 
 /-! ## Aeneas primitive types used by committed_index
 
 In addition to `AUsize` / `AU64` from UtilRefinements, `committed_index` uses:
 - `AU64` for the returned committed index
 - `ABool` = `Bool` (Aeneas models Rust `bool` as Lean `Bool`)
-- `AHashSet` to model `HashSet<u64>` (the voters set)
+- `AHashSet` = `Finset ℕ` to model `HashSet<u64>` (the voters set)
+  (imported from `HashSetModel`; see Step 5/6 of Epic #46 for strategy rationale)
 - `AAckedIndexer` to model the `AckedIndexer` trait
 
-Since Aeneas cannot yet translate `HashSet` (no stdlib model), the voters set is
-provided as an abstract parameter. The refinement theorem is stated for any
-finite set of voters.
+The voters set is provided as a `List AU64` in the Aeneas axiom (since Aeneas
+serialises HashSet iteration as a list), then lifted to `AHashSet` via `ofList`.
 -/
 
 /-- Aeneas model of `AckedIndexer`: a pure function from voter ID to acked index.

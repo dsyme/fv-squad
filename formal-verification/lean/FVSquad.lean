@@ -4,7 +4,10 @@ import FVSquad.CommittedIndex
 import FVSquad.LimitSize
 import FVSquad.UnstableLog
 import FVSquad.RaftLogSlice
--- Aeneas integration: refinement theorems bridging Rust implementations to specs
+-- Aeneas integration: primitive types and collection models
 import FVSquad.Aeneas.UtilRefinements
+import FVSquad.Aeneas.HashSetModel
+import FVSquad.Aeneas.HashMapModel
+-- Aeneas integration: refinement theorems bridging Rust implementations to specs
 import FVSquad.Aeneas.CommittedIndexRefinements
 import FVSquad.Aeneas.LogUnstableRefinements
