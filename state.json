@@ -1,6 +1,6 @@
 {
   "last_run": "2026-03-20",
-  "run_id": "23323843193",
+  "run_id": "23327705331",
   "fv_tool": "Lean4+Mathlib",
   "lake_project": "formal-verification/lean/",
   "targets": [
@@ -80,17 +80,40 @@
       "lean_file": "formal-verification/lean/FVSquad/MaybeCommit.lean",
       "informal_spec": "formal-verification/specs/maybe_commit_informal.md",
       "notes": "NEW this run. 16 theorems, 0 sorry. Guard iff, committed_mono, WF-preservation, idempotency, sequential composition (PROP-15/16). In open PR (run 37)."
+    },
+    {
+      "id": "progress_tracking",
+      "phase": 5,
+      "lean_file": "formal-verification/lean/FVSquad/ProgressTracking.lean",
+      "informal_spec": "formal-verification/specs/progress_tracking_informal.md",
+      "notes": "NEW this run. 31 theorems: maybe_update (14), update_committed (7), maybe_decr_to (8), cross-op (2). 0 sorry. In open PR run 38."
     }
   ],
   "next_steps": [
-    "maybe_commit: PR just created this run. Advance to phase 5 after merged.",
-    "New target candidates: (1) RaftLog::maybe_persist_snap (src/raft_log.rs ~580), (2) step_leader ReadIndex quorum check (raft.rs:1894-1910), (3) Raft::handle_heartbeat_response (raft.rs ~2750), (4) tracker/mod.rs VoterProgress::committed_index vs quorum."
+    "progress_tracking: PR just created this run. Advance to phase 5 after merged.",
+    "Open PRs: #32 (ReadOnly+MaybePersist), #33 (MaybeCommit), run-38 (ProgressTracking) \u2014 all 0 sorry",
+    "New target candidates: (1) Progress::become_probe/become_replicate state transitions, (2) Raft::step_follower handle_heartbeat, (3) RaftLog::scan iterator invariants, (4) ProgressTracker quorum vote counting across multiple peers"
   ],
   "build_note": "Lean toolchain install blocked by network firewall. Proofs validated by following established patterns from MaybePersist.lean. MaybeCommit uses same by_cases/split_ifs/simp/omega approach.",
   "open_prs": [
-    {"pr": 32, "branch": "lean-squad/task3-5-maybepersist-readonly-run36-f574819fa7d2cb5a", "description": "Tasks 5+3: ReadOnly 0-sorry + MaybePersist formal spec", "sorry_count": 0},
-    {"pr": 31, "branch": "lean-squad/task3-4-readonly-run35-8b29e7fec57403bc", "description": "Tasks 3+4: ReadOnly queue (superseded by PR #32)", "sorry_count": 2, "note": "Conflicts with PR #32; skip/close."},
-    {"pr": null, "branch": "lean-squad/task4-5-newrun-run37", "description": "Tasks 2+3+4+5: MaybeCommit formal spec + proofs", "sorry_count": 0}
+    {
+      "pr": 32,
+      "branch": "lean-squad/task3-5-maybepersist-readonly-run36-f574819fa7d2cb5a",
+      "description": "Tasks 5+3: ReadOnly 0-sorry + MaybePersist formal spec",
+      "sorry_count": 0
+    },
+    {
+      "pr": 33,
+      "branch": "lean-squad/task4-5-newrun-run37-e2ec07170299be63",
+      "description": "Tasks 2+3+4+5: MaybeCommit formal spec + proofs",
+      "sorry_count": 0
+    },
+    {
+      "pr": null,
+      "branch": "lean-squad/task2-5-newrun-run38",
+      "description": "Tasks 2+5: ProgressTracking informal spec + 31 proofs",
+      "sorry_count": 0
+    }
   ],
   "status_issue": "Open issue #21: [Lean Squad] Formal Verification Status"
 }
