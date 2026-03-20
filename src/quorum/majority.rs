@@ -5,9 +5,12 @@ use crate::{DefaultHashBuilder, HashSet};
 
 use std::collections::hash_set::Iter;
 use std::fmt::Formatter;
-use std::mem::MaybeUninit;
 use std::ops::{Deref, DerefMut};
-use std::{cmp, slice};
+use std::cmp;
+#[cfg(not(feature = "aeneas"))]
+use std::mem::MaybeUninit;
+#[cfg(not(feature = "aeneas"))]
+use std::slice;
 
 /// A set of IDs that uses majority quorums to make decisions.
 #[derive(Clone, Debug, Default, PartialEq, Eq)]
@@ -67,6 +70,12 @@ impl Configuration {
     ///
     /// Eg. If the matched indexes are `[2,2,2,4,5]`, it will return `2`.
     /// If the matched indexes and groups are `[(1, 1), (2, 2), (3, 2)]`, it will return `1`.
+    ///
+    /// When compiled with `--features aeneas` the unsafe stack-array optimisation is
+    /// replaced by a straightforward `Vec` allocation so that Aeneas (the Rust→Lean
+    /// translation tool) can process this function.  The two implementations are
+    /// semantically identical; the only difference is memory allocation strategy.
+    #[cfg(not(feature = "aeneas"))]
     pub fn committed_index(&self, use_group_commit: bool, l: &impl AckedIndexer) -> (u64, bool) {
         if self.voters.is_empty() {
             // This plays well with joint quorums which, when one half is the zero
@@ -91,6 +100,56 @@ impl Configuration {
             heap_arr = Some(buf);
             heap_arr.as_mut().unwrap().as_mut_slice()
         };
+        // Reverse sort.
+        matched.sort_by(|a, b| b.index.cmp(&a.index));
+
+        let quorum = crate::majority(matched.len());
+        let quorum_index = matched[quorum - 1];
+        if !use_group_commit {
+            return (quorum_index.index, false);
+        }
+        let (quorum_commit_index, mut checked_group_id) =
+            (quorum_index.index, quorum_index.group_id);
+        let mut single_group = true;
+        for m in matched.iter() {
+            if m.group_id == 0 {
+                single_group = false;
+                continue;
+            }
+            if checked_group_id == 0 {
+                checked_group_id = m.group_id;
+                continue;
+            }
+            if checked_group_id == m.group_id {
+                continue;
+            }
+            return (cmp::min(m.index, quorum_commit_index), true);
+        }
+        if single_group {
+            (quorum_commit_index, false)
+        } else {
+            (matched.last().unwrap().index, false)
+        }
+    }
+
+    /// Safe alternative to the above, enabled by `--features aeneas`.
+    ///
+    /// Semantically identical to the `#[cfg(not(feature = "aeneas"))]` version above.
+    /// Uses a plain `Vec` allocation instead of the `MaybeUninit` stack-array
+    /// optimisation so that Aeneas can translate this function to Lean without
+    /// encountering any `unsafe` blocks.
+    #[cfg(feature = "aeneas")]
+    pub fn committed_index(&self, use_group_commit: bool, l: &impl AckedIndexer) -> (u64, bool) {
+        if self.voters.is_empty() {
+            return (u64::MAX, true);
+        }
+
+        // Collect acked indices into a Vec — no unsafe code.
+        let mut matched: Vec<Index> = self
+            .voters
+            .iter()
+            .map(|v| l.acked_index(*v).unwrap_or_default())
+            .collect();
         // Reverse sort.
         matched.sort_by(|a, b| b.index.cmp(&a.index));
 
