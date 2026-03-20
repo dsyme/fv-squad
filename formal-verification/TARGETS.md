@@ -21,6 +21,8 @@
 
 | 12 | `RaftLog::maybe_commit` (standalone) | `src/raft_log.rs` | 5 — Proofs | ✅ Done | Informal spec + 16 theorems (0 `sorry`): guard iff, monotone committed, WF-preservation, idempotency, sequential composition. See `FVSquad/MaybeCommit.lean`. |
 
+| 13 | `Progress` tracking (`maybe_update`, `update_committed`, `maybe_decr_to`) | `src/tracker/progress.rs` | 5 — Proofs | ✅ Done | Informal spec + 31 theorems (0 `sorry`): monotonicity, WF-preservation (both Replicate and Probe states), stale-rejection characterisation, cross-operation commutativity. See `FVSquad/ProgressTracking.lean`. |
+
 ## Phase Legend
 
 | Phase | Description |
