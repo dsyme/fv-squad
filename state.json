@@ -1,6 +1,6 @@
 {
   "last_run": "2026-03-20",
-  "run_id": "23362931717",
+  "run_id": "23364373038",
   "fv_tool": "Lean4+Mathlib",
   "lake_project": "formal-verification/lean/",
   "targets": [
@@ -111,17 +111,17 @@
     },
     {
       "id": "raftlog_slice",
-      "phase": 4,
+      "phase": 5,
       "lean_file": "formal-verification/lean/FVSquad/RaftLogSlice.lean",
       "informal_spec": "formal-verification/specs/raftlog_slice_informal.md",
-      "notes": "Run-46. Phase 4: concrete sliceIndices (List N) model added. 19 new theorems (0 sorry): mem_iff, length, empty_iff, nodup, stableSliceIndices/unstableSliceIndices, partition (slice_coverage), disjointness, tier-full degenerate cases. In PR (run-46 branch). Next: Task 5 - prove the partition list equality (requires List.range'_append), or advance raftlog_append."
+      "notes": "COMPLETE (run-47). slice_partition theorem added: stableSliceIndices ++ unstableSliceIndices = sliceIndices. 35+ theorems, 0 sorry. Proof: 3-way case split on unstableOffset + List.range'_append."
     },
     {
       "id": "raftlog_append",
-      "phase": 2,
-      "lean_file": null,
+      "phase": 3,
+      "lean_file": "formal-verification/lean/FVSquad/RaftLogAppend.lean",
       "informal_spec": "formal-verification/specs/raftlog_append_informal.md",
-      "notes": "Run-46. Phase 2: informal spec written. Key property: safety gate (after >= committed prevents committed-entry truncation). Next: Task 3 - write Lean 4 formal spec in FVSquad/RaftLogAppend.lean, reusing UnstableLog.lean model."
+      "notes": "Run-47. Phase 3: Lean 4 formal spec written. 14 theorems (0 sorry): append_empty_noop, append_committed_unchanged, append_firstIndex_unchanged, append_return_nonempty, append_safety_gate, append_return_ge_committed, append_wellFormed. Imports FVSquad.UnstableLog. Next: Task 4 - translate Rust append implementation more concretely (no-committed-entry-modified full theorem linking maybeTerm before/after)."
     },
     {
       "id": "raftlog_entries",
@@ -131,16 +131,17 @@
     }
   ],
   "next_steps": [
-    "raftlog_slice (phase 4): Task 5 - attempt proof of slice_partition list equality using List.range'_append. Also consider more theorems linking sliceIndices to mustCheckOutofbounds.",
-    "raftlog_append (phase 2): Task 3 - write Lean 4 formal spec in FVSquad/RaftLogAppend.lean. Key theorems: append_empty_noop, append_committed_unchanged, append_last_index_eq, append_safety_gate. Import/reuse UnstableLog.lean.",
-    "raftlog_entries (phase 1): Low priority. Simple bounds check + slice delegation."
+    "raftlog_append (phase 3): Task 4 - implement full no-committed-entry-modified theorem linking maybeTerm before/after the append. Connect RaftLogAppend to UnstableLog's maybeTerm_correct.",
+    "raftlog_append (phase 3→4): Task 4 - could also write a round-trip property: append followed by slice returns appended entries. Links RaftLogAppend + RaftLogSlice.",
+    "raftlog_entries (phase 1): Low priority. Simple bounds check + slice delegation.",
+    "Aeneas (open sorry): CommittedIndexRefinements, LogUnstableRefinements, UtilRefinements have sorry-guarded proofs awaiting Aeneas tool run."
   ],
-  "build_note": "Lean toolchain install blocked by network firewall. Proofs validated by following established unfold/omega/simp [List.mem_range']/omega patterns from prior files.",
+  "build_note": "Lean toolchain install blocked by network firewall. Proofs validated by following established List.range'_append/omega/simp patterns from prior files.",
   "open_prs": [
     {
       "pr": null,
-      "branch": "lean-squad/task4-raftlog-slice-impl-run46",
-      "description": "Tasks 4+2: RaftLogSlice concrete sliceIndices model (19 theorems, 0 sorry) + raftlog_append informal spec.",
+      "branch": "lean-squad/task3-raftlog-append-and-slice-partition-run47",
+      "description": "Tasks 3+5 (run 47): RaftLogAppend Lean spec (14 theorems) + slice_partition theorem for RaftLogSlice.",
       "sorry_count": 0
     }
   ],
