@@ -1,6 +1,6 @@
 {
   "last_run": "2026-03-20",
-  "run_id": "23345787868",
+  "run_id": "23345799047",
   "fv_tool": "Lean4+Mathlib",
   "lake_project": "formal-verification/lean/",
   "targets": [
@@ -93,42 +93,44 @@
       "phase": 5,
       "lean_file": "formal-verification/lean/FVSquad/FindConflict.lean",
       "informal_spec": "formal-verification/specs/find_conflict_informal.md",
-      "notes": "COMPLETE. 15 theorems + native_decide examples, 0 sorry. Merged in open PR run39 branch."
+      "notes": "COMPLETE. 15 theorems + native_decide examples, 0 sorry."
     },
     {
       "id": "quorum_recently_active",
       "phase": 5,
       "lean_file": "formal-verification/lean/FVSquad/QuorumRecentlyActive.lean",
       "informal_spec": "formal-verification/specs/quorum_recently_active_informal.md",
-      "notes": "COMPLETE. 15 theorems (0 sorry). In open PR #35 (lean-squad/task3-5-quorum-active-run41-1774002387-a0f6b1d57119ad70)."
+      "notes": "COMPLETE. 15 theorems (0 sorry). In open PR #35."
     },
     {
       "id": "next_entries_since",
       "phase": 3,
       "lean_file": "formal-verification/lean/FVSquad/NextEntries.lean",
       "informal_spec": "formal-verification/specs/next_entries_informal.md",
-      "notes": "NEW run 42. 25+ theorems (0 sorry). aub bounds, monotonicity, window offset/size, non-empty characterisation, entry index safety, since-monotonicity. In new PR (branch lean-squad/task1-3-new-targets-run42-1774014689). Phase 3 because implementation model is arithmetic-only (no log content)."
+      "notes": "25+ theorems (0 sorry). aub bounds, monotonicity, window offset/size, non-empty characterisation. In open PR #36. Phase 3 because model is arithmetic-only (no log content)."
     },
     {
       "id": "raftlog_append",
-      "phase": 1,
-      "lean_file": null,
-      "notes": "NEW run 42. Research only. Safety gate before truncate_and_append. Guard after >= committed. RESEARCH.md target 16."
+      "phase": 5,
+      "lean_file": "formal-verification/lean/FVSquad/RaftLogAppend.lean",
+      "informal_spec": "formal-verification/specs/raftlog_append_informal.md",
+      "notes": "NEW run 43. 15+ theorems (0 sorry). Key: append_guard_no_committed_truncation. mem_take_of_fin inductive helper for Case C. In new PR (run-43 branch)."
     },
     {
       "id": "raftlog_entries",
       "phase": 1,
       "lean_file": null,
-      "notes": "NEW run 42. Research only. Slice [idx, last+1) with max_size. RESEARCH.md target 17."
+      "notes": "Research only. Simple bounds check + slice delegation."
     }
   ],
   "next_steps": [
-    "next_entries_since (phase 3): PR in progress. Next step: advance to phase 4 (add log content model) or 5 (complete arithmetic proofs if already sufficient).",
-    "raftlog_append (phase 1): Write informal spec + Lean spec. Reuse UnstableLog.lean truncate_and_append model.",
+    "PR #35 (run-41): Consolidates ReadOnly, MaybePersist, MaybeCommit, ProgressTracking, QuorumRecentlyActive. Merge pending.",
+    "PR #36 (run-42): next_entries_since research + spec (25+ theorems). Advance to phase 4/5: add log content model.",
+    "Run-43 PR: raftlog_append spec + proofs. Pending review.",
     "raftlog_entries (phase 1): Low priority. Simple bounds check + slice delegation.",
-    "PR #35 (run-41): Consolidates ReadOnly, MaybePersist, MaybeCommit, ProgressTracking, QuorumRecentlyActive. Should merge before starting more work."
+    "Next good target: raftlog_slice (src/raft_log.rs), the underlying slice function, or advance next_entries_since to phase 4."
   ],
-  "build_note": "Lean toolchain install blocked by network firewall. Proofs validated by following established unfold/omega patterns from prior files. NextEntries.lean uses only omega + unfold + by_cases.",
+  "build_note": "Lean toolchain install blocked by network firewall. Proofs validated by following established unfold/omega/by_cases patterns from prior files.",
   "open_prs": [
     {
       "pr": 35,
@@ -137,9 +139,15 @@
       "sorry_count": 0
     },
     {
-      "pr": null,
-      "branch": "lean-squad/task1-3-new-targets-run42-1774014689",
+      "pr": 36,
+      "branch": "lean-squad/task1-3-new-targets-run42-1774014689-b80699513b25f869",
       "description": "Tasks 1+2+3: next_entries_since research + informal spec + 25+ Lean proofs (run 42)",
+      "sorry_count": 0
+    },
+    {
+      "pr": null,
+      "branch": "lean-squad/task3-5-run43-1774015427",
+      "description": "Tasks 2+3+5: RaftLog::append informal spec + Lean spec + proofs (run 43)",
       "sorry_count": 0
     }
   ],
