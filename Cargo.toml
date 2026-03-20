@@ -22,6 +22,12 @@ failpoints = ["fail/failpoints"]
 protobuf-codec = ["raft-proto/protobuf-codec", "bytes"]
 prost-codec = ["raft-proto/prost-codec"]
 default-logger = ["slog-stdlog", "slog-envlogger", "slog-term"]
+# Replace unsafe stack-array optimisations with safe equivalents so that
+# Aeneas (the Rust→Lean translation tool) can process the codebase.
+# This feature has no effect on semantics; it only trades a minor stack-
+# allocation optimisation for guaranteed safe Rust.  Do not enable in
+# production builds unless you specifically need Aeneas compatibility.
+aeneas = []
 
 # Make sure to synchronize updates with Harness.
 [dependencies]
