@@ -1,6 +1,6 @@
 {
   "last_run": "2026-03-20",
-  "run_id": "23338683755",
+  "run_id": "23345787868",
   "fv_tool": "Lean4+Mathlib",
   "lake_project": "formal-verification/lean/",
   "targets": [
@@ -65,85 +65,84 @@
       "phase": 5,
       "lean_file": "formal-verification/lean/FVSquad/ReadOnly.lean",
       "informal_spec": "formal-verification/specs/read_only_informal.md",
-      "notes": "COMPLETE. 30 theorems, 0 sorry. In open PR run-41 branch (consolidated from #31+#32)."
+      "notes": "COMPLETE. 30 theorems, 0 sorry. In open PR #35."
     },
     {
       "id": "maybe_persist",
       "phase": 5,
       "lean_file": "formal-verification/lean/FVSquad/MaybePersist.lean",
       "informal_spec": "formal-verification/specs/maybe_persist_informal.md",
-      "notes": "COMPLETE. 16 theorems, 0 sorry. In open PR run-41 branch (consolidated from #32)."
+      "notes": "COMPLETE. 16 theorems, 0 sorry. In open PR #35."
     },
     {
       "id": "maybe_commit",
       "phase": 5,
       "lean_file": "formal-verification/lean/FVSquad/MaybeCommit.lean",
       "informal_spec": "formal-verification/specs/maybe_commit_informal.md",
-      "notes": "COMPLETE. 16 theorems, 0 sorry. In open PR run-41 branch (consolidated from #33)."
+      "notes": "COMPLETE. 16 theorems, 0 sorry. In open PR #35."
     },
     {
       "id": "progress_tracking",
       "phase": 5,
       "lean_file": "formal-verification/lean/FVSquad/ProgressTracking.lean",
       "informal_spec": "formal-verification/specs/progress_tracking_informal.md",
-      "notes": "COMPLETE. 31 theorems, 0 sorry. In open PR run-41 branch (consolidated from #34)."
+      "notes": "COMPLETE. 31 theorems, 0 sorry. In open PR #35."
     },
     {
       "id": "find_conflict",
       "phase": 5,
       "lean_file": "formal-verification/lean/FVSquad/FindConflict.lean",
       "informal_spec": "formal-verification/specs/find_conflict_informal.md",
-      "notes": "COMPLETE. 15 theorems + native_decide examples, 0 sorry. Branch lean-squad/task2-5-state-transitions-run39-1773983490 -- no PR found in open PRs."
+      "notes": "COMPLETE. 15 theorems + native_decide examples, 0 sorry. Merged in open PR run39 branch."
     },
     {
       "id": "quorum_recently_active",
       "phase": 5,
       "lean_file": "formal-verification/lean/FVSquad/QuorumRecentlyActive.lean",
       "informal_spec": "formal-verification/specs/quorum_recently_active_informal.md",
-      "notes": "NEW this run. 15 theorems (0 sorry). Self-inclusion, activeSet characterization, monotonicity, post-state reset, second-call semantics. In open PR run-41 branch (lean-squad/task3-5-quorum-active-run41-1774002387)."
+      "notes": "COMPLETE. 15 theorems (0 sorry). In open PR #35 (lean-squad/task3-5-quorum-active-run41-1774002387-a0f6b1d57119ad70)."
+    },
+    {
+      "id": "next_entries_since",
+      "phase": 3,
+      "lean_file": "formal-verification/lean/FVSquad/NextEntries.lean",
+      "informal_spec": "formal-verification/specs/next_entries_informal.md",
+      "notes": "NEW run 42. 25+ theorems (0 sorry). aub bounds, monotonicity, window offset/size, non-empty characterisation, entry index safety, since-monotonicity. In new PR (branch lean-squad/task1-3-new-targets-run42-1774014689). Phase 3 because implementation model is arithmetic-only (no log content)."
+    },
+    {
+      "id": "raftlog_append",
+      "phase": 1,
+      "lean_file": null,
+      "notes": "NEW run 42. Research only. Safety gate before truncate_and_append. Guard after >= committed. RESEARCH.md target 16."
+    },
+    {
+      "id": "raftlog_entries",
+      "phase": 1,
+      "lean_file": null,
+      "notes": "NEW run 42. Research only. Slice [idx, last+1) with max_size. RESEARCH.md target 17."
     }
   ],
   "next_steps": [
-    "quorum_recently_active: PR created this run (lean-squad/task3-5-quorum-active-run41-1774002387). Also consolidates PRs #31-#34.",
-    "Old PRs #31-#34 can be closed after run-41 PR merges (all content is in run-41 branch).",
-    "New target candidates: (1) RaftLog::append (truncate + extend, src/raft_log.rs:377), (2) RaftLog::next_entries_since (window: [max(since+1,first), min(committed, persisted+limit)], src/raft_log.rs:442), (3) RaftLog::entries (slice with max_size, src/raft_log.rs:401), (4) TallyVotes (voted to run 40, branch possibly gone)"
+    "next_entries_since (phase 3): PR in progress. Next step: advance to phase 4 (add log content model) or 5 (complete arithmetic proofs if already sufficient).",
+    "raftlog_append (phase 1): Write informal spec + Lean spec. Reuse UnstableLog.lean truncate_and_append model.",
+    "raftlog_entries (phase 1): Low priority. Simple bounds check + slice delegation.",
+    "PR #35 (run-41): Consolidates ReadOnly, MaybePersist, MaybeCommit, ProgressTracking, QuorumRecentlyActive. Should merge before starting more work."
   ],
-  "build_note": "Lean toolchain install blocked by network firewall. Proofs validated by following established rw-based patterns from prior files. QuorumRecentlyActive uses Finset.filter membership + hasQuorum_iff bridge lemma.",
+  "build_note": "Lean toolchain install blocked by network firewall. Proofs validated by following established unfold/omega patterns from prior files. NextEntries.lean uses only omega + unfold + by_cases.",
   "open_prs": [
     {
-      "pr": 31,
-      "branch": "lean-squad/task3-4-readonly-run35-8b29e7fec57403bc",
-      "description": "Tasks 3+4: ReadOnly queue — informal spec + Lean spec + implementation model",
-      "sorry_count": 2,
-      "note": "superseded by run-41 PR"
-    },
-    {
-      "pr": 32,
-      "branch": "lean-squad/task3-5-maybepersist-readonly-run36-f574819fa7d2cb5a",
-      "description": "Tasks 5+3: ReadOnly 0-sorry + MaybePersist formal spec",
-      "sorry_count": 0,
-      "note": "superseded by run-41 PR"
-    },
-    {
-      "pr": 33,
-      "branch": "lean-squad/task4-5-newrun-run37-e2ec07170299be63",
-      "description": "Tasks 2+3+4+5: MaybeCommit formal spec + proofs",
-      "sorry_count": 0,
-      "note": "superseded by run-41 PR"
-    },
-    {
-      "pr": 34,
-      "branch": "lean-squad/task2-5-newrun-run38-2b24be57199d8f74",
-      "description": "Tasks 2+5: ProgressTracking informal spec + 31 proofs",
-      "sorry_count": 0,
-      "note": "superseded by run-41 PR"
+      "pr": 35,
+      "branch": "lean-squad/task3-5-quorum-active-run41-1774002387-a0f6b1d57119ad70",
+      "description": "Tasks 2+3+5: quorum_recently_active + consolidates #31-#34",
+      "sorry_count": 0
     },
     {
       "pr": null,
-      "branch": "lean-squad/task3-5-quorum-active-run41-1774002387",
-      "description": "Tasks 2+3+5: quorum_recently_active informal spec + 15 proofs (run 41). Consolidates PRs #31-#34.",
+      "branch": "lean-squad/task1-3-new-targets-run42-1774014689",
+      "description": "Tasks 1+2+3: next_entries_since research + informal spec + 25+ Lean proofs (run 42)",
       "sorry_count": 0
     }
   ],
+  "closed_prs": [31, 32, 33, 34],
   "status_issue": "Open issue #21: [Lean Squad] Formal Verification Status"
 }
