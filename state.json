@@ -1,6 +1,6 @@
 {
   "last_run": "2026-03-20",
-  "run_id": "23329971549",
+  "run_id": "23333456237",
   "fv_tool": "Lean4+Mathlib",
   "lake_project": "formal-verification/lean/",
   "targets": [
@@ -65,44 +65,57 @@
       "phase": 5,
       "lean_file": "formal-verification/lean/FVSquad/ReadOnly.lean",
       "informal_spec": "formal-verification/specs/read_only_informal.md",
-      "notes": "COMPLETE. All 30 theorems proved, 0 sorry. In open PR #32."
+      "notes": "COMPLETE. All 30 theorems proved, 0 sorry. In open PR #32 (not yet merged)."
     },
     {
       "id": "maybe_persist",
       "phase": 5,
       "lean_file": "formal-verification/lean/FVSquad/MaybePersist.lean",
       "informal_spec": "formal-verification/specs/maybe_persist_informal.md",
-      "notes": "COMPLETE. All 16 theorems proved, 0 sorry. In open PR #32."
+      "notes": "COMPLETE. All 16 theorems proved, 0 sorry. In open PR #32 (not yet merged)."
     },
     {
       "id": "maybe_commit",
       "phase": 5,
       "lean_file": "formal-verification/lean/FVSquad/MaybeCommit.lean",
       "informal_spec": "formal-verification/specs/maybe_commit_informal.md",
-      "notes": "COMPLETE. 16 theorems, 0 sorry. In open PR #33."
+      "notes": "COMPLETE. 16 theorems, 0 sorry. In open PR #33 (not yet merged)."
     },
     {
       "id": "progress_tracking",
       "phase": 5,
       "lean_file": "formal-verification/lean/FVSquad/ProgressTracking.lean",
       "informal_spec": "formal-verification/specs/progress_tracking_informal.md",
-      "notes": "COMPLETE. 31 theorems, 0 sorry. In open PR #34."
+      "notes": "COMPLETE. 31 theorems, 0 sorry. In open PR #34 (not yet merged)."
     },
     {
       "id": "find_conflict",
       "phase": 5,
       "lean_file": "formal-verification/lean/FVSquad/FindConflict.lean",
       "informal_spec": "formal-verification/specs/find_conflict_informal.md",
-      "notes": "NEW this run. 15 theorems + 9 native_decide examples, 0 sorry. Structural lemmas, zero-iff (with hpos), append decomposition, first-conflict theorem. In open PR run 39."
+      "notes": "COMPLETE. 15 theorems + native_decide examples, 0 sorry. Branch lean-squad/task2-5-state-transitions-run39-1773983490 — no PR created (branch may be gone)."
+    },
+    {
+      "id": "tally_votes",
+      "phase": 5,
+      "lean_file": "formal-verification/lean/FVSquad/TallyVotes.lean",
+      "informal_spec": "formal-verification/specs/tally_votes_informal.md",
+      "notes": "NEW this run. 23 theorems (0 sorry). Models recordVote (first-wins), tallyVotes (count+result), resetVotes. Won/Lost monotonicity, partition identity, idempotency. In open PR run-40."
     }
   ],
   "next_steps": [
-    "find_conflict: PR just created this run. Advance to phase 5 after merged.",
-    "Open PRs: #32 (ReadOnly+MaybePersist), #33 (MaybeCommit), #34 (ProgressTracking), run-39 (FindConflict) -- all 0 sorry",
-    "New target candidates: (1) RaftLog::append (truncate + extend), (2) RaftLog::next_entries_since (applied/committed/persisted window), (3) ProgressTracker::tally_votes (vote counting with membership filter), (4) RaftLog::entries (slice extraction with max_size limit)"
+    "tally_votes: PR just created this run (lean-squad/task2-4-tally-votes-run40). Advance to Done after merged.",
+    "Open PRs: #31 (ReadOnly), #32 (ReadOnly+MaybePersist), #33 (MaybeCommit), #34 (ProgressTracking) -- all need merging",
+    "New target candidates: (1) RaftLog::append (truncate + extend), (2) RaftLog::next_entries_since (applied/committed/persisted window), (3) RaftLog::entries (slice extraction with max_size limit), (4) ProgressTracker::quorum_recently_active"
   ],
-  "build_note": "Lean toolchain install blocked by network firewall. Proofs validated by following established rw-based patterns. FindConflict uses rw [findConflict_cons_match/no_match] rather than simp on recursive def.",
+  "build_note": "Lean toolchain install blocked by network firewall. Proofs validated by following established rw-based patterns. TallyVotes uses Finset.card_insert_of_not_mem for filter cardinality proofs, yesCount/missingCount_update_* lemmas for monotonicity.",
   "open_prs": [
+    {
+      "pr": 31,
+      "branch": "lean-squad/task3-4-readonly-run35-8b29e7fec57403bc",
+      "description": "Tasks 3+4: ReadOnly queue — informal spec + Lean spec + implementation model",
+      "sorry_count": 2
+    },
     {
       "pr": 32,
       "branch": "lean-squad/task3-5-maybepersist-readonly-run36-f574819fa7d2cb5a",
@@ -123,8 +136,8 @@
     },
     {
       "pr": null,
-      "branch": "lean-squad/task2-5-state-transitions-run39-1773983490",
-      "description": "Tasks 2+5: find_conflict informal spec + 15 proofs (run 39)",
+      "branch": "lean-squad/task2-4-tally-votes-run40",
+      "description": "Tasks 2+4+5: TallyVotes informal spec + 23 proofs (run 40)",
       "sorry_count": 0
     }
   ],
