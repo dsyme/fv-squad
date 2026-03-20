@@ -1,6 +1,6 @@
 {
   "last_run": "2026-03-20",
-  "run_id": "23345799047",
+  "run_id": "23352268188",
   "fv_tool": "Lean4+Mathlib",
   "lake_project": "formal-verification/lean/",
   "targets": [
@@ -104,17 +104,17 @@
     },
     {
       "id": "next_entries_since",
-      "phase": 3,
+      "phase": 4,
       "lean_file": "formal-verification/lean/FVSquad/NextEntries.lean",
       "informal_spec": "formal-verification/specs/next_entries_informal.md",
-      "notes": "25+ theorems (0 sorry). aub bounds, monotonicity, window offset/size, non-empty characterisation. In open PR #36. Phase 3 because model is arithmetic-only (no log content)."
+      "notes": "Phase 4 as of run-44. Added RaftLogContent model + logContentSlice + nextEntriesSinceFull. 15+ new theorems (0 sorry): committed bound, firstIndex bound, since-skip, persisted+limit bound, length=windowSize, nonempty, count consistency, mono in since. In new PR (run-44 branch). Next: prove content-ordering (indices are strictly increasing in the slice)."
     },
     {
-      "id": "raftlog_append",
-      "phase": 5,
-      "lean_file": "formal-verification/lean/FVSquad/RaftLogAppend.lean",
-      "informal_spec": "formal-verification/specs/raftlog_append_informal.md",
-      "notes": "NEW run 43. 15+ theorems (0 sorry). Key: append_guard_no_committed_truncation. mem_take_of_fin inductive helper for Case C. In new PR (run-43 branch)."
+      "id": "raftlog_slice",
+      "phase": 2,
+      "lean_file": null,
+      "informal_spec": "formal-verification/specs/raftlog_slice_informal.md",
+      "notes": "NEW run-44. Informal spec written. Covers: bounds validation (must_check_outofbounds), split-point assembly at unstable.offset, partial-read semantics, size capping. 4 open questions. Next: write Lean spec (Task 3)."
     },
     {
       "id": "raftlog_entries",
@@ -125,12 +125,13 @@
   ],
   "next_steps": [
     "PR #35 (run-41): Consolidates ReadOnly, MaybePersist, MaybeCommit, ProgressTracking, QuorumRecentlyActive. Merge pending.",
-    "PR #36 (run-42): next_entries_since research + spec (25+ theorems). Advance to phase 4/5: add log content model.",
-    "Run-43 PR: raftlog_append spec + proofs. Pending review.",
-    "raftlog_entries (phase 1): Low priority. Simple bounds check + slice delegation.",
-    "Next good target: raftlog_slice (src/raft_log.rs), the underlying slice function, or advance next_entries_since to phase 4."
+    "PR #36 (run-42): next_entries_since research + spec (25+ theorems). Merge pending.",
+    "Run-44 PR: raftlog_slice informal spec + next_entries_since phase 4 content model. Merge pending.",
+    "next_entries_since (phase 4): Next task: prove index-ordering (entries are in strictly increasing index order) and full-coverage (all indices in [offset, high) appear). Then advance to phase 5.",
+    "raftlog_slice (phase 2): Next task: write Lean 4 spec (Task 3). Key properties: must_check_outofbounds correctness, slice assembles [low,high) correctly, no gaps at unstable.offset split.",
+    "raftlog_entries (phase 1): Low priority. Simple bounds check + slice delegation."
   ],
-  "build_note": "Lean toolchain install blocked by network firewall. Proofs validated by following established unfold/omega/by_cases patterns from prior files.",
+  "build_note": "Lean toolchain install blocked by network firewall. Proofs validated by following established unfold/omega/by_cases/congr_arg patterns from prior files.",
   "open_prs": [
     {
       "pr": 35,
@@ -146,8 +147,8 @@
     },
     {
       "pr": null,
-      "branch": "lean-squad/task3-5-run43-1774015427",
-      "description": "Tasks 2+3+5: RaftLog::append informal spec + Lean spec + proofs (run 43)",
+      "branch": "lean-squad/task2-4-run44-1774024075",
+      "description": "Tasks 2+4: raftlog_slice informal spec + next_entries_since phase 4 content model (run 44)",
       "sorry_count": 0
     }
   ],
