@@ -29,6 +29,7 @@ network:
     - "arxiv.org"
     - "leanprover-community.github.io"
     - "release.leanlang.org"
+    - ocaml
 
 tools:
   web-fetch:
