@@ -46,7 +46,7 @@
 | 17 | `RaftLog::entries` | `src/raft_log.rs` | 5 — Proofs | ✅ Done | 18 theorems (0 `sorry`): empty/non-empty branches, membership, length bounds, nodup, monotonicity. Delegates to `sliceIndices`. See `FVSquad/RaftLogEntries.lean`. |
 | 18 | `RaftLog::slice` + `must_check_outofbounds` | `src/raft_log.rs`, `src/log_unstable.rs` | 5 — Proofs | ✅ Done | 35+ theorems (0 `sorry`): mustCheckOutofbounds, stableSubrange, unstableSubrange, sliceIndices membership/length/nodup, `slice_partition` list equality, tier disjointness. See `FVSquad/RaftLogSlice.lean`. |
 | 19 | `Config::validate` | `src/config.rs` | 5 — Proofs | 🔄 In progress | Pure validation function. 8 constraints (C1–C8): id, heartbeat, election tick range, inflight, lease-quorum, uncommitted size. Lean spec + implementation model + 18 theorems (0 `sorry`). See `FVSquad/ConfigValidate.lean`. |
-| 20 | `UncommittedState` | `src/raft.rs` | 2 — Informal Spec | 🔄 In progress | Leader-side uncommitted size tracker. `maybe_increase` (accept/reject proposals) + `maybe_reduce` (commit accounting). Informal spec at `specs/uncommitted_state_informal.md`. |
+| 20 | `UncommittedState` | `src/raft.rs` | 5 — Proofs | 🔄 In progress | Leader-side uncommitted size tracker. `maybe_increase` + `maybe_reduce`. 28 theorems (0 `sorry`): `increase_true_iff`, `increase_budget`, `reduce_monotone`, `reduce_true_iff`, `increase_reduce_roundtrip`, and more. See `FVSquad/UncommittedState.lean`. |
 
 ## Phase Legend
 
