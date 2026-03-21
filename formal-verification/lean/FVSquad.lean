@@ -1,6 +1,7 @@
 -- FVSquad: top-level import for the Lean 4 formal verification library
 import FVSquad.UncommittedState
 import FVSquad.MajorityQuorum
+import FVSquad.TallyVotes
 import FVSquad.CommittedIndex
 import FVSquad.LimitSize
 import FVSquad.UnstableLog
