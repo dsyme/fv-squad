@@ -26,12 +26,12 @@ permissions: read-all
 
 network:
   allowed:
-  - defaults
-  - dotnet
-  - node
-  - python
-  - rust
-  - java
+    - defaults
+    - github
+    - "arxiv.org"
+    - "leanprover-community.github.io"
+    - "release.leanlang.org"
+    - ocaml
 
 checkout:
   fetch: ["*"]     # fetch all remote branches to allow working on PR branches
@@ -175,6 +175,8 @@ source: githubnext/agentics/workflows/repo-assist.md@ee86d0ffcb1705d4ee4146e9212
 ---
 
 # Repo Assist
+
+THROUGHOUT FOCUS ON FORMAL VERIFICATION - see formal-verification/
 
 ## Command Mode
 
