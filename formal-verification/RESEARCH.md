@@ -362,3 +362,58 @@ Key property: the guard prevents truncating below `committed`.
 **Spec size**: ~80 Lean lines
 **Proof tractability**: trivial `omega`; mostly a spec-consistency check
 
+
+---
+
+### Target 19 — `Config::validate` (★★★ Priority)
+
+**Files**: `src/config.rs`
+
+**What it does**: Pure validation function that checks a `Config` struct satisfies 8 independent
+constraints (C1–C8) required for a valid Raft node configuration. Returns `Ok(())` if all pass,
+`Err(ConfigInvalid(...))` on the first failure. Used at node initialisation only.
+
+The 8 constraints:
+- C1: `id ≠ 0` (node identity validity)
+- C2: `heartbeat_tick ≥ 1`
+- C3: `election_tick > heartbeat_tick` (election timeout exceeds heartbeat)
+- C4: `min_election_tick() ≥ election_tick`
+- C5: `min_election_tick() < max_election_tick()` (timeout range non-empty)
+- C6: `max_inflight_msgs ≥ 1`
+- C7: `LeaseBased → check_quorum` (lease safety requirement)
+- C8: `max_uncommitted_size ≥ max_size_per_msg`
+
+Helper methods: `min_election_tick()` returns `election_tick` if field is 0, else the field;
+`max_election_tick()` returns `2 * election_tick` if field is 0, else the field.
+
+**Why FV**: This is a safety-critical initialisation guard. If any constraint is incorrectly
+implemented or its logical implication is wrong, the node may start in an invalid state. The
+exact-characterisation theorem (`validate_ok_iff`) provides a complete formal certificate of
+the validation logic, including the C7 liveness/safety property for LeaseBased reads.
+
+**Key properties to verify**:
+1. `validate_ok_iff` — `validate() = Ok(()) ↔ C1 ∧ C2 ∧ C3 ∧ C4 ∧ C5 ∧ C6 ∧ C7 ∧ C8`
+2. `validate_default_id_pos` — `{Config.default with id := n}.validate = Ok(()) ↔ n ≠ 0`
+3. Derived: if valid, `election_tick ≥ 2`
+4. Derived: if valid, `max_election_tick() > election_tick`
+5. Decidability: all constraints are decidable propositions (C7 requires `ReadOnlyOption` to be an enum)
+6. The tick range is always valid under defaults: when both `min_election_tick = 0` and `max_election_tick = 0`, C4/C5 reduce to `election_tick < 2 * election_tick`, provable by `omega` for `election_tick ≥ 1`.
+
+**Spec size**: ~120 Lean lines
+**Proof tractability**:
+- All propositions decidable; most proofs by `decide` / `omega` / `simp`
+- `validate_ok_iff` requires an 8-way `constructor` with `omega` for arithmetic constraints; straightforward but verbose
+- No induction required
+- No Mathlib imports beyond `Mathlib.Tactic`
+
+**Approach**: Define `Config` as a Lean structure mirroring the Rust struct; define `ReadOnlyOption` as an inductive type; define `minElectionTick` and `maxElectionTick` as Lean functions; define `validateConfig` as a boolean predicate; state and prove `validate_ok_iff`.
+
+**Approximations**:
+- `ReadOnlyOption` modelled as a simple three-constructor inductive (Safe, ReadIndex, LeaseBased)
+- All fields use unbounded `Nat` (instead of `u64`/`usize`)
+- Error messages abstracted away (we care about Ok vs. Err, not the message content)
+- `NO_LIMIT = u64::MAX` modelled as a special case or as a large constant; for proofs about default config, we treat `max_uncommitted_size = NO_LIMIT` as a hypothesis
+
+**Informal spec**: `formal-verification/specs/config_validate_informal.md`
+**Current phase**: 2 (Informal Spec)
+

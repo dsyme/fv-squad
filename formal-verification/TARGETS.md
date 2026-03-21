@@ -45,6 +45,7 @@
 | 16 | `RaftLog::append` | `src/raft_log.rs` | 3 — Lean Spec | 🔄 In progress | Lean 4 formal spec written (14 theorems, 0 `sorry`): noop, committed-unchanged, return-value, safety-gate, WF-preservation. See `FVSquad/RaftLogAppend.lean`. |
 | 17 | `RaftLog::entries` | `src/raft_log.rs` | 5 — Proofs | ✅ Done | 18 theorems (0 `sorry`): empty/non-empty branches, membership, length bounds, nodup, monotonicity. Delegates to `sliceIndices`. See `FVSquad/RaftLogEntries.lean`. |
 | 18 | `RaftLog::slice` + `must_check_outofbounds` | `src/raft_log.rs`, `src/log_unstable.rs` | 5 — Proofs | ✅ Done | 35+ theorems (0 `sorry`): mustCheckOutofbounds, stableSubrange, unstableSubrange, sliceIndices membership/length/nodup, `slice_partition` list equality, tier disjointness. See `FVSquad/RaftLogSlice.lean`. |
+| 19 | `Config::validate` | `src/config.rs` | 2 — Informal Spec | 🔄 In progress | Pure validation function. 8 constraints (C1–C8) on tick timing, node id, inflight count, and read-only option. Informal spec at `specs/config_validate_informal.md`. Key theorems: `validate_ok_iff` (exact characterisation), `validate_default_id_pos` (default+id valid). Next: Task 3 — Lean formal spec. |
 
 ## Phase Legend
 
