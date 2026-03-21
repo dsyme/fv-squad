@@ -1,6 +1,6 @@
 {
   "last_run": "2026-03-21",
-  "run_id": "23380795739",
+  "run_id": "23383341752",
   "fv_tool": "Lean4+Mathlib",
   "lake_project": "formal-verification/lean/",
   "targets": [
@@ -26,23 +26,23 @@
     {"id": "config_validate", "phase": 5, "lean_file": "formal-verification/lean/FVSquad/ConfigValidate.lean", "notes": "COMPLETE. 18 theorems, 0 sorry."},
     {"id": "uncommitted_state", "phase": 5, "lean_file": "formal-verification/lean/FVSquad/UncommittedState.lean", "notes": "COMPLETE. 28 theorems, 0 sorry."},
     {"id": "raftlog_term", "phase": 5, "lean_file": "formal-verification/lean/FVSquad/RaftLogTerm.lean", "notes": "COMPLETE (merged). 18 theorems, 0 sorry. term() + match_term(). Two-layer dispatch."},
-    {"id": "tally_votes", "phase": 5, "lean_file": "formal-verification/lean/FVSquad/TallyVotes.lean", "notes": "Run-53. COMPLETE. 27 defs/lemmas/theorems, 0 sorry. tally_votes + has_quorum. PROP-1..12. PR open (run 53 branch)."},
-    {"id": "raftlog_restore", "phase": 1, "notes": "Research identified. src/raft_log.rs::restore(). Snapshot-based log recovery. committed monotonicity, persisted reset guard. EASY-MEDIUM."},
-    {"id": "has_quorum", "phase": 5, "lean_file": "formal-verification/lean/FVSquad/TallyVotes.lean", "notes": "Run-53. COMPLETE. Covered in TallyVotes.lean (hasQuorum model + proofs)."}
+    {"id": "tally_votes", "phase": 5, "lean_file": "formal-verification/lean/FVSquad/TallyVotes.lean", "notes": "Run-53. COMPLETE. 27 defs/lemmas/theorems, 0 sorry. tally_votes + has_quorum. Merged PR #66."},
+    {"id": "has_quorum", "phase": 5, "lean_file": "formal-verification/lean/FVSquad/TallyVotes.lean", "notes": "Covered in TallyVotes.lean (hasQuorum model + proofs). PR #66 merged."},
+    {"id": "raftlog_restore", "phase": 5, "lean_file": "formal-verification/lean/FVSquad/RaftLogRestore.lean", "notes": "Run-54. COMPLETE. 12 theorems, 0 sorry. restore() + unstable.restore(). Persisted-clamping, WF preservation. PR open (branch lean-squad/raftlog-restore-run54)."}
   ],
   "next_steps": [
-    "1 new target at phase 1: raftlog_restore (medium complexity).",
-    "tally_votes PR open on branch lean-squad/task2-5-tallyvotes-run53.",
-    "Consider: next run could tackle raftlog_restore (Tasks 2+3+4+5)."
+    "All 25 identified targets are at phase 5.",
+    "raftlog_restore PR open on branch lean-squad/raftlog-restore-run54.",
+    "Consider identifying new FV targets: e.g. RaftLog::stable_snap, maybe_persist_snap, RaftLog::entries(), RaftLog::next_entries_since, or broader cross-function safety (applied <= committed invariant under all ops)."
   ],
   "build_note": "Lean toolchain install blocked by network firewall. Proofs validated by following established omega/simp/decide patterns from prior files.",
   "open_prs": [
     {
-      "branch": "lean-squad/task2-5-tallyvotes-run53",
-      "description": "Tasks 2+3+4+5 (run 53): TallyVotes.lean (27 items, 0 sorry). tally_votes + has_quorum.",
+      "branch": "lean-squad/raftlog-restore-run54",
+      "description": "Tasks 2+3+4+5 (run 54): RaftLogRestore.lean (12 theorems, 0 sorry). restore() + unstable.restore().",
       "sorry_count": 0
     }
   ],
-  "closed_prs": [31, 32, 33, 34, 35, 36, 58, 62, 63],
+  "closed_prs": [31, 32, 33, 34, 35, 36, 58, 62, 63, 66],
   "status_issue": "Open issue #21: [Lean Squad] Formal Verification Status"
 }
