@@ -171,6 +171,47 @@ def changerSimple (cfg : Cfg) (prs : Prs) (ccs : List Change)
       else some (cfg', prs')
 
 -- ---------------------------------------------------------------------------
+-- Helper lemmas for proofs
+-- ---------------------------------------------------------------------------
+
+/-- applyOne never modifies the `outgoing` field. -/
+private lemma applyOne_outgoing_unchanged (cfg : Cfg) (prs : Prs) (c : Change) :
+    (applyOne cfg prs c).1.outgoing = cfg.outgoing := by
+  unfold applyOne
+  rcases eq_or_ne c.nodeId 0 with h0 | h0
+  · simp [h0]
+  · simp only [if_neg h0]
+    rcases c.changeType with _ | _ | _
+    · rfl
+    · split_ifs <;> rfl
+    · split_ifs <;> rfl
+
+/-- applyAll never modifies the `outgoing` field. -/
+private lemma applyAll_outgoing_unchanged :
+    ∀ (ccs : List Change) (cfg : Cfg) (prs : Prs) (cfg' : Cfg) (prs' : Prs),
+    applyAll cfg prs ccs = some (cfg', prs') → cfg'.outgoing = cfg.outgoing := by
+  intro ccs
+  induction ccs with
+  | nil =>
+    intro cfg prs cfg' prs' h
+    simp only [applyAll] at h
+    split_ifs at h with hne
+    · obtain ⟨h1, _⟩ := Prod.mk.inj (Option.some.inj h)
+      rw [← h1]
+    · simp at h
+  | cons c cs ih =>
+    intro cfg prs cfg' prs' h
+    simp only [applyAll] at h
+    exact (ih (applyOne cfg prs c).1 (applyOne cfg prs c).2 cfg' prs' h).trans
+          (applyOne_outgoing_unchanged cfg prs c)
+
+/-- When `leaveJoint` returns `some`, the input must have been joint. -/
+private lemma leaveJoint_isJoint (cfg : Cfg) (prs : Prs) (cfg' : Cfg) (prs' : Prs)
+    (h : leaveJoint cfg prs = some (cfg', prs')) : isJoint cfg = true := by
+  by_contra hne
+  simp [leaveJoint, Bool.eq_false_of_ne_true hne] at h
+
+-- ---------------------------------------------------------------------------
 -- Propositions
 -- ---------------------------------------------------------------------------
 
@@ -243,7 +284,23 @@ theorem enter_joint_result_is_joint (cfg : Cfg) (prs : Prs) (autoLeave : Bool)
     (ccs : List Change) (cfg' : Cfg) (prs' : Prs)
     (h : enterJoint cfg prs autoLeave ccs = some (cfg', prs')) :
     isJoint cfg' = true := by
-  sorry
+  unfold enterJoint at h
+  split_ifs at h with hj hn
+  · simp at h
+  · simp at h
+  · -- hn : (cfg.incoming == ∅) = false  ↔  cfg.incoming ≠ ∅
+    have hne : cfg.incoming ≠ ∅ := by intro heq; simp [heq] at hn
+    rcases happly : applyAll { cfg with outgoing := cfg.incoming } prs ccs with
+    | none => simp [happly] at h
+    | some ⟨cfg1, prs1⟩ =>
+      simp [happly] at h
+      obtain ⟨h1, _⟩ := Prod.mk.inj (Option.some.inj h)
+      rw [← h1]
+      simp only [isJoint]
+      -- cfg1.outgoing = cfg.incoming ≠ ∅
+      have hout : cfg1.outgoing = cfg.incoming :=
+        (applyAll_outgoing_unchanged ccs _ _ cfg1 prs1 happly).trans rfl
+      simp [hout, hne]
 
 /-- PROP-14  With empty ccs, enterJoint's outgoing = original incoming. -/
 theorem enter_joint_empty_ccs_outgoing (cfg : Cfg) (prs : Prs) (autoLeave : Bool)
@@ -251,7 +308,13 @@ theorem enter_joint_empty_ccs_outgoing (cfg : Cfg) (prs : Prs) (autoLeave : Bool
     (hj : isJoint cfg = false) (hn : cfg.incoming ≠ ∅)
     (h : enterJoint cfg prs autoLeave [] = some (cfg', prs')) :
     cfg'.outgoing = cfg.incoming := by
-  sorry
+  have hne : (cfg.incoming == ∅) = false := by simp [hn]
+  simp only [enterJoint, hj, Bool.false_eq_true, ↓reduceIte, hne, applyAll,
+             Cfg.incoming, Finset.ne_eq] at h
+  simp only [show ({ cfg with outgoing := cfg.incoming }.incoming == ∅) = false
+             from by simp [hn]] at h
+  obtain ⟨h1, _⟩ := Prod.mk.inj (Option.some.inj h)
+  rw [← h1]
 
 /-- PROP-15  enterJoint preserves incoming voters (empty ccs). -/
 theorem enter_joint_preserves_incoming_empty_ccs (cfg : Cfg) (prs : Prs) (autoLeave : Bool)
@@ -259,14 +322,22 @@ theorem enter_joint_preserves_incoming_empty_ccs (cfg : Cfg) (prs : Prs) (autoLe
     (hj : isJoint cfg = false) (hn : cfg.incoming ≠ ∅)
     (h : enterJoint cfg prs autoLeave [] = some (cfg', prs')) :
     cfg'.incoming = cfg.incoming := by
-  sorry
+  have hne : (cfg.incoming == ∅) = false := by simp [hn]
+  simp only [enterJoint, hj, Bool.false_eq_true, ↓reduceIte, hne, applyAll,
+             Cfg.incoming, Finset.ne_eq] at h
+  simp only [show ({ cfg with outgoing := cfg.incoming }.incoming == ∅) = false
+             from by simp [hn]] at h
+  obtain ⟨h1, _⟩ := Prod.mk.inj (Option.some.inj h)
+  rw [← h1]
 
 /-- PROP-16  If enterJoint succeeds, leaveJoint will succeed on the result. -/
 theorem enter_leave_joint_possible (cfg : Cfg) (prs : Prs) (autoLeave : Bool)
     (ccs : List Change) (cfg' : Cfg) (prs' : Prs)
     (h : enterJoint cfg prs autoLeave ccs = some (cfg', prs')) :
     ∃ cfg'' prs'', leaveJoint cfg' prs' = some (cfg'', prs'') := by
-  sorry
+  have hj := enter_joint_result_is_joint cfg prs autoLeave ccs cfg' prs' h
+  simp only [leaveJoint, hj, Bool.not_true, ↓reduceIte]
+  exact ⟨_, _, rfl⟩
 
 -- ~~~ leaveJoint structural results ~~~
 
@@ -281,7 +352,10 @@ theorem leave_joint_outgoing_empty (cfg : Cfg) (prs : Prs)
     (cfg' : Cfg) (prs' : Prs)
     (h : leaveJoint cfg prs = some (cfg', prs')) :
     cfg'.outgoing = ∅ := by
-  sorry
+  have hj := leaveJoint_isJoint cfg prs cfg' prs' h
+  simp only [leaveJoint, hj, Bool.not_true, ↓reduceIte] at h
+  obtain ⟨h1, _⟩ := Prod.mk.inj (Option.some.inj h)
+  rw [← h1]
 
 /-- PROP-18  leaveJoint produces a non-joint config. -/
 theorem leave_joint_not_joint (cfg : Cfg) (prs : Prs)
@@ -296,21 +370,34 @@ theorem leave_joint_learnersNext_empty (cfg : Cfg) (prs : Prs)
     (cfg' : Cfg) (prs' : Prs)
     (h : leaveJoint cfg prs = some (cfg', prs')) :
     cfg'.learnersNext = ∅ := by
-  sorry
+  have hj := leaveJoint_isJoint cfg prs cfg' prs' h
+  simp only [leaveJoint, hj, Bool.not_true, ↓reduceIte] at h
+  obtain ⟨h1, _⟩ := Prod.mk.inj (Option.some.inj h)
+  rw [← h1]
 
 /-- PROP-21  leaveJoint sets autoLeave = false. -/
 theorem leave_joint_autoLeave_false (cfg : Cfg) (prs : Prs)
     (cfg' : Cfg) (prs' : Prs)
     (h : leaveJoint cfg prs = some (cfg', prs')) :
     cfg'.autoLeave = false := by
-  sorry
+  have hj := leaveJoint_isJoint cfg prs cfg' prs' h
+  simp only [leaveJoint, hj, Bool.not_true, ↓reduceIte] at h
+  obtain ⟨h1, _⟩ := Prod.mk.inj (Option.some.inj h)
+  rw [← h1]
 
 /-- PROP-22  Nodes in learnersNext before leaveJoint are in learners after. -/
 theorem leave_joint_promotes_learnersNext (cfg : Cfg) (prs : Prs)
     (cfg' : Cfg) (prs' : Prs)
     (h : leaveJoint cfg prs = some (cfg', prs')) :
     ∀ id ∈ cfg.learnersNext, id ∈ cfg'.learners := by
-  sorry
+  have hj := leaveJoint_isJoint cfg prs cfg' prs' h
+  simp only [leaveJoint, hj, Bool.not_true, ↓reduceIte] at h
+  obtain ⟨h1, _⟩ := Prod.mk.inj (Option.some.inj h)
+  intro id hmem
+  rw [← h1]
+  -- cfg'.learners = cfg.learners ∪ cfg.learnersNext (by struct reduction)
+  simp only [Finset.mem_union]
+  exact Or.inr hmem
 
 /-- PROP-23  applyOne with AddNode makes id ∈ incoming. -/
 theorem applyOne_addNode_in_incoming (cfg : Cfg) (prs : Prs) (id : NodeId) (hid : id ≠ 0) :
@@ -328,7 +415,10 @@ theorem leave_joint_incoming_unchanged (cfg : Cfg) (prs : Prs)
     (cfg' : Cfg) (prs' : Prs)
     (h : leaveJoint cfg prs = some (cfg', prs')) :
     cfg'.incoming = cfg.incoming := by
-  sorry
+  have hj := leaveJoint_isJoint cfg prs cfg' prs' h
+  simp only [leaveJoint, hj, Bool.not_true, ↓reduceIte] at h
+  obtain ⟨h1, _⟩ := Prod.mk.inj (Option.some.inj h)
+  rw [← h1]
 
 /-- PROP-26  changerSimple fails if config is joint. -/
 theorem simple_fails_if_joint (cfg : Cfg) (prs : Prs) (ccs : List Change)
