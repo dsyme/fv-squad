@@ -51,7 +51,8 @@
 | 22 | `RaftLog::restore` | `src/raft_log.rs` | 5 — Proofs | ✅ Done | Snapshot-based log recovery. 12 theorems, 0 sorry. See `FVSquad/RaftLogRestore.lean`. |
 | 23 | `tally_votes` + `has_quorum` | `src/tracker.rs` | 5 — Proofs | ✅ Done | Vote counting + quorum check. 27 theorems, 0 sorry. See `FVSquad/TallyVotes.lean`. |
 | 24 | `Union<'a>` + `is_continuous_ents` | `src/util.rs` | 5 — Proofs | ✅ Done | Union set + entry-continuity predicate. 20 theorems, 0 sorry. See `FVSquad/UnionUtils.lean` (PR open). |
-| 25 | `Changer::enter_joint` / `leave_joint` / `check_invariants` | `src/confchange/changer.rs` | 3 — Lean Spec | 🔄 In progress | Joint consensus config transitions. Informal spec + 26 Lean propositions. `sorry` on complex structure proofs; round-trip example verified via `native_decide`. See `FVSquad/ConfChanger.lean`. |
+| 25 | `Changer::enter_joint` / `leave_joint` / `check_invariants` | `src/confchange/changer.rs` | 5 — Proofs | ✅ Done | Joint consensus config transitions. All 26 propositions proved (0 `sorry`). Helper lemmas: `applyOne_outgoing_unchanged`, `applyAll_outgoing_unchanged`, `leaveJoint_isJoint`. See `FVSquad/ConfChanger.lean`. |
+| 26 | `to_conf_change_single` + `restore` | `src/confchange/restore.rs` | 3 — Lean Spec | 🔄 In progress | ConfState→change-list translator + restore-from-scratch. Informal spec + 12 Lean propositions (0 `sorry`): outgoing/incoming structure, length, IDs, joint/non-joint dispatch. See `FVSquad/ConfChangeRestore.lean`. |
 
 ## Phase Legend
 
