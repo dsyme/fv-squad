@@ -1,6 +1,6 @@
 {
   "last_run": "2026-03-22",
-  "run_id": "23398276111",
+  "run_id": "23400681499",
   "fv_tool": "Lean4+Mathlib",
   "lake_project": "formal-verification/lean/",
   "targets": [
@@ -30,27 +30,28 @@
     {"id": "raftlog_restore", "phase": 5, "lean_file": "formal-verification/lean/FVSquad/RaftLogRestore.lean", "notes": "COMPLETE. 12 theorems, 0 sorry."},
     {"id": "union_utils", "phase": 5, "lean_file": "formal-verification/lean/FVSquad/UnionUtils.lean", "notes": "COMPLETE. 20 theorems, 0 sorry."},
     {"id": "confchange_changer", "phase": 5, "lean_file": "formal-verification/lean/FVSquad/ConfChanger.lean", "notes": "COMPLETE. All 26 theorems, 0 sorry."},
-    {"id": "msg_type_semantics", "phase": 5, "lean_file": "formal-verification/lean/FVSquad/MsgType.lean", "notes": "Run-59. COMPLETE. 13 propositions, 0 sorry, all by decide. isLocalMsg+isResponseMsg+voteRespMsgType. MsgUnreachable overlap proved. PR open (branch lean-squad/run59-...)."},
-    {"id": "confchange_restore", "phase": 4, "lean_file": "formal-verification/lean/FVSquad/ConfChangeRestore.lean", "notes": "Run-59. Phase 4. 12 abstract props + 4 IMPL bridge lemmas (IMPL-1/2/3/4). All 0 sorry. IMPL-3 induction proved with applySimple_addNode_incoming_eq + isJoint_preserved helpers. PR open (branch lean-squad/run59-...)."},
-    {"id": "get_priority", "phase": 3, "lean_file": "formal-verification/lean/FVSquad/GetPriority.lean", "notes": "Run-59. NEW. Phase 3. 10 propositions, 0 sorry. get_priority from src/raft.rs: priority-field dominance + deprecated u64->i64 clamp. PR open (branch lean-squad/run59-...)."}
+    {"id": "msg_type_semantics", "phase": 5, "lean_file": "formal-verification/lean/FVSquad/MsgType.lean", "notes": "Run-59. COMPLETE. 13 propositions, 0 sorry, all by decide. isLocalMsg+isResponseMsg+voteRespMsgType. MsgUnreachable overlap proved."},
+    {"id": "confchange_restore", "phase": 4, "lean_file": "formal-verification/lean/FVSquad/ConfChangeRestore.lean", "notes": "Run-59. Phase 4. 12 abstract props + 4 IMPL bridge lemmas (IMPL-1/2/3/4). All 0 sorry. IMPL-3 induction proved. PR open (run59 branch)."},
+    {"id": "get_priority", "phase": 5, "lean_file": "formal-verification/lean/FVSquad/GetPriority.lean", "notes": "Run-59/60. COMPLETE. Phase 5. 10 propositions, 0 sorry. Priority selection with u64->i64 overflow-safe fallback."},
+    {"id": "vote_commitment", "phase": 5, "lean_file": "formal-verification/lean/FVSquad/VoteCommitment.lean", "notes": "Run-60. NEW. COMPLETE. 15 theorems, 0 sorry. Raft vote-commitment invariant: at-most-one-vote-per-term. Core PROP-4 (vote_commitment theorem) + term-monotonicity at candidacy. PR open (run60 branch)."}
   ],
   "next_steps": [
-    "Task 5: Advance confchange_restore to phase 5. Next step: prove the full round-trip restore_roundtrip (restore from empty config gives Cfg matching ConfState fields). Requires combining IMPL-4 with enterJoint analysis for the joint case.",
-    "Task 4: get_priority is at phase 3 (Lean spec). Advance to phase 5 by confirming all 10 theorems compile (all have 0 sorry). Could add phase 5 annotation directly.",
-    "Task 3: Consider new target from src/raft.rs: term_monotonicity (term only increases) or vote_commitment (at most one vote per term). These are core Raft safety invariants.",
-    "Run 59 open PR conflict: run58 PR #71 conflicted with run57 PR #70 on TARGETS.md and ConfChangeRestore.lean. Run-59 resolved by manually applying changes. Run-59 PR supersedes both #70 and #71 — maintainer can close those."
+    "Task 5: Advance confchange_restore from phase 4 to 5. Need to prove the full round-trip restore_roundtrip. Combine IMPL-4 with enterJoint analysis for the joint case. The 4 bridge lemmas are all proved (0 sorry) but the final round-trip theorem needs to be attempted.",
+    "Task 3: Consider new target for become_leader term safety or leader-uniqueness-per-term invariant (at most one leader per term). Could build on vote_commitment PROP-4.",
+    "Stale PRs: run58 PR #71 and run57 PR #70 are superseded by run59 PR #72. All content from run57/58/59 is now in run60 branch. Maintainer can close #70, #71, #72 in favor of run60 PR."
   ],
   "build_note": "Lean toolchain install blocked by network firewall. Proofs validated by following established omega/simp/decide patterns from prior files.",
   "open_prs": [
     {
-      "branch": "lean-squad/run59-confchange-proofs-msgtype-getpriority",
-      "description": "Tasks 5+3 (run 59): ConfChangeRestore IMPL-1/2/3/4 (0 sorry) + MsgType phase 5 (13 theorems, 0 sorry) + GetPriority new target (10 theorems, 0 sorry).",
+      "branch": "lean-squad/run60-getpriority-impl-vote-commitment",
+      "description": "Tasks 3+4 (run 60): VoteCommitment new target (15 theorems, 0 sorry); get_priority advanced to phase 5. Includes merged content from run57/58/59.",
       "sorry_count": 0
     }
   ],
   "stale_prs_to_close": [
-    {"number": 70, "reason": "ConfChanger+ConfChangeRestore phase 3 work fully superseded by run-59 PR"},
-    {"number": 71, "reason": "MsgType+ConfChangeRestore phase 4 work fully superseded by run-59 PR"}
+    {"number": 70, "reason": "ConfChanger+ConfChangeRestore phase 3/4 work fully incorporated into run60 PR"},
+    {"number": 71, "reason": "MsgType+ConfChangeRestore phase 4 work fully incorporated into run60 PR"},
+    {"number": 72, "reason": "ConfChangeRestore IMPL proofs+MsgType+GetPriority work fully incorporated into run60 PR"}
   ],
   "closed_prs": [31, 32, 33, 34, 35, 36, 58, 62, 63, 66, 67, 68, 69],
   "status_issue": "Open issue #21: [Lean Squad] Formal Verification Status"
