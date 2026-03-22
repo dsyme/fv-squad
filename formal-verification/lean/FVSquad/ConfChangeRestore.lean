@@ -364,4 +364,245 @@ theorem restore_outgoing_builds_incoming (cs : ConfState)
     ⟨∅, ∅, ∅, ∅, false⟩ ∅ (by simp [isJoint]) cfg₁ prs₁ h
   simpa using key
 
+-- ===========================================================================
+-- Phase 5: Full non-joint round-trip theorem
+--
+-- Strategy:
+--  1. AddLearner does not change `incoming` when the learner ∉ incoming
+--  2. applySimpleAll on a pure AddLearner list therefore preserves incoming
+--  3. applySimpleAll is sequential: (cs1 ++ cs2) splits into two calls
+--  4. Combining IMPL-3 (AddNode builds incoming) + 2 gives the full
+--     non-joint round-trip: restore builds incoming = voters.toFinset
+-- ===========================================================================
+
+-- ---------------------------------------------------------------------------
+-- IMPL-5a  applyOne with AddLearner leaves `incoming` unchanged when l ∉ incoming
+-- ---------------------------------------------------------------------------
+
+/-- `applyOne` with `AddLearner l` does not modify `incoming` when `l ∉ cfg.incoming`. -/
+private lemma applyOne_addLearner_incoming_eq (cfg : Cfg) (prs : Prs) (l : NodeId)
+    (hl : l ≠ 0) (hl_not_in : l ∉ cfg.incoming) :
+    (applyOne cfg prs ⟨l, ChangeType.AddLearner⟩).1.incoming = cfg.incoming := by
+  simp only [applyOne,
+             show (⟨l, ChangeType.AddLearner⟩ : Change).nodeId = l from rfl, hl, ite_false,
+             show (⟨l, ChangeType.AddLearner⟩ : Change).changeType = ChangeType.AddLearner from rfl]
+  split_ifs with hlearner
+  · rfl   -- idempotent: l ∈ learners → (cfg, prs) unchanged
+  · -- erasing l from incoming is a no-op when l ∉ incoming
+    simp only [Finset.erase_eq_of_not_mem hl_not_in]
+    -- both branches (l ∈ outgoing / l ∉ outgoing) leave incoming unchanged
+    split_ifs <;> simp
+
+/-- `applyOne` with `AddLearner l` does not modify `outgoing`. -/
+private lemma applyOne_addLearner_outgoing_eq (cfg : Cfg) (prs : Prs) (l : NodeId)
+    (hl : l ≠ 0) :
+    (applyOne cfg prs ⟨l, ChangeType.AddLearner⟩).1.outgoing = cfg.outgoing := by
+  simp only [applyOne,
+             show (⟨l, ChangeType.AddLearner⟩ : Change).nodeId = l from rfl, hl, ite_false,
+             show (⟨l, ChangeType.AddLearner⟩ : Change).changeType = ChangeType.AddLearner from rfl]
+  split_ifs <;> simp
+
+-- ---------------------------------------------------------------------------
+-- Sequential composition of applySimpleAll
+-- ---------------------------------------------------------------------------
+
+/-- `applySimpleAll` distributes over list concatenation. -/
+theorem applySimpleAll_append (cfg : Cfg) (prs : Prs) (cs1 cs2 : List Change) :
+    applySimpleAll cfg prs (cs1 ++ cs2) =
+      (applySimpleAll cfg prs cs1).bind (fun p => applySimpleAll p.1 p.2 cs2) := by
+  induction cs1 generalizing cfg prs with
+  | nil => simp [applySimpleAll]
+  | cons c cs ih =>
+    simp only [List.cons_append, applySimpleAll]
+    cases happly : applySimple cfg prs c with
+    | none => simp
+    | some p =>
+      obtain ⟨cfg', prs'⟩ := p
+      simp only [Option.bind_some, Option.some_bind]
+      exact ih cfg' prs'
+
+-- ---------------------------------------------------------------------------
+-- IMPL-5b  applySimple with AddLearner succeeds and preserves incoming
+-- ---------------------------------------------------------------------------
+
+/-- IMPL-5b-succ  `changerSimple` with a single `AddLearner l` succeeds when the
+    config is non-joint, non-empty, and `l ∉ incoming`. -/
+theorem applySimple_addLearner_succeeds (cfg : Cfg) (prs : Prs) (l : NodeId)
+    (hl : l ≠ 0) (hnj : isJoint cfg = false)
+    (h_ne : cfg.incoming ≠ ∅) (hl_not_in : l ∉ cfg.incoming) :
+    (applySimple cfg prs ⟨l, ChangeType.AddLearner⟩).isSome = true := by
+  simp only [applySimple, changerSimple, hnj, ite_false]
+  -- applyAll cfg prs [⟨l, AddLearner⟩]: applyOne then applyAll []
+  have h_one_inc : (applyOne cfg prs ⟨l, ChangeType.AddLearner⟩).1.incoming = cfg.incoming :=
+    applyOne_addLearner_incoming_eq cfg prs l hl hl_not_in
+  simp only [applyAll]
+  -- After applyOne, incoming = cfg.incoming ≠ ∅
+  simp only [h_one_inc, h_ne, ne_eq, not_false_eq_true, ite_true, Option.isSome_some,
+             Option.isSome_none, ite_true]
+  -- diff: cfg'.incoming = cfg.incoming, so ∩ = cfg.incoming, diff = 0
+  rw [h_one_inc, Finset.inter_self]
+  omega
+
+/-- IMPL-5b-inc  After `applySimple cfg prs (AddLearner l)` with l ∉ incoming,
+    the resulting `incoming` equals `cfg.incoming`. -/
+private lemma applySimple_addLearner_incoming_eq (cfg : Cfg) (prs : Prs) (l : NodeId)
+    (hl : l ≠ 0) (hnj : isJoint cfg = false)
+    (h_ne : cfg.incoming ≠ ∅) (hl_not_in : l ∉ cfg.incoming)
+    (cfg' : Cfg) (prs' : Prs)
+    (h : applySimple cfg prs ⟨l, ChangeType.AddLearner⟩ = some (cfg', prs')) :
+    cfg'.incoming = cfg.incoming := by
+  simp only [applySimple, changerSimple, hnj, ite_false] at h
+  have h_one_inc : (applyOne cfg prs ⟨l, ChangeType.AddLearner⟩).1.incoming = cfg.incoming :=
+    applyOne_addLearner_incoming_eq cfg prs l hl hl_not_in
+  simp only [applyAll, h_one_inc, h_ne, ne_eq, not_false_eq_true, ite_true] at h
+  rw [h_one_inc, Finset.inter_self] at h
+  simp only [Nat.sub_self, gt_iff_lt, lt_irrefl, ite_false, Option.some.injEq,
+             Prod.mk.injEq] at h
+  exact h.1.1
+
+/-- IMPL-5b-joint  AddLearner preserves `isJoint`. -/
+private lemma applySimple_addLearner_isJoint_preserved (cfg : Cfg) (prs : Prs) (l : NodeId)
+    (hl : l ≠ 0) (hnj : isJoint cfg = false)
+    (h_ne : cfg.incoming ≠ ∅) (hl_not_in : l ∉ cfg.incoming)
+    (cfg' : Cfg) (prs' : Prs)
+    (h : applySimple cfg prs ⟨l, ChangeType.AddLearner⟩ = some (cfg', prs')) :
+    isJoint cfg' = false := by
+  simp only [applySimple, changerSimple, hnj, ite_false] at h
+  have h_one_inc : (applyOne cfg prs ⟨l, ChangeType.AddLearner⟩).1.incoming = cfg.incoming :=
+    applyOne_addLearner_incoming_eq cfg prs l hl hl_not_in
+  have h_one_out : (applyOne cfg prs ⟨l, ChangeType.AddLearner⟩).1.outgoing = cfg.outgoing :=
+    applyOne_addLearner_outgoing_eq cfg prs l hl
+  simp only [applyAll, h_one_inc, h_ne, ne_eq, not_false_eq_true, ite_true] at h
+  rw [h_one_inc, Finset.inter_self] at h
+  simp only [Nat.sub_self, gt_iff_lt, lt_irrefl, ite_false, Option.some.injEq,
+             Prod.mk.injEq] at h
+  rw [← h.1.1]
+  simp only [isJoint, h_one_out, hnj]
+  simp [Bool.not_eq_true', isJoint] at hnj
+  exact hnj
+
+-- ---------------------------------------------------------------------------
+-- IMPL-6  applySimpleAll on a pure AddLearner list preserves incoming
+-- ---------------------------------------------------------------------------
+
+/-- IMPL-6  Applying a list of `AddLearner` changes (all ∉ cfg.incoming, all non-zero)
+    to a non-joint, non-empty config leaves `incoming` unchanged. -/
+theorem applySimpleAll_addLearners_incoming (learners : List NodeId)
+    (h_nonzero : ∀ l ∈ learners, l ≠ 0)
+    (cfg : Cfg) (prs : Prs) (hnj : isJoint cfg = false)
+    (h_ne : cfg.incoming ≠ ∅)
+    (h_disj : ∀ l ∈ learners, l ∉ cfg.incoming)
+    (cfg' : Cfg) (prs' : Prs)
+    (h : applySimpleAll cfg prs (learners.map (fun l => ⟨l, ChangeType.AddLearner⟩))
+         = some (cfg', prs')) :
+    cfg'.incoming = cfg.incoming := by
+  induction learners generalizing cfg prs with
+  | nil =>
+    simp [applySimpleAll] at h
+    exact (Prod.mk.inj (Option.some.inj h)).1 ▸ rfl
+  | cons hd tl ih =>
+    simp only [List.map_cons, applySimpleAll] at h
+    have hd_ne0 : hd ≠ 0 := h_nonzero hd (List.mem_cons_self _ _)
+    have hd_not_in : hd ∉ cfg.incoming := h_disj hd (List.mem_cons_self _ _)
+    -- The head step succeeds
+    have hsucc := applySimple_addLearner_succeeds cfg prs hd hd_ne0 hnj h_ne hd_not_in
+    obtain ⟨⟨cfg_hd, prs_hd⟩, h_step⟩ := Option.isSome_iff_exists.mp hsucc
+    simp only [h_step, Option.bind_some] at h
+    have h_inc_hd : cfg_hd.incoming = cfg.incoming :=
+      applySimple_addLearner_incoming_eq cfg prs hd hd_ne0 hnj h_ne hd_not_in cfg_hd prs_hd h_step
+    have h_ne_hd : cfg_hd.incoming ≠ ∅ := h_inc_hd ▸ h_ne
+    have hnj_hd : isJoint cfg_hd = false :=
+      applySimple_addLearner_isJoint_preserved cfg prs hd hd_ne0 hnj h_ne hd_not_in
+        cfg_hd prs_hd h_step
+    have h_disj_tl : ∀ l ∈ tl, l ∉ cfg_hd.incoming := by
+      intro l hl; rw [h_inc_hd]; exact h_disj l (List.mem_cons_of_mem _ hl)
+    have h_nonzero_tl : ∀ l ∈ tl, l ≠ 0 :=
+      fun l hl => h_nonzero l (List.mem_cons_of_mem _ hl)
+    have key := ih h_nonzero_tl cfg_hd prs_hd hnj_hd h_ne_hd h_disj_tl cfg' prs' h
+    rw [key, h_inc_hd]
+
+-- ---------------------------------------------------------------------------
+-- Helper: applySimpleAll on AddNode list preserves isJoint
+-- ---------------------------------------------------------------------------
+
+/-- Applying a list of `AddNode` changes to a non-joint config keeps it non-joint.
+    This follows by induction from `applySimple_addNode_isJoint_preserved`. -/
+theorem applySimpleAll_addNodes_isJoint_preserved (ids : List NodeId)
+    (h_nonzero : ∀ i ∈ ids, i ≠ 0)
+    (cfg : Cfg) (prs : Prs) (hnj : isJoint cfg = false)
+    (cfg' : Cfg) (prs' : Prs)
+    (h : applySimpleAll cfg prs (ids.map (fun id => ⟨id, ChangeType.AddNode⟩)) = some (cfg', prs')) :
+    isJoint cfg' = false := by
+  induction ids generalizing cfg prs with
+  | nil =>
+    simp [applySimpleAll] at h
+    obtain ⟨rfl, rfl⟩ := Prod.mk.inj (Option.some.inj h)
+    exact hnj
+  | cons hd tl ih =>
+    simp only [List.map_cons, applySimpleAll] at h
+    have hi_ne0 : hd ≠ 0 := h_nonzero hd (List.mem_cons_self _ _)
+    have hsucc := applySimple_addNode_succeeds cfg prs hd hi_ne0 hnj
+    obtain ⟨⟨cfg_hd, prs_hd⟩, h_step⟩ := Option.isSome_iff_exists.mp hsucc
+    simp only [h_step, Option.bind_some] at h
+    have hnj_hd : isJoint cfg_hd = false :=
+      applySimple_addNode_isJoint_preserved cfg prs hd hi_ne0 hnj cfg_hd prs_hd h_step
+    exact ih (fun j hj => h_nonzero j (List.mem_cons_of_mem _ hj)) cfg_hd prs_hd hnj_hd cfg' prs' h
+
+-- ---------------------------------------------------------------------------
+-- IMPL-7  Full non-joint round-trip: incoming = voters.toFinset
+-- ---------------------------------------------------------------------------
+
+/-- IMPL-7  For a non-joint `ConfState` (votersOutgoing = []), `restore` starting
+    from the empty config builds `incoming = cs.voters.toFinset`, provided:
+    - all voter IDs are non-zero
+    - all learner IDs (learners ++ learnersNext) are non-zero
+    - voters and learners are disjoint (no voter ID appears in learners/learnersNext)
+    - voters is non-empty -/
+theorem restore_nonJoint_voters (cs : ConfState)
+    (h_nj : cs.votersOutgoing = [])
+    (h_voters_nonzero : ∀ v ∈ cs.voters, v ≠ 0)
+    (h_learners_nonzero : ∀ l ∈ cs.learners ++ cs.learnersNext, l ≠ 0)
+    (h_disj : ∀ v ∈ cs.voters, v ∉ (cs.learners ++ cs.learnersNext).toFinset)
+    (h_voters_ne : cs.voters ≠ [])
+    (cfg' : Cfg) (prs' : Prs)
+    (h : restore ⟨∅, ∅, ∅, ∅, false⟩ ∅ cs = some (cfg', prs')) :
+    cfg'.incoming = cs.voters.toFinset := by
+  -- Step 1: Use the non-joint path
+  rw [restore_non_joint_path ⟨∅, ∅, ∅, ∅, false⟩ ∅ cs h_nj] at h
+  -- Step 2: Expand incoming = AddNode(voters) ++ AddLearner(learners) ++ AddLearner(learnersNext)
+  have h_inc_eq : (toConfChangeSingle cs).2 =
+      cs.voters.map (fun v => ⟨v, ChangeType.AddNode⟩) ++
+      (cs.learners ++ cs.learnersNext).map (fun l => ⟨l, ChangeType.AddLearner⟩) := by
+    simp [toConfChangeSingle, h_nj, List.map_append]
+  rw [h_inc_eq, applySimpleAll_append] at h
+  -- Step 3: Case on the AddNode prefix result
+  rcases h_bind : applySimpleAll ⟨∅, ∅, ∅, ∅, false⟩ ∅
+      (cs.voters.map (fun v => ⟨v, ChangeType.AddNode⟩)) with
+  | none => simp [h_bind] at h
+  | some ⟨cfg_mid, prs_mid⟩ =>
+    simp only [h_bind, Option.some_bind] at h
+    -- After AddNode ops: incoming = voters.toFinset
+    have h_mid_inc : cfg_mid.incoming = cs.voters.toFinset :=
+      applySimpleAll_addNodes_incoming cs.voters h_voters_nonzero ⟨∅, ∅, ∅, ∅, false⟩ ∅
+        (by simp [isJoint]) cfg_mid prs_mid (by simpa using h_bind)
+    -- After AddNode ops: still non-joint
+    have h_mid_nj : isJoint cfg_mid = false :=
+      applySimpleAll_addNodes_isJoint_preserved cs.voters h_voters_nonzero
+        ⟨∅, ∅, ∅, ∅, false⟩ ∅ (by simp [isJoint]) cfg_mid prs_mid (by simpa using h_bind)
+    -- incoming is non-empty (voters non-empty)
+    have h_mid_ne : cfg_mid.incoming ≠ ∅ := by
+      rw [h_mid_inc]; simp [List.toFinset_eq_empty_iff, h_voters_ne]
+    -- Step 4: All learners ∉ cfg_mid.incoming (disjoint from voters)
+    have h_disj_all : ∀ l ∈ cs.learners ++ cs.learnersNext, l ∉ cfg_mid.incoming := by
+      intro l hl; rw [h_mid_inc]
+      intro hvl
+      -- l ∈ cs.voters.toFinset means l ∈ cs.voters
+      have hv : l ∈ cs.voters := List.mem_toFinset.mp hvl
+      -- But h_disj says no voter appears in learners/learnersNext
+      exact absurd (List.mem_toFinset.mpr hl) (h_disj l hv)
+    -- Step 5: AddLearner ops preserve incoming
+    have key := applySimpleAll_addLearners_incoming (cs.learners ++ cs.learnersNext)
+      h_learners_nonzero cfg_mid prs_mid h_mid_nj h_mid_ne h_disj_all cfg' prs' h
+    rw [key, h_mid_inc]
+
 end FVSquad.ConfChangeRestore

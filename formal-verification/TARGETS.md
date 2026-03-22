@@ -29,7 +29,8 @@
 | 23 | `tally_votes` + `has_quorum` | `src/tracker.rs` | 5 — Proofs | ✅ Done | 27 theorems, 0 `sorry`. See `FVSquad/TallyVotes.lean`. |
 | 24 | `Union<'a>` + `is_continuous_ents` | `src/util.rs` | 5 — Proofs | ✅ Done | 20 theorems, 0 `sorry`. See `FVSquad/UnionUtils.lean`. |
 | 25 | `Changer::enter_joint` / `leave_joint` / `check_invariants` | `src/confchange/changer.rs` | 5 — Proofs | ✅ Done | 26 propositions, 0 `sorry`. See `FVSquad/ConfChanger.lean`. |
-| 26 | `to_conf_change_single` + `restore` | `src/confchange/restore.rs` | 5 — Proofs | 🔄 In progress | 12 propositions + 4 bridge lemmas (IMPL-1–4). IMPL-3 induction + supporting helpers added. See `FVSquad/ConfChangeRestore.lean`. |
+| 26 | `to_conf_change_single` + `restore` | `src/confchange/restore.rs` | 5 — Proofs | ✅ Done | 12 abstract props + 7 phase-5 theorems (IMPL-1–7). Full non-joint round-trip proved: `restore_nonJoint_voters`. 0 `sorry`. See `FVSquad/ConfChangeRestore.lean`. |
+| 30 | `become_leader` / `become_follower` / `become_candidate` state transitions | `src/raft.rs` | 2 — Informal Spec | 🔄 In progress | Informal spec written: term monotonicity, state role transitions, self-vote property, election safety via vote-commitment. See `specs/state_transitions_informal.md`. |
 | 27 | `is_local_msg` + `is_response_msg` + `vote_resp_msg_type` | `src/raw_node.rs`, `src/raft.rs` | 5 — Proofs | ✅ Done | 13 theorems, 0 `sorry`. MsgUnreachable overlap proved. See `FVSquad/MsgType.lean`. |
 | 28 | `get_priority` | `src/raft.rs` | 5 — Proofs | ✅ Done | Priority selection with u64→i64 overflow-safe fallback. 10 propositions, 0 `sorry`. See `FVSquad/GetPriority.lean`. |
 | 29 | `vote_commitment` | `src/raft.rs` | 5 — Proofs | ✅ Done | Raft vote-commitment invariant: at most one vote per term. 15 propositions, 0 `sorry`. See `FVSquad/VoteCommitment.lean`. |
