@@ -8,51 +8,30 @@
 | 2 | `MajorityConfig::committed_index` | `src/quorum/majority.rs` | 5 — Proofs | ✅ Done | All theorems proved (no `sorry`). Bridge lemma `countGe_eq_sorted_countP` completed the `committedIndex_safety` and `committedIndex_maximal` proofs. See `FVSquad/CommittedIndex.lean`. |
 | 3 | `Unstable` log buffer | `src/log_unstable.rs` | 5 — Proofs | ✅ Done | All key theorems proved (0 `sorry`): `truncateAndAppend_wellFormed`, `stableEntries_wellFormed`, `stableSnap_wellFormed`. See `FVSquad/UnstableLog.lean`. |
 | 4 | `Inflights` ring buffer | `src/tracker/inflights.rs` | 5 — Proofs | ✅ Done | Abstract model fully proved (0 `sorry`): 20+ theorems. Concrete ring-buffer model added with `concreteAdd_abstract`, `ring_pos_ne`. See `FVSquad/Inflights.lean`. |
-| 5 | `limit_size` utility | `src/util.rs` | 5 — Proofs | ✅ Done | All theorems proved (0 `sorry`). Budget helpers `limitSizeGo_count_add`, `limitSizeGo_budget'`, `limitSizeGo_stop_condition` enable proofs of `limitSize_sum_le` (budget safety) and `limitSize_maximal` (maximality). See `FVSquad/LimitSize.lean`. |
+| 5 | `limit_size` utility | `src/util.rs` | 5 — Proofs | ✅ Done | All theorems proved (0 `sorry`). See `FVSquad/LimitSize.lean`. |
 | 6 | `Progress` state machine | `src/tracker/progress.rs`, `src/tracker/state.rs` | 5 — Proofs | ✅ Done | All theorems proved (0 `sorry`). ~45 theorems including master invariant `valid_preserved_by_all_ops`. See `FVSquad/Progress.lean`. |
 | 7 | `JointConfig` joint quorum | `src/quorum/joint.rs` | 5 — Proofs | ✅ Done | All theorems proved (0 `sorry`). 20+ theorems covering `jointVoteResult` and `jointCommittedIndex` safety/monotonicity. See `FVSquad/JointQuorum.lean`. |
-| 8 | `is_up_to_date` + `find_conflict_by_term` | `src/raft_log.rs` | 5 — Proofs | ✅ Done | 16 theorems, 0 `sorry`. `isUpToDate` (total preorder, 8 theorems), `findConflictByTerm` (8 theorems incl. maximality). See `FVSquad/LogOrdering.lean`. |
-| 9 | `RaftLog::maybe_append` + `maybe_commit` | `src/raft_log.rs` | 5 — Proofs | ✅ Done | All sorrys removed. `findConflict_zero_all_match` (with `hpos` precondition), `maybeAppend_commit_le_leader` (with `hle`), `maybeAppend_commit_le_lastNew` (with `hle`) fully proved via `commitTo_exact_or_unchanged`. See `FVSquad/MaybeAppend.lean`. |
-| 10 | `ReadOnly` queue (ReadIndex protocol) | `src/read_only.rs` | 5 — Proofs | ✅ Done | All 30 theorems proved (0 `sorry`). `mem_take_indexOf` inductive lemma closed PROP-19/20. See `FVSquad/ReadOnly.lean`. |
-| 11 | `RaftLog::maybe_persist` | `src/raft_log.rs` | 3 — Lean Spec | 🔄 In progress | Informal spec + 16 Lean propositions covering WF-preservation, monotonicity, idempotency, fixed-point. See `FVSquad/MaybePersist.lean`. |
-
-| 10 | `ReadOnly` queue (ReadIndex protocol) | `src/read_only.rs` | 5 — Proofs | ✅ Done | All 30 theorems proved (0 `sorry`). `mem_take_indexOf` inductive lemma closed PROP-19/20. See `FVSquad/ReadOnly.lean`. |
-
-| 11 | `RaftLog::maybe_persist` | `src/raft_log.rs` | 5 — Proofs | ✅ Done | Informal spec + 16 Lean propositions, all proved (0 `sorry`). See `FVSquad/MaybePersist.lean`. |
-
-| 12 | `RaftLog::maybe_commit` (standalone) | `src/raft_log.rs` | 5 — Proofs | ✅ Done | Informal spec + 16 theorems (0 `sorry`): guard iff, monotone committed, WF-preservation, idempotency, sequential composition. See `FVSquad/MaybeCommit.lean`. |
-
-| 10 | `ReadOnly` queue (ReadIndex protocol) | `src/read_only.rs` | 5 — Proofs | ✅ Done | All 30 theorems proved (0 `sorry`). `mem_take_indexOf` inductive lemma closed PROP-19/20. See `FVSquad/ReadOnly.lean`. |
-
-| 11 | `RaftLog::maybe_persist` | `src/raft_log.rs` | 5 — Proofs | ✅ Done | Informal spec + 16 Lean propositions, all proved (0 `sorry`). See `FVSquad/MaybePersist.lean`. |
-
-| 12 | `RaftLog::maybe_commit` (standalone) | `src/raft_log.rs` | 5 — Proofs | ✅ Done | Informal spec + 16 theorems (0 `sorry`): guard iff, monotone committed, WF-preservation, idempotency, sequential composition. See `FVSquad/MaybeCommit.lean`. |
-
-| 13 | `Progress` tracking (`maybe_update`, `update_committed`, `maybe_decr_to`) | `src/tracker/progress.rs` | 5 — Proofs | ✅ Done | Informal spec + 31 theorems (0 `sorry`): monotonicity, WF-preservation (both Replicate and Probe states), stale-rejection characterisation, cross-operation commutativity. See `FVSquad/ProgressTracking.lean`. |
-
-| 10 | `ReadOnly` queue (ReadIndex protocol) | `src/read_only.rs` | 5 — Proofs | ✅ Done | 30 theorems, 0 `sorry`. addRequest idempotency, recvAck ack accumulation, advance FIFO drain. `mem_take_indexOf` inductive lemma unlocked the 2 remaining `sorry`s. See `FVSquad/ReadOnly.lean`. |
-| 11 | `RaftLog::maybe_persist` | `src/raft_log.rs` | 5 — Proofs | ✅ Done | 16 theorems, 0 `sorry`. Term-checked guard: index > persisted, index < firstUpdateIndex, storedTerm matches. WF preserved. See `FVSquad/MaybePersist.lean`. |
-| 12 | `RaftLog::maybe_commit` | `src/raft_log.rs` | 5 — Proofs | ✅ Done | 16 theorems, 0 `sorry`. Raft §5.4.2 term-lock safety gate. Idempotent, WF preserved, committed non-decreasing. See `FVSquad/MaybeCommit.lean`. |
-| 13 | `Progress::maybe_update` / `update_committed` / `maybe_decr_to` | `src/tracker/progress.rs` | 5 — Proofs | ✅ Done | 31 theorems, 0 `sorry`. WF = `next_idx ≥ matched + 1` preserved by all ops. See `FVSquad/ProgressTracking.lean`. |
-| 14 | `ProgressTracker::quorum_recently_active` | `src/tracker.rs` | 5 — Proofs | 🔄 In progress | 15 theorems + examples. Self-inclusion, monotonicity, post-state reset. See `FVSquad/QuorumRecentlyActive.lean`. |
-
-| 10 | `ReadOnly` queue (ReadIndex protocol) | `src/read_only.rs` | 5 — Proofs | ✅ Done | 30 theorems, 0 `sorry`. addRequest idempotency, recvAck ack accumulation, advance FIFO drain. `mem_take_indexOf` inductive lemma unlocked the 2 remaining `sorry`s. See `FVSquad/ReadOnly.lean`. |
-| 11 | `RaftLog::maybe_persist` | `src/raft_log.rs` | 5 — Proofs | ✅ Done | 16 theorems, 0 `sorry`. Term-checked guard: index > persisted, index < firstUpdateIndex, storedTerm matches. WF preserved. See `FVSquad/MaybePersist.lean`. |
-| 12 | `RaftLog::maybe_commit` | `src/raft_log.rs` | 5 — Proofs | ✅ Done | 16 theorems, 0 `sorry`. Raft §5.4.2 term-lock safety gate. Idempotent, WF preserved, committed non-decreasing. See `FVSquad/MaybeCommit.lean`. |
-| 13 | `Progress::maybe_update` / `update_committed` / `maybe_decr_to` | `src/tracker/progress.rs` | 5 — Proofs | ✅ Done | 31 theorems, 0 `sorry`. WF = `next_idx ≥ matched + 1` preserved by all ops. See `FVSquad/ProgressTracking.lean`. |
-| 14 | `ProgressTracker::quorum_recently_active` | `src/tracker.rs` | 5 — Proofs | 🔄 In progress | 15 theorems + examples. Self-inclusion, monotonicity, post-state reset. See `FVSquad/QuorumRecentlyActive.lean`. |
-| 15 | `RaftLog::next_entries_since` + `applied_index_upper_bound` | `src/raft_log.rs` | 3 — Lean Spec | 🔄 In progress | Window computation for ready-to-apply entries. 7+ properties (aub bounds, monotonicity, window emptiness). See `FVSquad/NextEntries.lean`. |
-| 16 | `RaftLog::append` | `src/raft_log.rs` | 3 — Lean Spec | 🔄 In progress | Lean 4 formal spec written (14 theorems, 0 `sorry`): noop, committed-unchanged, return-value, safety-gate, WF-preservation. See `FVSquad/RaftLogAppend.lean`. |
-| 17 | `RaftLog::entries` | `src/raft_log.rs` | 5 — Proofs | ✅ Done | 18 theorems (0 `sorry`): empty/non-empty branches, membership, length bounds, nodup, monotonicity. Delegates to `sliceIndices`. See `FVSquad/RaftLogEntries.lean`. |
-| 18 | `RaftLog::slice` + `must_check_outofbounds` | `src/raft_log.rs`, `src/log_unstable.rs` | 5 — Proofs | ✅ Done | 35+ theorems (0 `sorry`): mustCheckOutofbounds, stableSubrange, unstableSubrange, sliceIndices membership/length/nodup, `slice_partition` list equality, tier disjointness. See `FVSquad/RaftLogSlice.lean`. |
-| 19 | `Config::validate` | `src/config.rs` | 5 — Proofs | ✅ Done | Pure validation function. 8 constraints (C1–C8): id, heartbeat, election tick range, inflight, lease-quorum, uncommitted size. 18 theorems (0 `sorry`). See `FVSquad/ConfigValidate.lean`. |
-| 20 | `UncommittedState` | `src/raft.rs` | 5 — Proofs | ✅ Done | Leader-side uncommitted size tracker. `maybe_increase` + `maybe_reduce`. 28 theorems (0 `sorry`): `increase_true_iff`, `increase_budget`, `reduce_monotone`, `reduce_true_iff`, `increase_reduce_roundtrip`, and more. See `FVSquad/UncommittedState.lean`. |
-| 21 | `RaftLog::term` + `match_term` | `src/raft_log.rs` | 5 — Proofs | ✅ Done | Term dispatch (unstable → store) with out-of-range sentinel `0`. 18 theorems (0 `sorry`): boundary conditions PROP-1–4, matchTerm characterisation PROP-5–10, out-of-range PROP-11–15, error/none PROP-16–17, dummy-entry PROP-18. See `FVSquad/RaftLogTerm.lean`. |
-| 22 | `RaftLog::restore` | `src/raft_log.rs` | 5 — Proofs | ✅ Done | Snapshot-based log recovery. 12 theorems, 0 sorry. See `FVSquad/RaftLogRestore.lean`. |
-| 23 | `tally_votes` + `has_quorum` | `src/tracker.rs` | 5 — Proofs | ✅ Done | Vote counting + quorum check. 27 theorems, 0 sorry. See `FVSquad/TallyVotes.lean`. |
-| 24 | `Union<'a>` + `is_continuous_ents` | `src/util.rs` | 5 — Proofs | ✅ Done | Union set + entry-continuity predicate. 20 theorems, 0 sorry. See `FVSquad/UnionUtils.lean` (PR open). |
-| 25 | `Changer::enter_joint` / `leave_joint` / `check_invariants` | `src/confchange/changer.rs` | 5 — Proofs | ✅ Done | Joint consensus config transitions. All 26 propositions proved (0 `sorry`). Helper lemmas: `applyOne_outgoing_unchanged`, `applyAll_outgoing_unchanged`, `leaveJoint_isJoint`. See `FVSquad/ConfChanger.lean`. |
-| 26 | `to_conf_change_single` + `restore` | `src/confchange/restore.rs` | 3 — Lean Spec | 🔄 In progress | ConfState→change-list translator + restore-from-scratch. Informal spec + 12 Lean propositions (0 `sorry`): outgoing/incoming structure, length, IDs, joint/non-joint dispatch. See `FVSquad/ConfChangeRestore.lean`. |
+| 8 | `is_up_to_date` + `find_conflict_by_term` | `src/raft_log.rs` | 5 — Proofs | ✅ Done | 16 theorems, 0 `sorry`. See `FVSquad/LogOrdering.lean`. |
+| 9 | `RaftLog::maybe_append` + `maybe_commit` | `src/raft_log.rs` | 5 — Proofs | ✅ Done | All sorrys removed. See `FVSquad/MaybeAppend.lean`. |
+| 10 | `ReadOnly` queue (ReadIndex protocol) | `src/read_only.rs` | 5 — Proofs | ✅ Done | All 30 theorems proved (0 `sorry`). See `FVSquad/ReadOnly.lean`. |
+| 11 | `RaftLog::maybe_persist` | `src/raft_log.rs` | 5 — Proofs | ✅ Done | 16 theorems, 0 `sorry`. WF preserved. See `FVSquad/MaybePersist.lean`. |
+| 12 | `RaftLog::maybe_commit` | `src/raft_log.rs` | 5 — Proofs | ✅ Done | 16 theorems, 0 `sorry`. See `FVSquad/MaybeCommit.lean`. |
+| 13 | `Progress::maybe_update` / `update_committed` / `maybe_decr_to` | `src/tracker/progress.rs` | 5 — Proofs | ✅ Done | 31 theorems, 0 `sorry`. See `FVSquad/ProgressTracking.lean`. |
+| 14 | `ProgressTracker::quorum_recently_active` | `src/tracker.rs` | 5 — Proofs | ✅ Done | 15 theorems, 0 `sorry`. See `FVSquad/QuorumRecentlyActive.lean`. |
+| 15 | `RaftLog::next_entries_since` + `applied_index_upper_bound` | `src/raft_log.rs` | 5 — Proofs | ✅ Done | 20+ theorems, 0 `sorry`. See `FVSquad/NextEntries.lean`. |
+| 16 | `RaftLog::append` | `src/raft_log.rs` | 5 — Proofs | ✅ Done | 14 theorems, 0 `sorry`. See `FVSquad/RaftLogAppend.lean`. |
+| 17 | `RaftLog::entries` | `src/raft_log.rs` | 5 — Proofs | ✅ Done | 18 theorems, 0 `sorry`. See `FVSquad/RaftLogEntries.lean`. |
+| 18 | `RaftLog::slice` + `must_check_outofbounds` | `src/raft_log.rs`, `src/log_unstable.rs` | 5 — Proofs | ✅ Done | 35+ theorems, 0 `sorry`. See `FVSquad/RaftLogSlice.lean`. |
+| 19 | `Config::validate` | `src/config.rs` | 5 — Proofs | ✅ Done | 18 theorems, 0 `sorry`. See `FVSquad/ConfigValidate.lean`. |
+| 20 | `UncommittedState` | `src/raft.rs` | 5 — Proofs | ✅ Done | 28 theorems, 0 `sorry`. See `FVSquad/UncommittedState.lean`. |
+| 21 | `RaftLog::term` + `match_term` | `src/raft_log.rs` | 5 — Proofs | ✅ Done | 18 theorems, 0 `sorry`. See `FVSquad/RaftLogTerm.lean`. |
+| 22 | `RaftLog::restore` | `src/raft_log.rs` | 5 — Proofs | ✅ Done | 12 theorems, 0 `sorry`. See `FVSquad/RaftLogRestore.lean`. |
+| 23 | `tally_votes` + `has_quorum` | `src/tracker.rs` | 5 — Proofs | ✅ Done | 27 theorems, 0 `sorry`. See `FVSquad/TallyVotes.lean`. |
+| 24 | `Union<'a>` + `is_continuous_ents` | `src/util.rs` | 5 — Proofs | ✅ Done | 20 theorems, 0 `sorry`. See `FVSquad/UnionUtils.lean`. |
+| 25 | `Changer::enter_joint` / `leave_joint` / `check_invariants` | `src/confchange/changer.rs` | 5 — Proofs | ✅ Done | 26 propositions, 0 `sorry`. See `FVSquad/ConfChanger.lean`. |
+| 26 | `to_conf_change_single` + `restore` | `src/confchange/restore.rs` | 5 — Proofs | 🔄 In progress | 12 propositions + 4 bridge lemmas (IMPL-1–4). IMPL-3 induction + supporting helpers added. See `FVSquad/ConfChangeRestore.lean`. |
+| 27 | `is_local_msg` + `is_response_msg` + `vote_resp_msg_type` | `src/raw_node.rs`, `src/raft.rs` | 5 — Proofs | ✅ Done | 13 theorems, 0 `sorry`. MsgUnreachable overlap proved. See `FVSquad/MsgType.lean`. |
+| 28 | `get_priority` | `src/raft.rs` | 3 — Lean Spec | 🔄 In progress | Priority selection with u64→i64 overflow-safe fallback. 10 propositions, 0 `sorry`. See `FVSquad/GetPriority.lean`. |
 
 ## Phase Legend
 
