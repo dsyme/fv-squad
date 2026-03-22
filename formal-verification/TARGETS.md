@@ -48,9 +48,10 @@
 | 19 | `Config::validate` | `src/config.rs` | 5 — Proofs | ✅ Done | Pure validation function. 8 constraints (C1–C8): id, heartbeat, election tick range, inflight, lease-quorum, uncommitted size. 18 theorems (0 `sorry`). See `FVSquad/ConfigValidate.lean`. |
 | 20 | `UncommittedState` | `src/raft.rs` | 5 — Proofs | ✅ Done | Leader-side uncommitted size tracker. `maybe_increase` + `maybe_reduce`. 28 theorems (0 `sorry`): `increase_true_iff`, `increase_budget`, `reduce_monotone`, `reduce_true_iff`, `increase_reduce_roundtrip`, and more. See `FVSquad/UncommittedState.lean`. |
 | 21 | `RaftLog::term` + `match_term` | `src/raft_log.rs` | 5 — Proofs | ✅ Done | Term dispatch (unstable → store) with out-of-range sentinel `0`. 18 theorems (0 `sorry`): boundary conditions PROP-1–4, matchTerm characterisation PROP-5–10, out-of-range PROP-11–15, error/none PROP-16–17, dummy-entry PROP-18. See `FVSquad/RaftLogTerm.lean`. |
-| 22 | `RaftLog::restore` | `src/raft_log.rs` | 1 — Research | ⬜ Not started | Snapshot-based log recovery. committed monotonicity, persisted reset guard, unstable.restore delegation. |
-| 23 | `tally_votes` | `src/tracker.rs` | 1 — Research | ⬜ Not started | Vote counting: filter non-voters, count granted/rejected. Bounds: granted+rejected ≤ |voters|. |
-| 24 | `has_quorum` | `src/tracker.rs` | 1 — Research | ⬜ Not started | Quorum safety, superset-closure, joint composition. Depends on JointQuorum proofs. |
+| 22 | `RaftLog::restore` | `src/raft_log.rs` | 5 — Proofs | ✅ Done | Snapshot-based log recovery. 12 theorems, 0 sorry. See `FVSquad/RaftLogRestore.lean`. |
+| 23 | `tally_votes` + `has_quorum` | `src/tracker.rs` | 5 — Proofs | ✅ Done | Vote counting + quorum check. 27 theorems, 0 sorry. See `FVSquad/TallyVotes.lean`. |
+| 24 | `Union<'a>` + `is_continuous_ents` | `src/util.rs` | 5 — Proofs | ✅ Done | Union set + entry-continuity predicate. 20 theorems, 0 sorry. See `FVSquad/UnionUtils.lean` (PR open). |
+| 25 | `Changer::enter_joint` / `leave_joint` / `check_invariants` | `src/confchange/changer.rs` | 3 — Lean Spec | 🔄 In progress | Joint consensus config transitions. Informal spec + 26 Lean propositions. `sorry` on complex structure proofs; round-trip example verified via `native_decide`. See `FVSquad/ConfChanger.lean`. |
 
 ## Phase Legend
 
