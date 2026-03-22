@@ -31,7 +31,8 @@
 | 25 | `Changer::enter_joint` / `leave_joint` / `check_invariants` | `src/confchange/changer.rs` | 5 — Proofs | ✅ Done | 26 propositions, 0 `sorry`. See `FVSquad/ConfChanger.lean`. |
 | 26 | `to_conf_change_single` + `restore` | `src/confchange/restore.rs` | 5 — Proofs | 🔄 In progress | 12 propositions + 4 bridge lemmas (IMPL-1–4). IMPL-3 induction + supporting helpers added. See `FVSquad/ConfChangeRestore.lean`. |
 | 27 | `is_local_msg` + `is_response_msg` + `vote_resp_msg_type` | `src/raw_node.rs`, `src/raft.rs` | 5 — Proofs | ✅ Done | 13 theorems, 0 `sorry`. MsgUnreachable overlap proved. See `FVSquad/MsgType.lean`. |
-| 28 | `get_priority` | `src/raft.rs` | 3 — Lean Spec | 🔄 In progress | Priority selection with u64→i64 overflow-safe fallback. 10 propositions, 0 `sorry`. See `FVSquad/GetPriority.lean`. |
+| 28 | `get_priority` | `src/raft.rs` | 5 — Proofs | ✅ Done | Priority selection with u64→i64 overflow-safe fallback. 10 propositions, 0 `sorry`. See `FVSquad/GetPriority.lean`. |
+| 29 | `vote_commitment` | `src/raft.rs` | 5 — Proofs | ✅ Done | Raft vote-commitment invariant: at most one vote per term. 15 propositions, 0 `sorry`. See `FVSquad/VoteCommitment.lean`. |
 
 ## Phase Legend
 
