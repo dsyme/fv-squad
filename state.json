@@ -1,6 +1,6 @@
 {
   "last_run": "2026-03-22",
-  "run_id": "23406888243",
+  "run_id": "23410472882",
   "fv_tool": "Lean4+Mathlib",
   "lake_project": "formal-verification/lean/",
   "targets": [
@@ -34,29 +34,33 @@
     {"id": "confchange_restore", "phase": 5, "lean_file": "formal-verification/lean/FVSquad/ConfChangeRestore.lean", "notes": "COMPLETE. Phase 5. restore_nonJoint_voters round-trip. 0 sorry."},
     {"id": "get_priority", "phase": 5, "lean_file": "formal-verification/lean/FVSquad/GetPriority.lean", "notes": "COMPLETE. Phase 5. 10 propositions, 0 sorry."},
     {"id": "vote_commitment", "phase": 5, "lean_file": "formal-verification/lean/FVSquad/VoteCommitment.lean", "notes": "COMPLETE. 15 theorems, 0 sorry. vote_commitment (at-most-one-vote-per-term)."},
-    {"id": "state_transitions", "phase": 5, "lean_file": "formal-verification/lean/FVSquad/StateTransitions.lean", "notes": "Run-62. COMPLETE. Phase 5. 31 theorems, 0 sorry. becomeCandidate/becomeLeader/becomeFollower/becomePreCandidate. Election cycle, term monotonicity, vote preservation."}
+    {"id": "state_transitions", "phase": 5, "lean_file": "formal-verification/lean/FVSquad/StateTransitions.lean", "notes": "Run-62. COMPLETE. Phase 5. 31 theorems, 0 sorry. becomeCandidate/becomeLeader/becomeFollower/becomePreCandidate."},
+    {"id": "bcast_append", "phase": 4, "lean_file": "formal-verification/lean/FVSquad/BcastAppend.lean", "notes": "Run-63. Phase 4. bcast_append/maybe_send_append/prepare_send_entries. FullProgress+Inflights model, isPaused trichotomy, updateState monotonicity, MsgAppend field contracts, broadcast coverage. 2 sorry (foldl induction for coverage). PR open."}
   ],
   "next_steps": [
-    "All 31 current targets are at phase 5 (complete). Consider new targets:",
-    "- send_append / bcast_append: log propagation to followers",
-    "- handle_heartbeat_response: leader liveness / follower probe reset",
-    "- Raft message validation / step dispatch: step() entry point safety",
-    "- maybe_send_append: flow control and in-flight throttling",
-    "Task 5: Consider the joint-case round-trip for confchange_restore (restore_joint_voters). More complex: needs enterJoint analysis."
+    "bcast_append (target 31): advance to phase 5 — remove the 2 sorry in foldl coverage theorems",
+    "handle_heartbeat_response: leader liveness / follower probe reset — new target",
+    "maybe_send_append with snapshot path: extend BcastAppend.lean to cover snapshot fallback",
+    "Raft message dispatch: step() entry point safety — new target"
   ],
   "build_note": "Lean toolchain install blocked by network firewall. Proofs validated by following established omega/simp/decide patterns from prior files.",
   "open_prs": [
     {
-      "branch": "lean-squad/run62-state-transitions-phase3-4",
-      "description": "Tasks 3+4+5 (run 62): StateTransitions phase 5 — 31 theorems, 0 sorry. Includes merged content from run61 (ConfChangeRestore phase5, VoteCommitment, GetPriority, MsgType, state_transitions informal spec).",
+      "branch": "lean-squad/run62-state-transitions-phase3-4-28f866d7abd2f4ab",
+      "description": "Tasks 3+4+5 (run 62): StateTransitions phase 5 — 31 theorems, 0 sorry.",
       "sorry_count": 0
+    },
+    {
+      "branch": "lean-squad/run63-send-append-new-target-a1b2c3d4",
+      "description": "Tasks 2+3 (run 63): bcast_append new target — informal spec + Lean 4 formal spec + impl",
+      "sorry_count": 2
     }
   ],
   "stale_prs_to_close": [
-    {"number": 70, "reason": "Content superseded by run61/run62 PRs"},
-    {"number": 71, "reason": "Content superseded by run61/run62 PRs"},
-    {"number": 72, "reason": "Content superseded by run61/run62 PRs"},
-    {"number": 73, "reason": "Content superseded by run61/run62 PRs"},
+    {"number": 70, "reason": "Content superseded by run62 PR"},
+    {"number": 71, "reason": "Content superseded by run62 PR"},
+    {"number": 72, "reason": "Content superseded by run62 PR"},
+    {"number": 73, "reason": "Content superseded by run62 PR"},
     {"number": 74, "reason": "Content merged into run62 PR branch"}
   ],
   "closed_prs": [31, 32, 33, 34, 35, 36, 58, 62, 63, 66, 67, 68, 69],
