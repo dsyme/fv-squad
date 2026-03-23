@@ -38,13 +38,13 @@
 #
 # Source: githubnext/agentics/workflows/lean-squad.md@851905c06e905bf362a9f6cc54f912e3df747d55
 #
-# gh-aw-metadata: {"schema_version":"v3","frontmatter_hash":"899f9a7aea381e3a30aa7c7a8296d20aaaaab46a78e7690b9ce72652149f826d","compiler_version":"v0.62.5","strict":true,"agent_id":"copilot"}
+# gh-aw-metadata: {"schema_version":"v3","frontmatter_hash":"ee69e15d91bf99dcfe2acb09f7e2ed7623c003dc102a913df0e662e5bb4151a4","compiler_version":"v0.62.5","strict":true,"agent_id":"copilot"}
 
 name: "Lean Squad"
 "on":
   schedule:
-  - cron: "55 */3 * * *"
-    # Friendly format: every 3h (scattered)
+  - cron: "55 */8 * * *"
+    # Friendly format: every 8h (scattered)
   workflow_dispatch:
 
 permissions: {}
