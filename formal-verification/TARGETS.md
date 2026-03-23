@@ -34,7 +34,8 @@
 | 27 | `is_local_msg` + `is_response_msg` + `vote_resp_msg_type` | `src/raw_node.rs`, `src/raft.rs` | 5 — Proofs | ✅ Done | 13 theorems, 0 `sorry`. MsgUnreachable overlap proved. See `FVSquad/MsgType.lean`. |
 | 28 | `get_priority` | `src/raft.rs` | 5 — Proofs | ✅ Done | Priority selection with u64→i64 overflow-safe fallback. 10 propositions, 0 `sorry`. See `FVSquad/GetPriority.lean`. |
 | 29 | `vote_commitment` | `src/raft.rs` | 5 — Proofs | ✅ Done | Raft vote-commitment invariant: at most one vote per term. 15 propositions, 0 `sorry`. See `FVSquad/VoteCommitment.lean`. |
-| 31 | `bcast_append` / `maybe_send_append` / `prepare_send_entries` | `src/raft.rs`, `src/tracker/progress.rs` | 4 — Implementation | 🔄 In progress | Flow-control, progress state machine, MsgAppend fields. See `FVSquad/BcastAppend.lean`. |
+| 31 | `bcast_append` / `maybe_send_append` / `prepare_send_entries` | `src/raft.rs`, `src/tracker/progress.rs` | 5 — Proofs | ✅ Done | Flow-control, progress state machine, MsgAppend fields. 11+ theorems, 0 `sorry`. See `FVSquad/BcastAppend.lean`. |
+| 32 | `handle_heartbeat_response` | `src/raft.rs` | 3 — Lean Spec | 🔄 In progress | Progress unblocking, catch-up trigger, ReadIndex quorum. 22+ propositions, 1 `sorry`. See `FVSquad/HandleHeartbeatResponse.lean`. |
 
 ## Phase Legend
 

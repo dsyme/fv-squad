@@ -335,6 +335,22 @@ theorem maybySendAppend_msg_type (lg : Log) (committed : Nat)
 
 /-! ## `bcast_append` -/
 
+/-- Named fold step for `bcastAppend`, extracted for easier inductive reasoning. -/
+private def bcastFoldStep (lg : Log) (committed selfId : Nat)
+    (acc : List Msg × List (Nat × FullProgress))
+    (idPr : Nat × FullProgress) :
+    List Msg × List (Nat × FullProgress) :=
+  let (msgs, progMap) := acc
+  let (id, p) := idPr
+  if id = selfId then
+    (msgs, progMap ++ [(id, p)])
+  else
+    let res := maybySendAppend lg committed p true
+    (if res.sent then msgs ++ [res.msg.getD
+          { to := 0, msg_type := .MsgAppend, index := 0, log_term := 0, commit := 0, entries := [] }]
+       else msgs,
+     progMap ++ [(id, res.prog')])
+
 /-- Model of one broadcast step: for each peer `p ≠ self_id`,
     call `maybySendAppend`.  Returns the list of produced messages and
     updated progress map. -/
@@ -342,45 +358,105 @@ def bcastAppend
     (lg : Log) (committed : Nat) (selfId : Nat)
     (peers : List (Nat × FullProgress)) :
     List Msg × List (Nat × FullProgress) :=
-  let defaultMsg : Msg :=
-    { to := 0, msg_type := .MsgAppend, index := 0, log_term := 0, commit := 0, entries := [] }
-  peers.foldl (fun (acc : List Msg × List (Nat × FullProgress)) (idPr : Nat × FullProgress) =>
-    let (msgs, progMap) := acc
-    let (id, pr) := idPr
-    if id = selfId then
-      (msgs, progMap ++ [(id, pr)])
-    else
-      let res := maybySendAppend lg committed pr true
-      let msgs' := if res.sent then msgs ++ [res.msg.getD defaultMsg] else msgs
-      (msgs', progMap ++ [(id, res.prog')])
-  ) ([], [])
+  peers.foldl (bcastFoldStep lg committed selfId) ([], [])
 
-/-- **Self is never targeted**: `bcast_append` does not modify the self entry's progress. -/
+/-! ### `bcastFoldStep` helper lemmas -/
+
+/-- The output progress-map keys equal the input pm keys plus all peer ids. -/
+private theorem bcastFoldStep_fst_keys
+    (lg : Log) (committed selfId : Nat)
+    (peers : List (Nat × FullProgress))
+    (ms : List Msg) (pm : List (Nat × FullProgress)) :
+    (peers.foldl (bcastFoldStep lg committed selfId) (ms, pm)).2.map Prod.fst =
+    pm.map Prod.fst ++ peers.map Prod.fst := by
+  induction peers generalizing ms pm with
+  | nil => simp
+  | cons ⟨id, p⟩ tl ih =>
+    simp only [List.foldl_cons, bcastFoldStep]
+    split_ifs with hid
+    · rw [ih ms (pm ++ [(id, p)])]
+      simp [List.map_append, List.append_assoc]
+    · split_ifs with hs
+      · rw [ih (ms ++ _) (pm ++ [(id, _)])]
+        simp [List.map_append, List.append_assoc]
+      · rw [ih ms (pm ++ [(id, _)])]
+        simp [List.map_append, List.append_assoc]
+
+/-- Entries already in `pm` survive all subsequent fold steps. -/
+private theorem bcastFoldStep_pm0_mem
+    (lg : Log) (committed selfId : Nat)
+    (peers : List (Nat × FullProgress))
+    (ms : List Msg) (pm : List (Nat × FullProgress))
+    (x : Nat) (y : FullProgress) (hmem : (x, y) ∈ pm) :
+    (x, y) ∈ (peers.foldl (bcastFoldStep lg committed selfId) (ms, pm)).2 := by
+  induction peers generalizing ms pm with
+  | nil => simpa
+  | cons ⟨id, p⟩ tl ih =>
+    simp only [List.foldl_cons, bcastFoldStep]
+    split_ifs with hid
+    · exact ih ms (pm ++ [(id, p)]) (List.mem_append_left _ hmem)
+    · split_ifs with hs
+      · exact ih (ms ++ _) (pm ++ [(id, _)]) (List.mem_append_left _ hmem)
+      · exact ih ms (pm ++ [(id, _)]) (List.mem_append_left _ hmem)
+
+/-- The self entry `(selfId, pr)` reaches the output progress map whenever it
+    appears in `pm` initially *or* somewhere in `peers`. -/
+private theorem bcastFoldStep_self_mem
+    (lg : Log) (committed selfId : Nat)
+    (peers : List (Nat × FullProgress))
+    (ms : List Msg) (pm : List (Nat × FullProgress))
+    (pr : FullProgress)
+    (h : (selfId, pr) ∈ pm ∨ (selfId, pr) ∈ peers) :
+    (selfId, pr) ∈ (peers.foldl (bcastFoldStep lg committed selfId) (ms, pm)).2 := by
+  induction peers generalizing ms pm with
+  | nil =>
+    simp only [List.foldl_nil]
+    rcases h with h | h
+    · exact h
+    · exact absurd h (List.not_mem_nil _)
+  | cons ⟨id, p⟩ tl ih =>
+    simp only [List.foldl_cons, bcastFoldStep]
+    rcases h with h | h
+    · -- (selfId, pr) already in pm; it survives regardless of what head does
+      split_ifs with hid
+      · exact ih ms (pm ++ [(id, p)]) (Or.inl (List.mem_append_left _ h))
+      · split_ifs with hs
+        · exact ih (ms ++ _) (pm ++ [(id, _)]) (Or.inl (List.mem_append_left _ h))
+        · exact ih ms (pm ++ [(id, _)]) (Or.inl (List.mem_append_left _ h))
+    · -- (selfId, pr) is somewhere in (id, p) :: tl
+      rw [List.mem_cons] at h
+      rcases h with h | h
+      · -- head is our entry: (selfId, pr) = (id, p)
+        have hid : id = selfId := congr_arg Prod.fst h.symm
+        have hpr : p = pr     := congr_arg Prod.snd h.symm
+        simp only [hid, ↓reduceIte]
+        exact ih ms (pm ++ [(selfId, p)]) (Or.inl
+          (List.mem_append_right _ (by simp [hpr])))
+      · -- (selfId, pr) is in the tail
+        split_ifs with hid
+        · exact ih ms (pm ++ [(id, p)]) (Or.inr h)
+        · split_ifs with hs
+          · exact ih (ms ++ _) (pm ++ [(id, _)]) (Or.inr h)
+          · exact ih ms (pm ++ [(id, _)]) (Or.inr h)
+
+/-- **Self is never targeted**: `bcast_append` preserves the self entry verbatim. -/
 theorem bcastAppend_self_unchanged
     (lg : Log) (committed : Nat) (selfId : Nat)
     (peers : List (Nat × FullProgress))
     (pr : FullProgress)
     (hmem : (selfId, pr) ∈ peers) :
-    ∃ pr', (selfId, pr') ∈ (bcastAppend lg committed selfId peers).2 ∧ pr' = pr := by
-  simp [bcastAppend]
-  induction peers with
-  | nil => simp at hmem
-  | cons h t ih =>
-    simp [List.foldl] at hmem ⊢
-    sorry  -- induction on foldl; structural proof skipped here
+    ∃ pr', (selfId, pr') ∈ (bcastAppend lg committed selfId peers).2 ∧ pr' = pr :=
+  ⟨pr, bcastFoldStep_self_mem lg committed selfId peers [] [] pr (Or.inr hmem), rfl⟩
 
-/-- **Coverage**: every non-self peer appears in the output progress map. -/
+/-- **Coverage**: every peer id appears in the output progress map (in order). -/
 theorem bcastAppend_covers_all_peers
     (lg : Log) (committed : Nat) (selfId : Nat)
     (peers : List (Nat × FullProgress)) :
     (bcastAppend lg committed selfId peers).2.map Prod.fst =
     peers.map Prod.fst := by
-  simp [bcastAppend]
-  induction peers with
-  | nil => simp
-  | cons h t ih =>
-    simp [List.foldl]
-    sorry  -- foldl structural induction; output ids preserved in order
+  simp only [bcastAppend]
+  have := bcastFoldStep_fst_keys lg committed selfId peers [] []
+  simpa using this
 
 /-! ## Decidable sanity checks -/
 
