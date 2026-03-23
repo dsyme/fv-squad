@@ -30,7 +30,7 @@ jobs:
           CHARON_PIN=$(cat aeneas/charon-pin 2>/dev/null || echo main)
           git clone https://github.com/AeneasVerif/charon /tmp/charon
           cd /tmp/charon && git checkout "$CHARON_PIN"
-          opam install ./charon-ml/charon-ml.opam --deps-only -y
+          opam install . --deps-only -y
           make
 
       # 3. Clone & build Aeneas
