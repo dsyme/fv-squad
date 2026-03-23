@@ -37,7 +37,7 @@ tools:
   github:
     toolsets: [default]
     #min-integrity: none # BUG: so we can update our own issue for reporting
-    #repos: all
+    repos: all
   bash: true
   repo-memory:
     max-patch-size: 102400  # 100KB max (default 10KB)

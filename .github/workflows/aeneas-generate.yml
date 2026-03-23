@@ -65,9 +65,12 @@ jobs:
           cp /tmp/aeneas/src/_build/default/main.exe /tmp/aeneas/bin/aeneas
 
       # 4. Extract LLBC from raft-rs
+      # Charon is a rustc driver and must run with the exact nightly it was built with.
+      # Read that version from Charon's own rust-toolchain.toml rather than hardcoding it.
       - name: Run Charon
         run: |
-          rustup toolchain install nightly-2026-02-07 \
+          CHARON_TOOLCHAIN=$(grep 'channel' /tmp/charon/charon/rust-toolchain.toml | sed 's/.*= *"\(.*\)"/\1/')
+          rustup toolchain install "$CHARON_TOOLCHAIN" \
             --component rustc-dev,rust-src,llvm-tools-preview
           PATH="/tmp/charon/bin:$PATH" \
             charon cargo --preset=aeneas --features aeneas
