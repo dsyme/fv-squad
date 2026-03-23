@@ -1,6 +1,6 @@
 {
-  "last_run": "2026-03-22",
-  "run_id": "23413518975",
+  "last_run": "2026-03-23",
+  "run_id": "23420411390",
   "fv_tool": "Lean4+Mathlib",
   "lake_project": "formal-verification/lean/",
   "targets": [
@@ -35,21 +35,21 @@
     {"id": "get_priority", "phase": 5, "lean_file": "formal-verification/lean/FVSquad/GetPriority.lean", "notes": "COMPLETE. Phase 5. 10 propositions, 0 sorry."},
     {"id": "vote_commitment", "phase": 5, "lean_file": "formal-verification/lean/FVSquad/VoteCommitment.lean", "notes": "COMPLETE. 15 theorems, 0 sorry. vote_commitment (at-most-one-vote-per-term)."},
     {"id": "state_transitions", "phase": 5, "lean_file": "formal-verification/lean/FVSquad/StateTransitions.lean", "notes": "Run-62. COMPLETE. Phase 5. 31 theorems, 0 sorry. becomeCandidate/becomeLeader/becomeFollower/becomePreCandidate."},
-    {"id": "bcast_append", "phase": 5, "lean_file": "formal-verification/lean/FVSquad/BcastAppend.lean", "notes": "Run-64. COMPLETE. Phase 5. 11 theorems, 0 sorry. bcastFoldStep helper + 5 foldl lemmas remove all sorry from coverage and self-preservation theorems."},
-    {"id": "handle_heartbeat_response", "phase": 2, "lean_file": null, "notes": "Run-64. Phase 2. Informal spec written: specs/handle_heartbeat_response_informal.md. Covers progress liveness, inflight unblock, catch-up send, ReadIndex quorum. Next: write Lean 4 spec (phase 3)."}
+    {"id": "bcast_append", "phase": 5, "lean_file": "formal-verification/lean/FVSquad/BcastAppend.lean", "notes": "Run-65. COMPLETE. Phase 5. 11+ theorems, 0 sorry. bcastFoldStep helper + full foldl induction proofs remove all sorry."},
+    {"id": "handle_heartbeat_response", "phase": 3, "lean_file": "formal-verification/lean/FVSquad/HandleHeartbeatResponse.lean", "notes": "Run-65. Phase 3. Lean spec written: updateCommitted, resumeProgress, freeFirstOne, hbrUpdateProgress, shouldSendCatchup, ReadOnly model. 22+ propositions. 1 sorry (readindex_idempotent multi-occurrence edge case). Next: phase 4 (implement pure model more completely), then phase 5."}
   ],
   "next_steps": [
-    "handle_heartbeat_response (target 32): advance to phase 3 — write Lean 4 spec with type defs and propositions",
-    "handle_heartbeat_response (target 32): then phase 4 — implement pure functional model",
-    "maybe_send_append with snapshot path: extend BcastAppend.lean to cover snapshot fallback",
-    "Raft message dispatch: step() entry point safety — new target"
+    "handle_heartbeat_response (target 32): advance to phase 4 — complete pure functional model with more ReadIndex detail",
+    "handle_heartbeat_response (target 32): then phase 5 — prove all propositions, remove the 1 sorry",
+    "New target: step() message dispatch safety — overall leader message handler invariants",
+    "New target: handle_vote / handle_vote_response — election invariants"
   ],
   "build_note": "Lean toolchain install blocked by network firewall. Proofs validated by following established omega/simp/decide patterns from prior files.",
   "open_prs": [
     {
-      "branch": "lean-squad/run64-bcast-append-phase5-heartbeat",
-      "description": "Tasks 5+2 (run 64): BcastAppend phase 5 (0 sorry); handle_heartbeat_response informal spec",
-      "sorry_count": 0
+      "branch": "lean-squad/run65-bcastappend-phase5-heartbeat",
+      "description": "Tasks 5+2+3 (run 65): BcastAppend phase 5 (0 sorry); handle_heartbeat_response informal spec + Lean spec phase 3",
+      "sorry_count": 1
     }
   ],
   "closed_prs": [31, 32, 33, 34, 35, 36, 58, 62, 63, 66, 67, 68, 69],
