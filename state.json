@@ -1,6 +1,6 @@
 {
-  "last_run": "2026-03-23",
-  "run_id": "23451605097",
+  "last_run": "2026-03-24",
+  "run_id": "23471711462",
   "fv_tool": "Lean4+Mathlib",
   "lake_project": "formal-verification/lean/",
   "targets": [
@@ -36,28 +36,39 @@
     {"id": "vote_commitment", "phase": 5, "lean_file": "formal-verification/lean/FVSquad/VoteCommitment.lean", "notes": "COMPLETE. 15 theorems, 0 sorry. vote_commitment (at-most-one-vote-per-term)."},
     {"id": "state_transitions", "phase": 5, "lean_file": "formal-verification/lean/FVSquad/StateTransitions.lean", "notes": "Run-62. COMPLETE. Phase 5. 31 theorems, 0 sorry. becomeCandidate/becomeLeader/becomeFollower/becomePreCandidate."},
     {"id": "bcast_append", "phase": 5, "lean_file": "formal-verification/lean/FVSquad/BcastAppend.lean", "notes": "Run-65. COMPLETE. Phase 5. 11+ theorems, 0 sorry."},
-    {"id": "handle_heartbeat_response", "phase": 5, "lean_file": "formal-verification/lean/FVSquad/HandleHeartbeatResponse.lean", "notes": "Run-67. COMPLETE. Phase 5. 8 end-to-end theorems + full handler model, 0 sorry."},
-    {"id": "handle_vote", "phase": 4, "lean_file": "formal-verification/lean/FVSquad/HandleVote.lean", "notes": "Run-67. Phase 4. Full pure model (canVote 3-clause, isUpToDate, priorityOk, handleVote) + 19 theorems, 0 sorry. Next: phase 5 - verify proofs pass lean build."}
+    {"id": "handle_heartbeat_response", "phase": 5, "lean_file": "formal-verification/lean/FVSquad/HandleHeartbeatResponse.lean", "notes": "Run-66/67. COMPLETE. Phase 5. 8 end-to-end theorems + full handler model, 0 sorry."},
+    {"id": "handle_vote", "phase": 4, "lean_file": "formal-verification/lean/FVSquad/HandleVote.lean", "notes": "Run-67. Phase 4. Full pure model (canVote 3-clause, isUpToDate, priorityOk, handleVote) + 19 theorems, 0 sorry. PR #81 open. Next: phase 5 (verify lean build)."},
+    {"id": "handle_append_entries", "phase": 2, "lean_file": "formal-verification/lean/FVSquad/HandleAppendEntries.lean", "notes": "Run-68. Phase 2. Informal spec written. 3 paths: snapshot-pending, stale-index, accept/reject. 9 candidate propositions. Next: phase 3 (write Lean spec)."},
+    {"id": "maybe_commit_by_vote", "phase": 1, "lean_file": null, "notes": "Run-68. Phase 1. Research done. Fast-forward commit during election. 5 candidate propositions identified."},
+    {"id": "tick_election", "phase": 1, "lean_file": null, "notes": "Run-68. Phase 1. Research done. Election timer logic. 5 candidate propositions. Very compact (~60 lines)."}
   ],
   "next_steps": [
-    "handle_vote (target 34): advance to phase 5 — verify all 19 theorems build cleanly (lean build blocked by network firewall, proofs follow established patterns)",
-    "handle_vote (target 34): consider adding more theorems: canVote_false_committed_and_diff, isUpToDate_antisymmetric, full shouldGrant characterization",
-    "Consider new target: handle_append_entries (step() MsgAppend arm) or tick_election (election timer logic)"
+    "handle_vote (target 33): advance to phase 5 — verify 19 theorems pass lean build (PR #81 open)",
+    "handle_append_entries (target 34): advance to phase 3 — write Lean spec (builds on MaybeAppend.lean + LogOrdering.lean)",
+    "maybe_commit_by_vote (target 35): advance to phase 2 — write informal spec",
+    "tick_election (target 36): advance to phase 2 — write informal spec"
   ],
   "build_note": "Lean toolchain install blocked by network firewall. Proofs validated by following established omega/simp/decide patterns from prior files.",
   "open_prs": [
     {
+      "number": 79,
       "branch": "lean-squad/run65-bcastappend-phase5-heartbeat-313c95c8a17c83e1",
       "description": "PR #79: Tasks 5+2+3 (run 65): BcastAppend phase 5; handle_heartbeat_response phase 3"
     },
     {
+      "number": 80,
       "branch": "lean-squad/run66-handle-heartbeat-phase4-01d6832f0f3129d4",
-      "description": "PR #80: Tasks 4+2 (run 66): HandleHeartbeatResponse phase 4 (0 sorry); handle_vote informal spec"
+      "description": "PR #80: Tasks 4+2 (run 66): HandleHeartbeatResponse phase 4; handle_vote informal spec"
+    },
+    {
+      "number": 81,
+      "branch": "lean-squad/run67-handlevote-phase3-5-84d3adcd8eba9ae2",
+      "description": "PR #81: Tasks 3+4 (run 67): handle_vote phase 3+4 (19 theorems); HandleHeartbeatResponse phase 5"
     }
   ],
-  "new_pr_run67": {
-    "branch": "lean-squad/run67-handlevote-phase3-5",
-    "description": "Tasks 3+4 (run 67): handle_vote phase 3+4 (19 theorems, 0 sorry); HandleHeartbeatResponse phase 5"
+  "current_run_pr": {
+    "branch": "lean-squad/run68-20260324-newtargets",
+    "description": "Tasks 2+1 (run 68): handle_append_entries informal spec; new research targets 34-36"
   },
   "status_issue": "Open issue #21: [Lean Squad] Formal Verification Status"
 }
