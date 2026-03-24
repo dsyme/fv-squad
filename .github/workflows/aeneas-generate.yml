@@ -65,14 +65,14 @@ jobs:
           cp /tmp/aeneas/src/_build/default/main.exe /tmp/aeneas/bin/aeneas
 
       # 4. Extract LLBC from raft-rs
-      # Charon is a rustc driver and must run with the exact nightly it was built with.
-      # Read that version from Charon's own rust-toolchain.toml rather than hardcoding it.
+      # Charon is a rustc driver built against a specific nightly.
+      # The toolchain (with rustc-dev/rust-src/llvm-tools-preview) was already installed
+      # by `cargo build` above (those components are listed in charon/rust-toolchain).
+      # We just need to tell cargo/charon which toolchain to use when analyzing fv-squad.
       - name: Run Charon
         run: |
-          CHARON_TOOLCHAIN=$(grep 'channel' /tmp/charon/charon/rust-toolchain.toml | sed 's/.*= *"\(.*\)"/\1/')
-          rustup toolchain install "$CHARON_TOOLCHAIN" \
-            --component rustc-dev,rust-src,llvm-tools-preview
-          PATH="/tmp/charon/bin:$PATH" \
+          CHARON_TOOLCHAIN=$(grep 'channel' /tmp/charon/charon/rust-toolchain | cut -d '"' -f 2)
+          PATH="/tmp/charon/bin:$PATH" RUSTUP_TOOLCHAIN="$CHARON_TOOLCHAIN" \
             charon cargo --preset=aeneas --features aeneas
 
       # 5. Generate Lean from LLBC
