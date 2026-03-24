@@ -319,30 +319,213 @@ theorem readindex_monotone_context
                                (List.get?_eq_get k |>.mpr hk.symm)
     omega
 
-/-- **Idempotent advance**: advancing the same context twice is a no-op. -/
+/-- **Idempotent advance**: advancing the same context twice is a no-op.
+    Requires `List.Nodup` on the queue, which holds in the real implementation
+    because `ReadOnly::add_request` guards against duplicate keys. -/
 theorem readindex_idempotent
-    (ro : ReadOnlyState) (ctx : List Nat) :
+    (ro : ReadOnlyState) (ctx : List Nat)
+    (hnodup : ro.queue.Nodup) :
     let ro' := (advance ro ctx).1
     (advance ro' ctx).1 = ro' ∧ (advance ro' ctx).2 = [] := by
-  simp [advance]
+  simp only [advance]
   split
-  · -- ctx not in queue initially; advance is no-op
-    rename_i h
-    simp [h]
-  · -- ctx was in queue; after advance, it's gone (dropped)
-    rename_i i hi
-    constructor
-    · -- ctx not in ro'.queue
-      simp [List.findIdx?]
-      intro j
-      simp [List.get?_drop]
-      intro hlt hget
-      -- In the original queue, position (i+1+j) would be ctx; but ctx was at i
-      -- so if it appeared again at i+1+j, the findIdx would have found i+1+j first
-      -- (Actually, findIdx finds the FIRST occurrence; if ctx appears twice, this
-      --  handles the second occurrence. We keep this as a reasonable model.)
-      sorry  -- dequeued ctx is no longer in remaining queue (holds when ctx appears once)
-    · simp
+  · rename_i h; simp [h]
+  · rename_i i hi
+    have hlt : i < ro.queue.length := List.findIdx?_lt hi
+    have hget : ro.queue.get ⟨i, hlt⟩ = ctx := by
+      have := List.findIdx?_get hi; simp at this; exact this.symm
+    -- With Nodup, ctx cannot appear in ro.queue.drop (i+1)
+    -- because it would require two distinct positions in ro.queue with the same value.
+    have hnotmem : ctx ∉ ro.queue.drop (i + 1) := by
+      intro hmem
+      rw [List.mem_iff_get] at hmem
+      obtain ⟨j, hjval⟩ := hmem
+      -- j : Fin (ro.queue.drop (i+1)).length
+      have hlt2 : i + 1 + j.val < ro.queue.length := by
+        have := j.isLt; simp [List.length_drop] at this; omega
+      -- (ro.queue.drop (i+1)).get j = ro.queue.get ⟨i+1+j.val, _⟩
+      have hget2 : ro.queue.get ⟨i + 1 + j.val, hlt2⟩ = ctx := by
+        rw [← hjval]; exact List.get_drop ro.queue (i + 1) j
+      -- Both position i and i+1+j.val map to ctx — contradicts Nodup
+      have heq : ro.queue.get ⟨i, hlt⟩ = ro.queue.get ⟨i + 1 + j.val, hlt2⟩ :=
+        hget.trans hget2.symm
+      have hfin := (List.Nodup.get_inj_iff hnodup).mp heq
+      simp [Fin.ext_iff] at hfin; omega
+    -- With ctx ∉ drop, findIdx? on the drop returns none (by induction)
+    have hfind_none : List.findIdx? (· = ctx) (ro.queue.drop (i + 1)) = none := by
+      have hnotmem' : ∀ x ∈ ro.queue.drop (i + 1), x ≠ ctx :=
+        fun x hx heq => hnotmem (heq ▸ hx)
+      revert hnotmem'
+      generalize ro.queue.drop (i + 1) = l
+      intro hl
+      induction l with
+      | nil => simp [List.findIdx?]
+      | cons a as ih =>
+        simp only [List.findIdx?]
+        have ha : a ≠ ctx := hl a (List.mem_cons_self _ _)
+        have has : ∀ x ∈ as, x ≠ ctx := fun x hx => hl x (List.mem_cons_of_mem _ hx)
+        simp [ha, ih has]
+    simp [hfind_none]
+
+/-! ## Phase 4: Full handler model
+
+This section lifts the individual components into a single pure function
+`handleHeartbeatResponse` that mirrors the complete Rust function body.
+
+### What is modelled
+* All three sequential concerns (progress unblock, catch-up trigger, ReadIndex quorum).
+* Unknown-peer early-exit (modelled via `Option HBProgress`).
+* ReadOnly option guard (`readOnlySafe`) and empty-context guard.
+
+### What is NOT modelled (documented approximations)
+* The actual `MsgAppend`/`MsgSnapshot` construction for catch-up — only the
+  Boolean trigger `shouldSendCatchup` is captured.
+* `ReadOnly::recv_ack` uses a list-based ack model; the real code uses a
+  `HashMap<Vec<u8>, ReadIndexStatus>` keyed by context.
+* The `ReadOnly::LeaseBased` path is omitted (the guard `readOnlySafe = true`
+  must hold for ReadIndex processing to occur).
+* Message I/O (sending messages to the network layer) is not modelled.
+-/
+
+/-- Full input for the handle_heartbeat_response pure model. -/
+structure HBRInput where
+  /-- The peer's progress entry; `none` → unknown peer → early exit. -/
+  progress     : Option HBProgress
+  /-- Leader's current last index (abstract log length). -/
+  lastIndex    : Nat
+  /-- Whether ReadOnly mode is Safe (the only mode that triggers ReadIndex quorum). -/
+  readOnlySafe : Bool
+  /-- The context token from the heartbeat response (empty = plain heartbeat). -/
+  ctx          : List Nat
+  /-- The commit index from the heartbeat response message. -/
+  commitIndex  : Nat
+  /-- The sender peer ID. -/
+  fromId       : Nat
+  /-- All known peer IDs (used for quorum computation). -/
+  allPeers     : Finset Nat
+  /-- Current ReadOnly state. -/
+  readOnly     : ReadOnlyState
+  deriving Repr
+
+/-- Full output from the handle_heartbeat_response pure model. -/
+structure HBROutput where
+  /-- Updated progress entry (`none` if unknown peer). -/
+  progress      : Option HBProgress
+  /-- `true` iff a catch-up append should be sent to the peer. -/
+  sendCatchup   : Bool
+  /-- Contexts of read requests dispatched because quorum was reached. -/
+  readDispatches : List (List Nat)
+  /-- Updated ReadOnly state after processing acks. -/
+  readOnly      : ReadOnlyState
+  deriving Repr
+
+/-- Pure model of `RaftCore::handle_heartbeat_response`. -/
+def handleHeartbeatResponse (inp : HBRInput) : HBROutput :=
+  match inp.progress with
+  | none =>
+    -- Unknown peer: early exit, no state changes
+    { progress := none, sendCatchup := false,
+      readDispatches := [], readOnly := inp.readOnly }
+  | some pr =>
+    -- Step 1: update committed, mark active, resume, free inflight
+    let pr1 := hbrUpdateProgress pr inp.commitIndex
+    -- Step 2: catch-up trigger
+    let catchup := shouldSendCatchup pr1 inp.lastIndex
+    -- Step 3: ReadIndex quorum (only in Safe mode with a non-empty context)
+    let (ro1, dispatches) :=
+      if inp.readOnlySafe && !inp.ctx.isEmpty then
+        let (ro', ackSet) := recvAck inp.readOnly inp.fromId inp.ctx
+        match ackSet with
+        | none => (ro', [])
+        | some acks =>
+          if hasQuorum inp.allPeers acks then
+            advance ro' inp.ctx
+          else
+            (ro', [])
+      else
+        (inp.readOnly, [])
+    { progress := some pr1, sendCatchup := catchup,
+      readDispatches := dispatches, readOnly := ro1 }
+
+/-! ## End-to-end theorems for the full handler -/
+
+/-- **Unknown-peer early exit**: no output changes when the peer is not tracked. -/
+theorem hbr_unknown_peer_noop (inp : HBRInput) (h : inp.progress = none) :
+    let out := handleHeartbeatResponse inp
+    out.progress = none ∧ out.sendCatchup = false ∧ out.readDispatches = [] := by
+  simp [handleHeartbeatResponse, h]
+
+/-- **Progress matches hbrUpdateProgress**: the output progress equals the result
+    of the isolated progress-update function. -/
+theorem hbr_progress_eq_update (inp : HBRInput) (pr : HBProgress)
+    (h : inp.progress = some pr) :
+    (handleHeartbeatResponse inp).progress = some (hbrUpdateProgress pr inp.commitIndex) := by
+  simp [handleHeartbeatResponse, h]
+
+/-- **Committed index is monotone** through the full handler. -/
+theorem hbr_full_committed_mono (inp : HBRInput) (pr : HBProgress)
+    (h : inp.progress = some pr) :
+    match (handleHeartbeatResponse inp).progress with
+    | none   => False
+    | some p => pr.committed_index ≤ p.committed_index := by
+  simp [handleHeartbeatResponse, h, hbrUpdateProgress, updateCommitted, Nat.le_max_left]
+
+/-- **Paused is cleared** by the full handler. -/
+theorem hbr_full_paused_cleared (inp : HBRInput) (pr : HBProgress)
+    (h : inp.progress = some pr) :
+    match (handleHeartbeatResponse inp).progress with
+    | none   => False
+    | some p => p.paused = false := by
+  simp [handleHeartbeatResponse, h, hbrUpdateProgress, updateCommitted, resumeProgress]
+  split_ifs <;> simp
+
+/-- **No catch-up if already current**: if the peer is fully caught up and has no
+    pending snapshot, `sendCatchup = false`. -/
+theorem hbr_no_catchup_if_current (inp : HBRInput) (pr : HBProgress)
+    (h_pr : inp.progress = some pr)
+    (h_match : inp.lastIndex ≤ pr.matched)
+    (h_snap  : pr.pending_snapshot = 0) :
+    (handleHeartbeatResponse inp).sendCatchup = false := by
+  simp only [handleHeartbeatResponse, h_pr, shouldSendCatchup, hbrUpdateProgress,
+             updateCommitted, resumeProgress]
+  split_ifs <;>
+    simp [Nat.not_lt.mpr h_match, h_snap, shouldSendCatchup]
+
+/-- **ReadIndex only fires in Safe mode with context**: if `readOnlySafe = false`
+    or the context is empty, no reads are dispatched. -/
+theorem hbr_reads_require_safe_ctx (inp : HBRInput)
+    (h : inp.readOnlySafe = false ∨ inp.ctx.isEmpty = true) :
+    (handleHeartbeatResponse inp).readDispatches = [] := by
+  simp only [handleHeartbeatResponse]
+  split
+  · rfl
+  · rename_i pr _
+    rcases h with h | h
+    · simp [h]
+    · simp [h]
+
+/-- **ReadOnly state is untouched** when not in Safe mode with context. -/
+theorem hbr_ro_unchanged_when_no_ctx (inp : HBRInput)
+    (h : inp.readOnlySafe = false ∨ inp.ctx.isEmpty = true) :
+    (handleHeartbeatResponse inp).readOnly = inp.readOnly := by
+  simp only [handleHeartbeatResponse]
+  split
+  · rfl
+  · rename_i pr _
+    rcases h with h | h
+    · simp [h]
+    · simp [h]
+
+/-- **Catch-up fires when behind**: if the peer's matched index is below lastIndex,
+    catch-up is triggered. -/
+theorem hbr_catchup_fires_when_behind (inp : HBRInput) (pr : HBProgress)
+    (h_pr : inp.progress = some pr)
+    (h_behind : pr.matched < inp.lastIndex) :
+    (handleHeartbeatResponse inp).sendCatchup = true := by
+  simp only [handleHeartbeatResponse, h_pr, shouldSendCatchup, hbrUpdateProgress,
+             updateCommitted, resumeProgress]
+  split_ifs <;>
+    simp [shouldSendCatchup, h_behind]
 
 /-! ## Decidable sanity checks -/
 
@@ -376,5 +559,35 @@ example : shouldSendCatchup { exProg1 with matched := 10 } 10 = false := by deci
 example : hasQuorum {0,1,2,3,4} {1,2,3} = true := by decide
 -- hasQuorum: 2/5 is not
 example : hasQuorum {0,1,2,3,4} {1,2} = false := by decide
+
+/-! ### Full-handler sanity checks -/
+
+private def exInp1 : HBRInput :=
+  { progress     := some exProg1
+    lastIndex    := 10
+    readOnlySafe := false
+    ctx          := []
+    commitIndex  := 5
+    fromId       := 2
+    allPeers     := {1, 2, 3}
+    readOnly     := { queue := [], acks := [] } }
+
+-- Full handler: paused is cleared
+example : ((handleHeartbeatResponse exInp1).progress.map (·.paused)) = some false := by decide
+-- Full handler: committed index advanced to max(3, 5) = 5
+example : ((handleHeartbeatResponse exInp1).progress.map (·.committed_index)) = some 5 := by decide
+-- Full handler: catch-up fires (matched 7 < lastIndex 10)
+example : (handleHeartbeatResponse exInp1).sendCatchup = true := by decide
+-- Full handler: no read dispatches (readOnlySafe = false)
+example : (handleHeartbeatResponse exInp1).readDispatches = [] := by decide
+
+-- Unknown peer: all outputs are default/empty
+private def exInpUnknown : HBRInput :=
+  { progress := none, lastIndex := 5, readOnlySafe := true,
+    ctx := [1, 2], commitIndex := 3, fromId := 99,
+    allPeers := {1, 2, 3}, readOnly := { queue := [], acks := [] } }
+
+example : (handleHeartbeatResponse exInpUnknown).sendCatchup = false := by decide
+example : (handleHeartbeatResponse exInpUnknown).readDispatches = [] := by decide
 
 end FVSquad.HandleHeartbeatResponse
