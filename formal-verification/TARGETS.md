@@ -35,7 +35,11 @@
 | 28 | `get_priority` | `src/raft.rs` | 5 — Proofs | ✅ Done | Priority selection with u64→i64 overflow-safe fallback. 10 propositions, 0 `sorry`. See `FVSquad/GetPriority.lean`. |
 | 29 | `vote_commitment` | `src/raft.rs` | 5 — Proofs | ✅ Done | Raft vote-commitment invariant: at most one vote per term. 15 propositions, 0 `sorry`. See `FVSquad/VoteCommitment.lean`. |
 | 31 | `bcast_append` / `maybe_send_append` / `prepare_send_entries` | `src/raft.rs`, `src/tracker/progress.rs` | 5 — Proofs | ✅ Done | Flow-control, progress state machine, MsgAppend fields. 11+ theorems, 0 `sorry`. See `FVSquad/BcastAppend.lean`. |
-| 32 | `handle_heartbeat_response` | `src/raft.rs` | 3 — Lean Spec | 🔄 In progress | Progress unblocking, catch-up trigger, ReadIndex quorum. 22+ propositions, 1 `sorry`. See `FVSquad/HandleHeartbeatResponse.lean`. |
+| 32 | `handle_heartbeat_response` | `src/raft.rs` | 5 — Proofs | ✅ Done | Progress unblocking, catch-up trigger, ReadIndex quorum. Full `handleHeartbeatResponse` pure model + 8 end-to-end theorems, 0 `sorry`. See `FVSquad/HandleHeartbeatResponse.lean`. |
+| 33 | `handle_vote` (MsgRequestVote / MsgRequestPreVote) | `src/raft.rs` | 5 — Proofs | ✅ Done | Vote grant conditions (`canVote`, `isUpToDate`, `priorityOk`), 19 theorems, 0 `sorry`. Full pure model + proofs. See `FVSquad/HandleVote.lean`. |
+| 34 | `handle_append_entries` | `src/raft.rs` | 4 — Implementation | 🔄 In progress | 3 paths: snapshot-pending, stale, accept/reject. 14 theorems, 0 `sorry`. Informal spec + full Lean spec. See `FVSquad/HandleAppendEntries.lean`. |
+| 35 | `tick_election` | `src/raft.rs` | 2 — Informal Spec | 🔄 In progress | Election timer logic: increment, guard, reset, MsgHup trigger. 6 candidate propositions. See `specs/tick_election_informal.md`. |
+| 36 | `maybe_commit_by_vote` | `src/raft.rs` | 1 — Research | ⬜ Not started | Fast-forward commit during election. 5 candidate propositions identified in run 68. |
 
 ## Phase Legend
 
