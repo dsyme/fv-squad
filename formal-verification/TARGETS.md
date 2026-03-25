@@ -34,7 +34,15 @@
 | 27 | `is_local_msg` + `is_response_msg` + `vote_resp_msg_type` | `src/raw_node.rs`, `src/raft.rs` | 5 — Proofs | ✅ Done | 13 theorems, 0 `sorry`. MsgUnreachable overlap proved. See `FVSquad/MsgType.lean`. |
 | 28 | `get_priority` | `src/raft.rs` | 5 — Proofs | ✅ Done | Priority selection with u64→i64 overflow-safe fallback. 10 propositions, 0 `sorry`. See `FVSquad/GetPriority.lean`. |
 | 29 | `vote_commitment` | `src/raft.rs` | 5 — Proofs | ✅ Done | Raft vote-commitment invariant: at most one vote per term. 15 propositions, 0 `sorry`. See `FVSquad/VoteCommitment.lean`. |
-| 31 | `bcast_append` / `maybe_send_append` / `prepare_send_entries` | `src/raft.rs`, `src/tracker/progress.rs` | 4 — Implementation | 🔄 In progress | Flow-control, progress state machine, MsgAppend fields. See `FVSquad/BcastAppend.lean`. |
+| 31 | `bcast_append` / `maybe_send_append` / `prepare_send_entries` | `src/raft.rs`, `src/tracker/progress.rs` | 5 — Proofs | ✅ Done | Flow-control, progress state machine, MsgAppend fields. 11+ theorems, 0 `sorry`. See `FVSquad/BcastAppend.lean`. |
+| 32 | `handle_heartbeat_response` | `src/raft.rs` | 5 — Proofs | ✅ Done | Progress unblocking, catch-up trigger, ReadIndex quorum. Full `handleHeartbeatResponse` pure model + 8 end-to-end theorems, 0 `sorry`. See `FVSquad/HandleHeartbeatResponse.lean`. |
+| 33 | `handle_vote` (MsgRequestVote / MsgRequestPreVote) | `src/raft.rs` | 5 — Proofs | ✅ Done | Vote grant conditions (`canVote`, `isUpToDate`, `priorityOk`), 19 theorems, 0 `sorry`. Full pure model + proofs. See `FVSquad/HandleVote.lean`. |
+| 34 | `handle_append_entries` | `src/raft.rs` | 5 — Proofs | ✅ Done | 3 paths: snapshot-pending, stale, accept/reject. 14 theorems, 0 `sorry`. See `FVSquad/HandleAppendEntries.lean`. |
+| 35 | `tick_election` | `src/raft.rs` | 5 — Proofs | ✅ Done | Election timer logic: 10+ theorems, 0 `sorry`. Pure model + full proofs P1–P8 + derived. See `FVSquad/TickElection.lean`. |
+| 36 | `maybe_commit_by_vote` | `src/raft.rs` | 5 — Proofs | ✅ Done | Fast-forward commit during election. 15 theorems, 0 `sorry`. commit_monotone, stepdown safety, idempotency. See `FVSquad/MaybeCommitByVote.lean`. |
+| 37 | `handle_append_response` | `src/raft.rs` | 5 — Proofs | ✅ Done | Leader-side handling of MsgAppendResponse: progress tracking, backtracking optimisation, commit advancement, leadership transfer. 15 theorems, 0 sorry. `FVSquad/HandleAppendResponse.lean` |
+| 38 | `restore` (node-level) | `src/raft.rs` | 1 — Research | ⬜ Not started | Snapshot restore: guards, log restoration, config restore via `confchange::restore`, progress tracker update. |
+| 39 | `handle_snapshot_status` | `src/raft.rs` | 5 — Proofs | ✅ Done | Snapshot→Probe transition: 13 theorems, 0 `sorry`. Success/failure paths, next_idx correctness, pause semantics. See `FVSquad/HandleSnapshotStatus.lean`. |
 
 ## Phase Legend
 
