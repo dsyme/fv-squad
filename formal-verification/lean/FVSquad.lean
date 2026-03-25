@@ -1,4 +1,6 @@
 -- FVSquad: top-level import for the Lean 4 formal verification library
+import FVSquad.TickElection
+import FVSquad.HandleVote
 import FVSquad.BcastAppend
 import FVSquad.UncommittedState
 import FVSquad.MajorityQuorum
