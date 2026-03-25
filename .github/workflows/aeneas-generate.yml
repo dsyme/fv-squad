@@ -73,7 +73,7 @@ jobs:
         run: |
           CHARON_TOOLCHAIN=$(grep 'channel' /tmp/charon/charon/rust-toolchain | cut -d '"' -f 2)
           PATH="/tmp/charon/bin:$PATH" RUSTUP_TOOLCHAIN="$CHARON_TOOLCHAIN" \
-            charon cargo --preset=aeneas --features aeneas
+            charon cargo --preset=aeneas -- --features aeneas
 
       # 5. Generate Lean from LLBC
       - name: Run Aeneas
