@@ -1,6 +1,6 @@
 {
   "last_run": "2026-03-26",
-  "run_id": "23618859658",
+  "run_id": "23622476848",
   "fv_tool": "Lean4 (stdlib only, no Mathlib)",
   "lake_project": "formal-verification/lean/",
   "lean_version": "4.28.0",
@@ -10,7 +10,7 @@
       "id": "limit_size",
       "phase": 5,
       "lean_file": "formal-verification/lean/FVSquad/LimitSize.lean",
-      "notes": "ALL 12 theorems proved (0 sorry). P1-P12 fully verified. PR #98 merged."
+      "notes": "ALL 17 theorems proved (0 sorry). P1-P12 + 5 helpers fully verified. PR #98 merged."
     },
     {
       "id": "config_validate",
@@ -29,26 +29,25 @@
       "id": "joint_vote_result",
       "phase": 5,
       "lean_file": "formal-verification/lean/FVSquad/JointVote.lean",
-      "notes": "ALL 14 theorems proved (0 sorry). CL1-CL4 + J1-J10. PR #103 open."
+      "notes": "ALL 14 theorems proved (0 sorry). CL1-CL4 + J1-J10. PR #103 merged."
     },
     {
       "id": "committed_index",
       "phase": 5,
       "lean_file": "formal-verification/lean/FVSquad/CommittedIndex.lean",
-      "notes": "ALL 17 theorems proved (0 sorry). CI1-CI8 + Safety + Maximality + Mono + helpers. PRs #104 and #105 open."
+      "notes": "ALL 17 theorems proved (0 sorry). CI1-CI8 + Safety + Maximality + Mono + helpers. PRs #104 and #105 merged."
     },
     {
       "id": "joint_committed_index",
-      "phase": 5,
-      "lean_file": "formal-verification/lean/FVSquad/JointCommittedIndex.lean",
-      "informal_spec": null,
-      "notes": "ALL 13 theorems proved (0 sorry). JCI-non-joint, JCI-joint, JCI-le-in, JCI-le-out, JCI-sym, JCI-all-zero, JCI-singleton-in, JCI-singleton-both, JCI-safety-in, JCI-safety-out, JCI-mono, JCI-empty-in, JCI-maximality-in. PR in run91. Key divergence: empty outgoing returns 0 (Rust returns MAX) - handled via isEmpty guard."
+      "phase": 1,
+      "lean_file": null,
+      "notes": "Not started. Will need min of two committedIndex values; empty-to-MAX divergence is the main subtlety."
     },
     {
       "id": "find_conflict",
       "phase": 1,
       "lean_file": null,
-      "notes": "src/raft_log.rs RaftLog::find_conflict. First term mismatch scan."
+      "notes": "src/raft_log.rs RaftLog::find_conflict. First term mismatch scan. High priority per CRITIQUE.md."
     },
     {
       "id": "maybe_append",
@@ -60,11 +59,12 @@
       "id": "inflights",
       "phase": 1,
       "lean_file": null,
-      "notes": "src/tracker/inflights.rs ring buffer ops. Ring buffer invariants."
+      "notes": "src/tracker/inflights.rs ring buffer ops. Medium priority per CRITIQUE.md."
     }
   ],
-  "total_theorems_proved": 87,
+  "total_theorems_proved": 79,
   "correspondence_file": "formal-verification/CORRESPONDENCE.md",
+  "critique_file": "formal-verification/CRITIQUE.md",
   "lean_stdlib_notes": {
     "no_by_contra": "by_contra is 'unknown tactic' in Lean 4.28.0 - use Nat.le_of_not_lt instead",
     "no_push_neg": "push_neg not available without Mathlib - use Nat.not_le.mp or omega",
@@ -81,29 +81,20 @@
   },
   "open_prs": [
     {
-      "pr": 103,
-      "branch": "lean-squad/joint-vote-result-and-correspondence-run87-9247964b490e6a79",
-      "title": "feat(fv): joint vote_result proofs + correspondence update (Tasks 5+6)"
-    },
-    {
-      "pr": 104,
-      "branch": "lean-squad/committed-index-spec-impl-run88-cdfb7d5e1f9a3b21",
-      "title": "feat(fv): CommittedIndex Lean spec + implementation model (Tasks 2+3+4)"
-    },
-    {
-      "pr": 105,
-      "branch": "lean-squad/committed-index-full-proofs-run89-679ad0e43bfc3ff1",
-      "title": "feat(fv): prove all 4 CommittedIndex order-statistic theorems (Task 5)"
-    },
-    {
-      "pr": "run91",
-      "branch": "lean-squad/joint-committed-index-run91-abc123",
-      "title": "feat(fv): JointCommittedIndex - 13 theorems fully proved (Tasks 5+6)"
+      "pr": "run92",
+      "branch": "lean-squad/critique-correspondence-run92",
+      "title": "feat(fv): proof utility critique + correspondence update (Tasks 6+7)"
     }
   ],
   "aeneas_status": "BLOCKED - no-new-privileges container prevents opam/sudo install. Charon.toml exists in repo. Try again when container has sudo access.",
   "status_issue": 94,
-  "next_targets": ["find_conflict", "inflights"],
+  "next_targets": ["joint_committed_index", "find_conflict", "inflights"],
   "ci_workflow": ".github/workflows/lean-ci.yml",
-  "ci_status": "HEALTHY - lean-ci.yml exists, uses lean-toolchain pin, runs lake build. Reviewed in runs 89 and 91."
+  "ci_status": "HEALTHY - lean-ci.yml exists, uses lean-toolchain pin, runs lake build. Reviewed in runs 89 and 91.",
+  "critique_notes": {
+    "highest_value_proved": ["committedIndex_safety", "committedIndex_maximality", "committedIndex_mono", "jointVoteResult_non_joint", "limitSize_maximality"],
+    "main_semantic_gap": "Voter lists use List Nat instead of deduplicated sets - theorems hold for duplicates too, which is semantically wrong",
+    "no_bugs_found": true,
+    "total_sorry": 0
+  }
 }
