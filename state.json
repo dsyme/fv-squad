@@ -1,6 +1,6 @@
 {
   "last_run": "2026-03-26",
-  "run_id": "23617034770",
+  "run_id": "23618859658",
   "fv_tool": "Lean4 (stdlib only, no Mathlib)",
   "lake_project": "formal-verification/lean/",
   "lean_version": "4.28.0",
@@ -29,13 +29,20 @@
       "id": "joint_vote_result",
       "phase": 5,
       "lean_file": "formal-verification/lean/FVSquad/JointVote.lean",
-      "notes": "ALL 14 theorems proved (0 sorry). CL1-CL4 + J1-J10. PR #103 merged run88."
+      "notes": "ALL 14 theorems proved (0 sorry). CL1-CL4 + J1-J10. PR #103 open."
     },
     {
       "id": "committed_index",
       "phase": 5,
       "lean_file": "formal-verification/lean/FVSquad/CommittedIndex.lean",
-      "notes": "ALL 29 theorems proved (0 sorry). committedIndex_safety, committedIndex_maximality, committedIndex_mono, committedIndex_all_zero all proved. PR pending (lean-squad/committed-index-proofs-20260326). Full helper chain: getD_mem, pairwise_getD_le, mem_take_getD, take_all_ge, filter_sorted_prefix_card, sorted_filter_upper_bound, countGe_eq_sortedAcked_filter, countGe_mono_acked."
+      "notes": "ALL 17 theorems proved (0 sorry). CI1-CI8 + Safety + Maximality + Mono + helpers. PRs #104 and #105 open."
+    },
+    {
+      "id": "joint_committed_index",
+      "phase": 5,
+      "lean_file": "formal-verification/lean/FVSquad/JointCommittedIndex.lean",
+      "informal_spec": null,
+      "notes": "ALL 13 theorems proved (0 sorry). JCI-non-joint, JCI-joint, JCI-le-in, JCI-le-out, JCI-sym, JCI-all-zero, JCI-singleton-in, JCI-singleton-both, JCI-safety-in, JCI-safety-out, JCI-mono, JCI-empty-in, JCI-maximality-in. PR in run91. Key divergence: empty outgoing returns 0 (Rust returns MAX) - handled via isEmpty guard."
     },
     {
       "id": "find_conflict",
@@ -50,55 +57,53 @@
       "notes": "src/raft_log.rs RaftLog::maybe_append. Depends on find_conflict."
     },
     {
-      "id": "joint_committed_index",
+      "id": "inflights",
       "phase": 1,
       "lean_file": null,
-      "notes": "src/quorum/joint.rs JointConfig::committed_index. Just min of two committed indices. Depends on committed_index (phase 4)."
+      "notes": "src/tracker/inflights.rs ring buffer ops. Ring buffer invariants."
     }
   ],
-  "total_theorems_proved": 99,
+  "total_theorems_proved": 87,
   "correspondence_file": "formal-verification/CORRESPONDENCE.md",
   "lean_stdlib_notes": {
-    "no_mathlib_tactics": [
-      "split_ifs",
-      "push_neg",
-      "linarith"
-    ],
-    "use_instead": [
-      "omega (replaces linarith)",
-      "by_cases h : cond (replaces split_ifs)",
-      "by_contra h + omega (replaces push_neg)"
-    ],
-    "list_mem": "List.mem_cons_self has NO extra args. List.Mem.tail v hw for cons membership.",
+    "no_by_contra": "by_contra is 'unknown tactic' in Lean 4.28.0 - use Nat.le_of_not_lt instead",
+    "no_push_neg": "push_neg not available without Mathlib - use Nat.not_le.mp or omega",
+    "no_split_ifs": "split_ifs not available without Mathlib - use by_cases h : cond",
+    "no_mathlib_tactics": ["split_ifs", "push_neg", "linarith", "by_contra"],
+    "use_instead": ["omega (replaces linarith)", "by_cases h : cond (replaces split_ifs)", "Nat.le_of_not_lt (replaces by_contra)", "simp [Nat.not_le] (replaces push_neg)"],
+    "omega_cant_min": "omega cannot reason about Nat.min directly - use by_cases on the min expression, simp [Nat.min_def], then omega",
+    "min_lemmas": "Nat.min_le_left, Nat.min_le_right available. Nat.le_min is iff: a <= min b c <-> a <= b /\\ a <= c. NO Nat.min_le_min in stdlib - use Nat.le_min.mpr with transitivity.",
+    "barrel_file": "formal-verification/lean/FVSquad.lean must import ALL module files for lake build to compile them",
     "import_placement": "imports MUST be at the very top of the file, before any doc comments or code",
     "theorem_ordering": "Define theorems BEFORE use - cannot forward-reference.",
-    "barrel_file": "formal-verification/lean/FVSquad.lean must import ALL module files for lake build to compile them",
-    "doc_comments_before_eval": "Use regular -- comments before #eval. Doc comments /-- -/ before #eval cause parse errors.",
-    "open_namespace": "MajorityVote.lean has no namespace - use majority etc. directly after import, no open needed.",
-    "length_mergeSort": "List.length_mergeSort l (no underscore arg)",
-    "mergeSort_perm": "List.mergeSort_perm l (fun a b => decide (a >= b)) (must be explicit)",
-    "filter_sublist": "Use by_cases + List.Sublist.cons\u2082/cons for filter monotone proofs",
-    "countGe_antitone": "Proved via filter_ge_sublist + List.Sublist.length_le"
+    "list_isEmpty": "List.isEmpty is a Bool function. Use 'cases outgoing with | nil => ... | cons h t => ...' to case-split on emptiness, not List.isEmpty_iff_eq_nil or List.not_isEmpty_iff.",
+    "sortDesc_get_antitone": "i <= j -> sortDesc(l)[j] <= sortDesc(l)[i]: split eq/lt, use pairwise_ge_antitone for strict"
   },
   "open_prs": [
     {
-      "branch": "lean-squad/committed-index-spec-impl-run88",
-      "commit": "5bee462",
-      "title": "feat(fv): CommittedIndex Lean spec + implementation model (Tasks 2+3+4)",
-      "status": "PR in progress run88"
+      "pr": 103,
+      "branch": "lean-squad/joint-vote-result-and-correspondence-run87-9247964b490e6a79",
+      "title": "feat(fv): joint vote_result proofs + correspondence update (Tasks 5+6)"
     },
     {
-      "number": "pending",
-      "branch": "lean-squad/committed-index-proofs-20260326",
-      "description": "CommittedIndex proofs + CRITIQUE.md"
+      "pr": 104,
+      "branch": "lean-squad/committed-index-spec-impl-run88-cdfb7d5e1f9a3b21",
+      "title": "feat(fv): CommittedIndex Lean spec + implementation model (Tasks 2+3+4)"
+    },
+    {
+      "pr": 105,
+      "branch": "lean-squad/committed-index-full-proofs-run89-679ad0e43bfc3ff1",
+      "title": "feat(fv): prove all 4 CommittedIndex order-statistic theorems (Task 5)"
+    },
+    {
+      "pr": "run91",
+      "branch": "lean-squad/joint-committed-index-run91-abc123",
+      "title": "feat(fv): JointCommittedIndex - 13 theorems fully proved (Tasks 5+6)"
     }
   ],
   "aeneas_status": "BLOCKED - no-new-privileges container prevents opam/sudo install. Charon.toml exists in repo. Try again when container has sudo access.",
   "status_issue": 94,
-  "next_targets": [
-    "committed_index_proofs",
-    "joint_committed_index"
-  ],
+  "next_targets": ["find_conflict", "inflights"],
   "ci_workflow": ".github/workflows/lean-ci.yml",
-  "phase_notes": "Critique written (CRITIQUE.md). committed_index fully proved. Next: joint_committed_index (phase 1->5 easy), find_conflict/maybe_append (require RaftLog model)."
+  "ci_status": "HEALTHY - lean-ci.yml exists, uses lean-toolchain pin, runs lake build. Reviewed in runs 89 and 91."
 }
