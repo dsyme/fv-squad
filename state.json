@@ -1,44 +1,46 @@
 {
   "last_run": "2026-03-26",
-  "run_id": "23598664070",
-  "fv_tool": "Lean4+Mathlib",
+  "run_id": "23599977527",
+  "fv_tool": "Lean4 (stdlib only, no Mathlib)",
   "lake_project": "formal-verification/lean/",
+  "lean_version": "4.28.0",
+  "lean_build_note": "lake build PASSED with Lean 4.28.0. No Mathlib needed (network blocked). Use stdlib omega/simp.",
   "targets": [
     {
       "id": "limit_size",
-      "phase": 2,
-      "lean_file": null,
-      "notes": "Top priority. src/util.rs. Very high tractability. Informal spec written: specs/limit_size_informal.md. Key props: prefix, nonempty, size-bound, maximality, noop-none."
+      "phase": 3,
+      "lean_file": "formal-verification/lean/FVSquad/LimitSize.lean",
+      "notes": "Lean spec written. lake build passes. 8/12 theorems proved. 4 sorry remain (P9 size-bound, P10 maximality, P11 idempotence, P12 prefix-idempotence). Also 2 aux lemmas sorry (limitSizeCount_pos, limitSizeCount_le_length). PR submitted: lean-squad/lean-spec-limit-size-run81-20260326. Next: Task 5 proofs."
     },
     {
       "id": "config_validate",
       "phase": 1,
       "lean_file": null,
-      "notes": "Top priority. src/config.rs Config::validate. Decidable conjunction of arithmetic constraints. Very high tractability."
+      "notes": "Decidable arithmetic conjunction. Very high tractability. Next: Task 2 (informal spec), then Task 3."
     },
     {
       "id": "vote_result",
       "phase": 1,
       "lean_file": null,
-      "notes": "src/quorum/majority.rs Configuration::vote_result. High tractability. Majority quorum. aeneas-safe variant exists (#[cfg(feature=aeneas)])."
+      "notes": "src/quorum/majority.rs Configuration::vote_result. Aeneas-safe variant available."
     },
     {
       "id": "committed_index",
       "phase": 1,
       "lean_file": null,
-      "notes": "src/quorum/majority.rs Configuration::committed_index. Medium tractability. Sort-then-index. aeneas-safe variant exists."
+      "notes": "src/quorum/majority.rs Configuration::committed_index. Sort-then-index. Aeneas-safe variant."
     },
     {
       "id": "find_conflict",
       "phase": 1,
       "lean_file": null,
-      "notes": "src/raft_log.rs RaftLog::find_conflict. High tractability. Scan for first term mismatch."
+      "notes": "src/raft_log.rs RaftLog::find_conflict. First term mismatch scan."
     },
     {
       "id": "maybe_append",
       "phase": 1,
       "lean_file": null,
-      "notes": "src/raft_log.rs RaftLog::maybe_append. Medium tractability. Depends on find_conflict."
+      "notes": "src/raft_log.rs RaftLog::maybe_append. Depends on find_conflict."
     },
     {
       "id": "joint_vote_result",
@@ -66,24 +68,33 @@
     }
   ],
   "next_steps": [
-    "Run Task 3: Lean spec for limit_size once elan/network available (abstract size fn, List, props).",
-    "Run Task 3: Lean spec for config_validate (decidable predicate).",
-    "Run Task 8: Aeneas extraction for vote_result/committed_index (have aeneas-feature variants).",
-    "Task 9 (lean-ci.yml): protected file - needs maintainer to merge manually OR protected-files: fallback-to-issue config."
+    "Task 5: Prove 6 sorry-guarded obligations in LimitSize.lean (limitSizeCount_pos, limitSizeCount_le_length, P9 size-bound, P10 maximality, P11 idempotence, P12). Use structural induction + omega.",
+    "Task 2+3: Informal spec + Lean spec for config_validate (decidable arithmetic predicate).",
+    "Task 8: Aeneas extraction for vote_result/committed_index once Charon/Aeneas can be built."
   ],
-  "build_note": "Lean toolchain install blocked by network firewall (HTTP 403 on releases.lean-lang.org). Tasks 3-5 require working elan. Do NOT submit .lean files without successful lake build.",
+  "toolchain": {
+    "lean_available": true,
+    "lean_version": "4.28.0",
+    "mathlib_available": false,
+    "mathlib_note": "Mathlib blocked by network (Reservoir lookup fails). stdlib only.",
+    "lake_build": "passed",
+    "lean_ci_yml": "created in .github/workflows/lean-ci.yml (PR pending merge)"
+  },
   "open_prs": [
     {
-      "branch": "lean-squad/run80-research-specs-20260326",
+      "branch": "lean-squad/run80-research-specs-20260326-fa1834fe1d488281",
       "description": "PR run80: RESEARCH.md + TARGETS.md (10 targets) + limit_size informal spec"
+    },
+    {
+      "branch": "lean-squad/lean-spec-limit-size-run81-20260326",
+      "description": "PR run81: FVSquad/LimitSize.lean (Task 3) + lean-ci.yml (Task 9)"
     }
   ],
-  "status_issue": "Created run80: [Lean Squad] Formal Verification Status",
+  "status_issue": "#94 [Lean Squad] Formal Verification Status - updated run81",
   "ci_status": {
-    "lean_ci_yml": "NOT yet created - blocked by protected-files policy",
+    "lean_ci_yml": "created in PR run81 - awaiting merge",
     "aeneas_generate_yml": "pre-existing in repo",
     "last_lean_ci_run": null
   },
-  "protected_files_note": "lean-ci.yml creation blocked run79. Workflow config requires protected-files: fallback-to-issue OR manual maintainer action.",
-  "conflicts_noted": "No conflicts. Fresh start from run 80."
+  "conflicts_noted": "No conflicts. run80 and run81 are independent (docs vs lean files)."
 }
