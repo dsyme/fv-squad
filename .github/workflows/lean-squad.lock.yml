@@ -39,7 +39,7 @@
 #
 # Source: githubnext/agentics/workflows/lean-squad.md@851905c06e905bf362a9f6cc54f912e3df747d55
 #
-# gh-aw-metadata: {"schema_version":"v3","frontmatter_hash":"ecb275e13891c8de5113a1ea6180321df19496130c4881680431ea1dec0ffacf","compiler_version":"v0.64.0","strict":true,"agent_id":"copilot"}
+# gh-aw-metadata: {"schema_version":"v3","frontmatter_hash":"b58ea4fc4204b79628c99e1d7c4055498e5309c96f744a25b44117035afc60d3","compiler_version":"v0.64.0","strict":true,"agent_id":"copilot"}
 
 name: "Lean Squad"
 "on":
@@ -90,7 +90,7 @@ jobs:
           GH_AW_INFO_EXPERIMENTAL: "false"
           GH_AW_INFO_SUPPORTS_TOOLS_ALLOWLIST: "true"
           GH_AW_INFO_STAGED: "false"
-          GH_AW_INFO_ALLOWED_DOMAINS: '["defaults","github","arxiv.org","leanprover-community.github.io","release.leanlang.org","ocaml","releaseassets.githubusercontent.com"]'
+          GH_AW_INFO_ALLOWED_DOMAINS: '["defaults","github","arxiv.org","leanprover-community.github.io","release.leanlang.org","ocaml","releaseassets.githubusercontent.com","raw.githubusercontent.com"]'
           GH_AW_INFO_FIREWALL_ENABLED: "true"
           GH_AW_INFO_AWF_VERSION: "v0.25.0"
           GH_AW_INFO_AWMG_VERSION: ""
