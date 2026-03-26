@@ -1,6 +1,6 @@
 {
   "last_run": "2026-03-26",
-  "run_id": "23623177395",
+  "run_id": "23623425092",
   "fv_tool": "Lean4 (stdlib only, no Mathlib)",
   "lake_project": "formal-verification/lean/",
   "lean_version": "4.28.0",
@@ -10,7 +10,7 @@
       "id": "limit_size",
       "phase": 5,
       "lean_file": "formal-verification/lean/FVSquad/LimitSize.lean",
-      "notes": "ALL 17 theorems proved (0 sorry). P1-P12 + 5 helpers fully verified. PR #98 merged."
+      "notes": "ALL 25 theorems proved (0 sorry). 12 top-level + helpers fully verified. Merged."
     },
     {
       "id": "config_validate",
@@ -23,38 +23,38 @@
       "id": "vote_result",
       "phase": 5,
       "lean_file": "formal-verification/lean/FVSquad/MajorityVote.lean",
-      "notes": "ALL 21 theorems proved (0 sorry). M1-M5, V1-V10, 6 auxiliary lemmas. PR #102 merged."
+      "notes": "ALL 21 theorems proved (0 sorry). Merged."
     },
     {
       "id": "joint_vote_result",
       "phase": 5,
       "lean_file": "formal-verification/lean/FVSquad/JointVote.lean",
-      "notes": "ALL 14 theorems proved (0 sorry). CL1-CL4 + J1-J10. PR #103 merged."
+      "notes": "ALL 14 theorems proved (0 sorry). Merged."
     },
     {
       "id": "committed_index",
       "phase": 5,
       "lean_file": "formal-verification/lean/FVSquad/CommittedIndex.lean",
-      "notes": "ALL 17 theorems proved (0 sorry). CI1-CI8 + Safety + Maximality + Mono + helpers. PRs #104 and #105 merged."
+      "notes": "ALL 28 theorems proved (0 sorry, including helpers). committedIndex_safety, committedIndex_maximality, committedIndex_mono all proved. Merged."
     },
     {
       "id": "find_conflict",
-      "phase": 2,
-      "lean_file": null,
+      "phase": 5,
+      "lean_file": "formal-verification/lean/FVSquad/FindConflict.lean",
       "informal_spec": "formal-verification/specs/find_conflict_informal.md",
-      "notes": "Informal spec done (run93). 8 postconditions P1-P8. Lean model sketch provided. Open questions: contiguity precondition, term=0 entries, index=0 entries. PR pending merge."
+      "notes": "ALL 12 theorems proved (0 sorry). FC1-FC12 including findConflict_first_mismatch (FC7) and findConflict_zero_iff_all_match (FC11). PR pending merge (run 23623425092)."
     },
     {
       "id": "joint_committed_index",
       "phase": 1,
       "lean_file": null,
-      "notes": "Not started. Will need min of two committedIndex values; empty-to-MAX divergence is the main subtlety."
+      "notes": "Next highest priority (CRITIQUE.md). min of two committedIndex values. Empty-to-MAX divergence is the main subtlety. Builds on CommittedIndex.lean."
     },
     {
       "id": "maybe_append",
       "phase": 1,
       "lean_file": null,
-      "notes": "src/raft_log.rs RaftLog::maybe_append. Depends on find_conflict."
+      "notes": "Depends on find_conflict. Connects find_conflict to log mutation."
     },
     {
       "id": "inflights",
@@ -63,7 +63,7 @@
       "notes": "src/tracker/inflights.rs ring buffer ops. Medium priority per CRITIQUE.md."
     }
   ],
-  "total_theorems_proved": 79,
+  "total_theorems_proved": 103,
   "correspondence_file": "formal-verification/CORRESPONDENCE.md",
   "critique_file": "formal-verification/CRITIQUE.md",
   "lean_stdlib_notes": {
@@ -78,23 +78,25 @@
     "import_placement": "imports MUST be at the very top of the file, before any doc comments or code",
     "theorem_ordering": "Define theorems BEFORE use - cannot forward-reference.",
     "list_isEmpty": "List.isEmpty is a Bool function. Use 'cases outgoing with | nil => ... | cons h t => ...' to case-split on emptiness, not List.isEmpty_iff_eq_nil or List.not_isEmpty_iff.",
-    "sortDesc_get_antitone": "i <= j -> sortDesc(l)[j] <= sortDesc(l)[i]: split eq/lt, use pairwise_ge_antitone for strict"
+    "sortDesc_get_antitone": "i <= j -> sortDesc(l)[j] <= sortDesc(l)[i]: split eq/lt, use pairwise_ge_antitone for strict",
+    "list_mem_cons_self": "List.mem_cons_self takes NO explicit args in 4.28.0 - use just 'List.mem_cons_self' (implicit args inferred from context)",
+    "list_mem_cons_of_mem": "List.mem_cons_of_mem takes the element as explicit arg: List.mem_cons_of_mem e he'",
+    "not_mem_nil": "List.not_mem_nil takes type arg not value - just use 'simp at he' to dispatch membership-in-nil goals",
+    "cases_bool": "To case-split on a Bool expression b: use 'cases hm : b with | false => ... | true => ...' to get hm : b = false or hm : b = true"
   },
-  "open_prs": [],
+  "open_prs": [
+    {"branch": "lean-squad/find-conflict-proofs", "title": "feat(fv): prove all 12 find_conflict theorems (0 sorry)", "run_id": "23623425092"},
+    {"branch": "lean-squad/proof-utility-critique", "title": "docs(fv): add proof utility critique (CRITIQUE.md)", "run_id": "23623425092"}
+  ],
   "aeneas_status": "BLOCKED - no-new-privileges container prevents opam/sudo install. Charon.toml exists in repo. Try again when container has sudo access.",
   "status_issue": 94,
-  "next_targets": ["find_conflict", "joint_committed_index", "inflights"],
+  "next_targets": ["joint_committed_index", "maybe_append", "voter_dedup_invariant"],
   "ci_workflow": ".github/workflows/lean-ci.yml",
-  "ci_status": "HEALTHY - lean-ci.yml exists, uses lean-toolchain pin, runs lake build. Reviewed in runs 89 and 91.",
+  "ci_status": "HEALTHY - lean-ci.yml exists, uses lean-toolchain pin, runs lake build.",
   "critique_notes": {
-    "highest_value_proved": ["committedIndex_safety", "committedIndex_maximality", "committedIndex_mono", "jointVoteResult_non_joint", "limitSize_maximality"],
-    "main_semantic_gap": "Voter lists use List Nat instead of deduplicated sets - theorems hold for duplicates too, which is semantically wrong",
+    "highest_value_proved": ["committedIndex_safety", "committedIndex_maximality", "committedIndex_mono", "jointVoteResult_non_joint", "configValidate_iff_valid", "findConflict_first_mismatch"],
+    "main_semantic_gap": "Voter lists use List Nat instead of deduplicated Finset - theorems hold under Nodup assumption not formally enforced",
     "no_bugs_found": true,
     "total_sorry": 0
-  },
-  "find_conflict_notes": {
-    "key_postconditions": ["P1: empty->0", "P2: result is some entry index", "P3: prefix before result all match", "P4: result entry fails matchTerm", "P5: biconditional zero<->all match", "P6: result>=first index", "P7: result<=last index", "P8: minimality"],
-    "lean_model_approach": "abstract log as (Nat -> Nat), LogEntry as {index,term}, findConflict by list induction",
-    "open_questions": ["contiguity precondition formal status", "term=0 input entries", "index=0 entry behaviour"]
   }
 }
