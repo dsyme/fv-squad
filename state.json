@@ -1,34 +1,35 @@
 {
   "last_run": "2026-03-26",
-  "run_id": "23605693316",
+  "run_id": "23607146958",
   "fv_tool": "Lean4 (stdlib only, no Mathlib)",
   "lake_project": "formal-verification/lean/",
   "lean_version": "4.28.0",
-  "lean_build_note": "lake build PASSED with Lean 4.28.0. No Mathlib needed (network blocked). Use stdlib omega/simp/cases.",
+  "lean_build_note": "lake build PASSED with Lean 4.28.0. No Mathlib needed (network blocked). Use stdlib omega/simp.",
   "targets": [
     {
       "id": "limit_size",
       "phase": 5,
       "lean_file": "formal-verification/lean/FVSquad/LimitSize.lean",
-      "notes": "COMPLETE: 12/12 theorems proved (0 sorry). PR #98 open (all-proofs-limit-size-run83)."
+      "notes": "ALL 12 theorems proved (0 sorry). P1-P12 fully verified. PR #98 open (pending merge)."
     },
     {
       "id": "config_validate",
-      "phase": 5,
-      "lean_file": "formal-verification/lean/FVSquad/ConfigValidate.lean",
-      "notes": "COMPLETE: 10/10 theorems proved (0 sorry). PR created run84. Includes informal spec, formal spec, impl, proofs. Key lemma: configValidate_iff_valid bridges Bool and Prop."
+      "phase": 2,
+      "lean_file": null,
+      "informal_spec": "formal-verification/specs/config_validate_informal.md",
+      "notes": "Informal spec written (run84). 8 constraints C1-C8, derived fields min/max_election_tick, 5 Lean properties P1-P5 identified. Next: Task 3 (Lean spec). Very tractable: use decide + omega."
     },
     {
       "id": "vote_result",
       "phase": 1,
       "lean_file": null,
-      "notes": "src/quorum/majority.rs Configuration::vote_result. Aeneas-safe variant available. Next: Task 2 (informal spec)."
+      "notes": "src/quorum/majority.rs Configuration::vote_result. Aeneas-safe variant available."
     },
     {
       "id": "committed_index",
       "phase": 1,
       "lean_file": null,
-      "notes": "src/quorum/majority.rs Configuration::committed_index. Sort-then-index. Next: Task 2."
+      "notes": "src/quorum/majority.rs Configuration::committed_index. Sort-then-index. Aeneas-safe variant."
     },
     {
       "id": "find_conflict",
@@ -68,9 +69,10 @@
     }
   ],
   "next_steps": [
-    "Task 2+3: Informal spec + Lean spec for vote_result (majority quorum, decidable)",
-    "Task 2+3: Informal spec + Lean spec for committed_index (sort-then-index)",
-    "Task 8: Aeneas blocked - OCaml/opam unavailable in no-new-privileges container"
+    "Task 3: Lean formal spec for config_validate (decidable arithmetic, use decide + omega). Properties P1-P5 in spec file.",
+    "Task 4: Lean impl model for config_validate (translate validate + min/max_election_tick helpers).",
+    "Task 5: Proofs for config_validate - likely fully automated with decide/omega.",
+    "Task 8: Aeneas extraction blocked (OCaml unavailable). Try apt install ocaml in future."
   ],
   "toolchain": {
     "lean_available": true,
@@ -78,31 +80,43 @@
     "mathlib_available": false,
     "mathlib_note": "Mathlib blocked by network (Reservoir lookup fails). stdlib only.",
     "lake_build": "passed",
-    "lean_ci_yml": "exists in .github/workflows/lean-ci.yml (PR #98 / run81 branch pending merge)"
+    "lean_ci_yml": "exists in branch + improved sorry-count detection (run84)",
+    "set_tactic": "NOT available (Mathlib-only). Use have/let instead."
   },
   "open_prs": [
     {
       "branch": "lean-squad/all-proofs-limit-size-run83-20260326-501dbea196be691d",
       "pr_number": 98,
-      "description": "PR #98: Complete all 12 LimitSize proofs (0 sorry)"
+      "description": "PR #98: Task 5 complete - all 12 LimitSize theorems proved (0 sorry)"
     },
     {
-      "branch": "lean-squad/config-validate-spec-run84-20260326-df7f984",
-      "pr_number": "pending",
-      "description": "PR run84: ConfigValidate.lean (10 theorems, 0 sorry) + informal spec + TARGETS.md update"
+      "branch": "lean-squad/config-validate-spec-ci-audit-run84-586b219",
+      "description": "PR run84: Task 2 config_validate informal spec + Task 9 lean-ci.yml sorry-count improvement"
     }
   ],
-  "status_issue": "#94 [Lean Squad] Formal Verification Status",
+  "status_issue": "#94 [Lean Squad] Formal Verification Status - updated run84",
   "ci_status": {
-    "lean_ci_yml": "present in repo (PR run81 branch - pending merge)",
+    "lean_ci_yml": "exists and improved (run84) - source-file sorry detection",
     "aeneas_generate_yml": "pre-existing in repo",
-    "last_lean_ci_run": null
+    "last_lean_ci_run": "unknown (gh not authenticated)"
   },
-  "proof_techniques": {
-    "decidable_predicates": "use decide_eq_true / of_decide_eq_true (NOT Bool.decide_eq_true_eq which doesn't exist)",
-    "bool_and": "Bool.and_eq_true for simp only decomposition",
-    "bool_or": "Bool.or_eq_true for simp only decomposition",
-    "struct_updates": "definitional equality works - exact h4 works when only irrelevant fields updated",
-    "opaque_defs": "must simp only [Config.valid, Config.validId, ...] BEFORE calling decide_eq_true on them"
-  }
+  "aeneas_status": {
+    "attempted": true,
+    "result": "BLOCKED",
+    "reason": "OCaml/opam unavailable in no-new-privileges container with network firewall",
+    "retry_notes": "Try apt-get install ocaml or pre-built Aeneas binary in future runs"
+  },
+  "lean4_stdlib_notes": {
+    "set_tactic": "NOT available (Mathlib only)",
+    "le_trans": "NOT directly available; use omega for transitivity",
+    "List_take_succ_cons": "use simp [List.take_succ_cons] not explicit application",
+    "List_length_cons": "gives l.length + 1 (not 1 + l.length) - use omega to commute"
+  },
+  "config_validate_lean_notes": {
+    "approach": "Encode Config as a Lean structure. validate as a Bool/Prop function. Use omega for all arithmetic.",
+    "derived_fields": "min_election_tick: if cfg.min_election_tick = 0 then cfg.election_tick else cfg.min_election_tick",
+    "key_tactic": "decide for decidable arithmetic conjunctions over concrete values",
+    "ReadOnlyOption": "Model as an inductive (Safe | LeaseBased). C7 is an implication, provable by cases."
+  },
+  "conflicts_noted": "No conflicts detected. Branches are independent."
 }
