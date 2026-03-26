@@ -1,6 +1,6 @@
 {
   "last_run": "2026-03-26",
-  "run_id": "23615775895",
+  "run_id": "23618269629",
   "fv_tool": "Lean4 (stdlib only, no Mathlib)",
   "lake_project": "formal-verification/lean/",
   "lean_version": "4.28.0",
@@ -29,13 +29,20 @@
       "id": "joint_vote_result",
       "phase": 5,
       "lean_file": "formal-verification/lean/FVSquad/JointVote.lean",
-      "notes": "ALL 14 theorems proved (0 sorry). CL1-CL4 + J1-J10. PR #103 merged."
+      "notes": "ALL 14 theorems proved (0 sorry). CL1-CL4 + J1-J10. PR #103 open."
     },
     {
       "id": "committed_index",
       "phase": 5,
       "lean_file": "formal-verification/lean/FVSquad/CommittedIndex.lean",
-      "notes": "ALL 17 theorems proved (0 sorry). CI1-CI8 + Safety + Maximality + Mono + helpers. PR pending run89. Key: Safety proves majority<=countGe, Maximality proves count<majority when k>ci, Mono via safety+maximality."
+      "notes": "ALL 17 theorems proved (0 sorry). CI1-CI8 + Safety + Maximality + Mono + helpers. PR #104 and #105 open."
+    },
+    {
+      "id": "joint_committed_index",
+      "phase": 5,
+      "lean_file": "formal-verification/lean/FVSquad/JointCommittedIndex.lean",
+      "informal_spec": "formal-verification/specs/joint_committed_index_informal.md",
+      "notes": "ALL 12 theorems proved (0 sorry). JCI1-3, JCI-sym, JCI-def, JCI-le-in, JCI-le-out, JCI-ge-min, JCI-safety-in, JCI-safety-out, JCI-mono, JCI-all-zero. PR #106 open (run90). Key divergence: empty outgoing returns 0 (Rust returns MAX)."
     },
     {
       "id": "find_conflict",
@@ -50,45 +57,47 @@
       "notes": "src/raft_log.rs RaftLog::maybe_append. Depends on find_conflict."
     },
     {
-      "id": "joint_committed_index",
+      "id": "inflights",
       "phase": 1,
       "lean_file": null,
-      "notes": "src/quorum/joint.rs JointConfig::committed_index. Just min of two committed indices. Depends on committed_index (now phase 5)."
+      "notes": "src/tracker/inflights.rs ring buffer ops. Ring buffer invariants."
     }
   ],
-  "total_theorems_proved": 74,
+  "total_theorems_proved": 86,
   "correspondence_file": "formal-verification/CORRESPONDENCE.md",
   "lean_stdlib_notes": {
     "no_by_contra": "by_contra is 'unknown tactic' in Lean 4.28.0 - use Nat.le_of_not_lt instead",
     "no_push_neg": "push_neg not available without Mathlib - use Nat.not_le.mp or omega",
-    "no_pairwise_iff_get": "List.pairwise_iff_get does not exist - use List.pairwise_cons + List.get_mem",
+    "no_split_ifs": "split_ifs not available without Mathlib - use by_cases h : cond",
     "no_mathlib_tactics": ["split_ifs", "push_neg", "linarith", "by_contra"],
     "use_instead": ["omega (replaces linarith)", "by_cases h : cond (replaces split_ifs)", "Nat.le_of_not_lt (replaces by_contra)", "simp [Nat.not_le] (replaces push_neg)"],
-    "list_mem": "List.mem_cons_self has NO extra args (implicit). List.get_mem xs Fin for membership.",
+    "omega_cant_min": "omega cannot reason about Nat.min directly - use by_cases on the min expression, simp [Nat.min_def], then omega",
+    "min_lemmas": "Nat.min_le_left, Nat.min_le_right, Nat.min_comm all exist in Lean 4.28 stdlib",
+    "barrel_file": "formal-verification/lean/FVSquad.lean must import ALL module files for lake build to compile them",
     "import_placement": "imports MUST be at the very top of the file, before any doc comments or code",
     "theorem_ordering": "Define theorems BEFORE use - cannot forward-reference.",
-    "barrel_file": "formal-verification/lean/FVSquad.lean must import ALL module files for lake build to compile them",
-    "doc_comments_before_eval": "Use regular -- comments before #eval. Doc comments /-- -/ before #eval cause parse errors.",
-    "open_namespace": "MajorityVote.lean has no namespace - use majority etc. directly after import, no open needed.",
-    "length_mergeSort": "List.length_mergeSort l (no underscore arg)",
-    "mergeSort_perm": "List.mergeSort_perm l (fun a b => decide (a >= b)) (must be explicit)",
-    "filter_sublist": "Use by_cases + List.Sublist.cons2/cons for filter monotone proofs",
-    "countGe_antitone": "Proved via filter_ge_sublist + List.Sublist.length_le",
-    "getD_in_bounds": "l.getD i 0 = l.get {i, h} - use induction + simp [List.getD_eq_getElem?_getD]",
-    "pairwise_get_antitone": "Prove by induction on l: zero case uses pairwise_cons + get_mem, succ case uses get_cons_succ",
     "sortDesc_get_antitone": "i <= j -> sortDesc(l)[j] <= sortDesc(l)[i]: split eq/lt, use pairwise_ge_antitone for strict"
   },
   "open_prs": [
     {
-      "branch": "lean-squad/committed-index-full-proofs-run89",
-      "commit": "394097e",
-      "title": "feat(fv): prove all 4 CommittedIndex order-statistic theorems (Task 5)",
-      "status": "PR pending run89"
+      "pr": 103,
+      "branch": "lean-squad/joint-vote-result-and-correspondence-run87-9247964b490e6a79",
+      "title": "feat(fv): joint vote_result proofs + correspondence update (Tasks 5+6)"
+    },
+    {
+      "pr": 104,
+      "branch": "lean-squad/committed-index-spec-impl-run88-cdfb7d5e1f9a3b21",
+      "title": "feat(fv): CommittedIndex Lean spec + implementation model (Tasks 2+3+4)"
+    },
+    {
+      "pr": 105,
+      "branch": "lean-squad/committed-index-full-proofs-run89-679ad0e43bfc3ff1",
+      "title": "feat(fv): prove all 4 CommittedIndex order-statistic theorems (Task 5)"
     }
   ],
   "aeneas_status": "BLOCKED - no-new-privileges container prevents opam/sudo install. Charon.toml exists in repo. Try again when container has sudo access.",
   "status_issue": 94,
-  "next_targets": ["joint_committed_index", "find_conflict"],
+  "next_targets": ["find_conflict", "inflights"],
   "ci_workflow": ".github/workflows/lean-ci.yml",
   "ci_status": "HEALTHY - lean-ci.yml exists, uses lean-toolchain pin, runs lake build. No issues found."
 }
