@@ -42,7 +42,7 @@
 #
 # Source: githubnext/agentics/workflows/lean-squad.md@851905c06e905bf362a9f6cc54f912e3df747d55
 #
-# gh-aw-metadata: {"schema_version":"v3","frontmatter_hash":"74d3b333057fadd90aaa38014f701e3d21c6f8a0e40623a2cfa1597713544558","compiler_version":"v0.64.1","strict":true,"agent_id":"copilot"}
+# gh-aw-metadata: {"schema_version":"v3","frontmatter_hash":"0b4fd6a01584b186d1cb1e174836e9828cb8383923c772c735ffd65d2fa8d22c","compiler_version":"v0.64.1","strict":true,"agent_id":"copilot"}
 
 name: "Lean Squad"
 "on":
@@ -221,21 +221,21 @@ jobs:
         run: |
           bash ${RUNNER_TEMP}/gh-aw/actions/create_prompt_first.sh
           {
-          cat << 'GH_AW_PROMPT_e447e268bae500f7_EOF'
+          cat << 'GH_AW_PROMPT_4c6ccf1c86238e78_EOF'
           <system>
-          GH_AW_PROMPT_e447e268bae500f7_EOF
+          GH_AW_PROMPT_4c6ccf1c86238e78_EOF
           cat "${RUNNER_TEMP}/gh-aw/prompts/xpia.md"
           cat "${RUNNER_TEMP}/gh-aw/prompts/temp_folder_prompt.md"
           cat "${RUNNER_TEMP}/gh-aw/prompts/markdown.md"
           cat "${RUNNER_TEMP}/gh-aw/prompts/repo_memory_prompt.md"
           cat "${RUNNER_TEMP}/gh-aw/prompts/safe_outputs_prompt.md"
-          cat << 'GH_AW_PROMPT_e447e268bae500f7_EOF'
+          cat << 'GH_AW_PROMPT_4c6ccf1c86238e78_EOF'
           <safe-output-tools>
           Tools: add_comment(max:3), create_issue(max:4), update_issue, create_pull_request(max:2), push_to_pull_request_branch(max:4), missing_tool, missing_data, noop
-          GH_AW_PROMPT_e447e268bae500f7_EOF
+          GH_AW_PROMPT_4c6ccf1c86238e78_EOF
           cat "${RUNNER_TEMP}/gh-aw/prompts/safe_outputs_create_pull_request.md"
           cat "${RUNNER_TEMP}/gh-aw/prompts/safe_outputs_push_to_pr_branch.md"
-          cat << 'GH_AW_PROMPT_e447e268bae500f7_EOF'
+          cat << 'GH_AW_PROMPT_4c6ccf1c86238e78_EOF'
           </safe-output-tools>
           <github-context>
           The following GitHub context information is available for this workflow:
@@ -265,17 +265,17 @@ jobs:
           {{/if}}
           </github-context>
           
-          GH_AW_PROMPT_e447e268bae500f7_EOF
+          GH_AW_PROMPT_4c6ccf1c86238e78_EOF
           cat "${RUNNER_TEMP}/gh-aw/prompts/github_mcp_tools_with_safeoutputs_prompt.md"
           if [ "$GITHUB_EVENT_NAME" = "issue_comment" ] && [ -n "$GH_AW_IS_PR_COMMENT" ] || [ "$GITHUB_EVENT_NAME" = "pull_request_review_comment" ] || [ "$GITHUB_EVENT_NAME" = "pull_request_review" ]; then
             cat "${RUNNER_TEMP}/gh-aw/prompts/pr_context_prompt.md"
           fi
-          cat << 'GH_AW_PROMPT_e447e268bae500f7_EOF'
+          cat << 'GH_AW_PROMPT_4c6ccf1c86238e78_EOF'
           </system>
-          GH_AW_PROMPT_e447e268bae500f7_EOF
-          cat << 'GH_AW_PROMPT_e447e268bae500f7_EOF'
+          GH_AW_PROMPT_4c6ccf1c86238e78_EOF
+          cat << 'GH_AW_PROMPT_4c6ccf1c86238e78_EOF'
           {{#runtime-import .github/workflows/lean-squad.md}}
-          GH_AW_PROMPT_e447e268bae500f7_EOF
+          GH_AW_PROMPT_4c6ccf1c86238e78_EOF
           } > "$GH_AW_PROMPT"
       - name: Interpolate variables and render templates
         uses: actions/github-script@ed597411d8f924073f98dfc5c65a23a2325f34cd # v8
@@ -415,7 +415,7 @@ jobs:
       - env:
           GH_TOKEN: ${{ github.token }}
         name: Assess FV state and compute task weights
-        run: "mkdir -p /tmp/gh-aw\n\n# Count Lean files, excluding the .lake build cache\nfind . -name \"*.lean\" 2>/dev/null | grep -cv \"\\.lake/\" > /tmp/gh-aw/lean_count.txt || echo 0 > /tmp/gh-aw/lean_count.txt\n\n# Count Rust source files (for Aeneas eligibility)\nfind . -name \"*.rs\" -not -path \"./target/*\" 2>/dev/null | wc -l > /tmp/gh-aw/rust_count.txt || echo 0 > /tmp/gh-aw/rust_count.txt\n\n# Detect CI workflows for FV\n[ -f \".github/workflows/lean-ci.yml\" ] && echo 1 > /tmp/gh-aw/has_lean_ci.txt || echo 0 > /tmp/gh-aw/has_lean_ci.txt\n[ -f \".github/workflows/aeneas-generate.yml\" ] && echo 1 > /tmp/gh-aw/has_aeneas_ci.txt || echo 0 > /tmp/gh-aw/has_aeneas_ci.txt\n\n# Detect formal-verification directory\n[ -d \"formal-verification\" ] && echo 1 > /tmp/gh-aw/fv_dir.txt || echo 0 > /tmp/gh-aw/fv_dir.txt\n\n# Count markdown docs inside formal-verification/\nfind . \\( -path \"*/formal-verification/*.md\" -o -path \"*/formal-verification/specs/*.md\" \\) 2>/dev/null \\\n  | wc -l > /tmp/gh-aw/fv_docs.txt || echo 0 > /tmp/gh-aw/fv_docs.txt\n\n# Fetch open FV Squad issues\ngh issue list --state open --label lean-squad --json number 2>/dev/null \\\n  > /tmp/gh-aw/fv_issues.json || echo \"[]\" > /tmp/gh-aw/fv_issues.json\n\n# Fetch open FV Squad PRs\ngh pr list --state open --limit 50 --json number,title 2>/dev/null \\\n  | python3 -c \"\nimport json, sys\nd = json.load(sys.stdin)\nprint(json.dumps([x for x in d if x['title'].startswith('[Lean Squad]')]))\" \\\n  > /tmp/gh-aw/fv_prs.json || echo \"[]\" > /tmp/gh-aw/fv_prs.json\n\npython3 - << 'EOF'\nimport json, os, random\n\nlean_count   = int(open('/tmp/gh-aw/lean_count.txt').read().strip() or 0)\nrust_count   = int(open('/tmp/gh-aw/rust_count.txt').read().strip() or 0)\nhas_lean_ci  = int(open('/tmp/gh-aw/has_lean_ci.txt').read().strip() or 0)\nhas_aeneas_ci = int(open('/tmp/gh-aw/has_aeneas_ci.txt').read().strip() or 0)\nfv_dir       = int(open('/tmp/gh-aw/fv_dir.txt').read().strip() or 0)\nfv_docs    = int(open('/tmp/gh-aw/fv_docs.txt').read().strip() or 0)\nfv_issues  = json.load(open('/tmp/gh-aw/fv_issues.json'))\nfv_prs     = json.load(open('/tmp/gh-aw/fv_prs.json'))\n\nn_issues = len(fv_issues)\nn_prs    = len(fv_prs)\n\ntask_names = {\n    1: 'Research & Target Identification',\n    2: 'Informal Spec Extraction',\n    3: 'Formal Spec Writing (Lean 4)',\n    4: 'Implementation Extraction',\n    5: 'Proof Assistance',\n    6: 'Correspondence Review',\n    7: 'Proof Utility Critique',\n    8: 'Aeneas Extraction (Rust only)',\n    9: 'CI Automation',\n}\n\n# Phase progress heuristics derived from repo state\n# The agent refines these using repo-memory at runtime\nhas_research   = bool(fv_dir) and (fv_docs >= 1 or n_issues >= 1 or lean_count >= 1)\nhas_inf_specs  = fv_docs >= 2 or lean_count >= 1\nhas_lean_specs = lean_count >= 1\nhas_impl       = lean_count >= 3\nhas_proofs     = lean_count >= 6\nhas_rust       = rust_count >= 1\nhas_ci         = bool(has_lean_ci)\n\nweights = {\n    1: 10.0  if not has_research  else 2.0,\n    2: (8.0  if not has_inf_specs  else 2.0) if has_research   else 0.5,\n    3: (8.0  if not has_lean_specs else 2.0) if has_inf_specs   else 0.3,\n    4: (6.0  if not has_impl       else 2.0) if has_lean_specs  else 0.2,\n    5: (6.0  if not has_proofs     else 2.0) if has_impl        else 0.1,\n    6: 3.0 if has_impl else 0.5,   # correspondence review: useful once impl exists\n    7: 3.0 if has_proofs else 0.0, # critique: only meaningful once proofs exist\n    8: (3.0 if has_lean_specs else 1.0) if (has_rust and has_research) else 0.0,  # aeneas: only for Rust codebases with research done\n    9: 12.0 if (has_lean_specs and not has_ci) else 2.0,  # CI: critical when lean files exist but no CI; regular check otherwise\n}\n\nrun_id = int(os.environ.get('GITHUB_RUN_ID', '0'))\nrng    = random.Random(run_id)\n\nnon_main  = list(weights.keys())\nnm_weights = list(weights.values())\n\nchosen, seen = [], set()\nfor t in rng.choices(non_main, weights=nm_weights, k=30):\n    if t not in seen:\n        seen.add(t)\n        chosen.append(t)\n    if len(chosen) == 2:\n        break\n\nprint('=== Lean Squad Task Selection ===')\nprint(f'Lean files    : {lean_count}')\nprint(f'Rust files    : {rust_count}')\nprint(f'FV dir        : {bool(fv_dir)}')\nprint(f'FV docs       : {fv_docs}')\nprint(f'Open issues   : {n_issues}')\nprint(f'Open FV PRs   : {n_prs}')\nprint(f'Phase flags   : research={has_research}, inf_specs={has_inf_specs}, '\n      f'lean_specs={has_lean_specs}, impl={has_impl}, proofs={has_proofs}, '\n      f'rust={has_rust}, ci={has_ci}')\nprint()\nprint('Task weights:')\nfor t, w in weights.items():\n    tag = ' <-- SELECTED' if t in chosen else ''\n    print(f'  Task {t} ({task_names[t]}): weight {w:.1f}{tag}')\nprint()\nprint(f'Selected tasks: {chosen} = {[task_names[t] for t in chosen]}')\n\nresult = {\n    'lean_count': lean_count, 'rust_count': rust_count,\n    'fv_dir': bool(fv_dir), 'fv_docs': fv_docs,\n    'n_issues': n_issues, 'n_prs': n_prs,\n    'phase_flags': {\n        'has_research':   has_research,\n        'has_inf_specs':  has_inf_specs,\n        'has_lean_specs': has_lean_specs,\n        'has_impl':       has_impl,\n        'has_proofs':     has_proofs,\n        'has_rust':       has_rust,\n        'has_ci':         has_ci,\n    },\n    'task_names': task_names,\n    'weights': {str(k): round(v, 2) for k, v in weights.items()},\n    'selected_tasks': chosen,\n}\nwith open('/tmp/gh-aw/task_selection.json', 'w') as f:\n    json.dump(result, f, indent=2)\nEOF\n"
+        run: "mkdir -p /tmp/gh-aw\n\n# Count Lean files, excluding the .lake build cache\nfind . -name \"*.lean\" 2>/dev/null | grep -cv \"\\.lake/\" > /tmp/gh-aw/lean_count.txt || echo 0 > /tmp/gh-aw/lean_count.txt\n\n# Count Rust source files (for Aeneas eligibility)\nfind . -name \"*.rs\" -not -path \"./target/*\" 2>/dev/null | wc -l > /tmp/gh-aw/rust_count.txt || echo 0 > /tmp/gh-aw/rust_count.txt\n\n# Detect CI workflows for FV\n[ -f \".github/workflows/lean-ci.yml\" ] && echo 1 > /tmp/gh-aw/has_lean_ci.txt || echo 0 > /tmp/gh-aw/has_lean_ci.txt\n[ -f \".github/workflows/aeneas-generate.yml\" ] && echo 1 > /tmp/gh-aw/has_aeneas_ci.txt || echo 0 > /tmp/gh-aw/has_aeneas_ci.txt\n\n# Detect CORRESPONDENCE.md and CRITIQUE.md\n[ -f \"formal-verification/CORRESPONDENCE.md\" ] && echo 1 > /tmp/gh-aw/has_correspondence.txt || echo 0 > /tmp/gh-aw/has_correspondence.txt\n[ -f \"formal-verification/CRITIQUE.md\" ] && echo 1 > /tmp/gh-aw/has_critique.txt || echo 0 > /tmp/gh-aw/has_critique.txt\n\n# Detect formal-verification directory\n[ -d \"formal-verification\" ] && echo 1 > /tmp/gh-aw/fv_dir.txt || echo 0 > /tmp/gh-aw/fv_dir.txt\n\n# Count markdown docs inside formal-verification/\nfind . \\( -path \"*/formal-verification/*.md\" -o -path \"*/formal-verification/specs/*.md\" \\) 2>/dev/null \\\n  | wc -l > /tmp/gh-aw/fv_docs.txt || echo 0 > /tmp/gh-aw/fv_docs.txt\n\n# Fetch open FV Squad issues\ngh issue list --state open --label lean-squad --json number 2>/dev/null \\\n  > /tmp/gh-aw/fv_issues.json || echo \"[]\" > /tmp/gh-aw/fv_issues.json\n\n# Fetch open FV Squad PRs\ngh pr list --state open --limit 50 --json number,title 2>/dev/null \\\n  | python3 -c \"\nimport json, sys\nd = json.load(sys.stdin)\nprint(json.dumps([x for x in d if x['title'].startswith('[Lean Squad]')]))\" \\\n  > /tmp/gh-aw/fv_prs.json || echo \"[]\" > /tmp/gh-aw/fv_prs.json\n\npython3 - << 'EOF'\nimport json, os, random\n\nlean_count   = int(open('/tmp/gh-aw/lean_count.txt').read().strip() or 0)\nrust_count   = int(open('/tmp/gh-aw/rust_count.txt').read().strip() or 0)\nhas_lean_ci  = int(open('/tmp/gh-aw/has_lean_ci.txt').read().strip() or 0)\nhas_aeneas_ci = int(open('/tmp/gh-aw/has_aeneas_ci.txt').read().strip() or 0)\nhas_correspondence = int(open('/tmp/gh-aw/has_correspondence.txt').read().strip() or 0)\nhas_critique = int(open('/tmp/gh-aw/has_critique.txt').read().strip() or 0)\nfv_dir       = int(open('/tmp/gh-aw/fv_dir.txt').read().strip() or 0)\nfv_docs    = int(open('/tmp/gh-aw/fv_docs.txt').read().strip() or 0)\nfv_issues  = json.load(open('/tmp/gh-aw/fv_issues.json'))\nfv_prs     = json.load(open('/tmp/gh-aw/fv_prs.json'))\n\nn_issues = len(fv_issues)\nn_prs    = len(fv_prs)\n\ntask_names = {\n    1: 'Research & Target Identification',\n    2: 'Informal Spec Extraction',\n    3: 'Formal Spec Writing (Lean 4)',\n    4: 'Implementation Extraction',\n    5: 'Proof Assistance',\n    6: 'Correspondence Review',\n    7: 'Proof Utility Critique',\n    8: 'Aeneas Extraction (Rust only)',\n    9: 'CI Automation',\n}\n\n# Phase progress heuristics derived from repo state\n# The agent refines these using repo-memory at runtime\nhas_research   = bool(fv_dir) and (fv_docs >= 1 or n_issues >= 1 or lean_count >= 1)\nhas_inf_specs  = fv_docs >= 2 or lean_count >= 1\nhas_lean_specs = lean_count >= 1\nhas_impl       = lean_count >= 3\nhas_proofs     = lean_count >= 6\nhas_rust       = rust_count >= 1\nhas_ci         = bool(has_lean_ci)\n\nweights = {\n    1: 10.0  if not has_research  else 2.0,\n    2: (8.0  if not has_inf_specs  else 2.0) if has_research   else 0.5,\n    3: (8.0  if not has_lean_specs else 2.0) if has_inf_specs   else 0.3,\n    4: (6.0  if not has_impl       else 2.0) if has_lean_specs  else 0.2,\n    5: (6.0  if not has_proofs     else 2.0) if has_impl        else 0.1,\n    6: (10.0 if not has_correspondence else 3.0) if has_impl else 0.5,  # correspondence: critical when impl exists but no doc\n    7: (10.0 if not has_critique else 3.0) if has_proofs else 0.0,      # critique: critical when proofs exist but no doc\n    8: (3.0 if has_lean_specs else 1.0) if (has_rust and has_research) else 0.0,  # aeneas: only for Rust codebases with research done\n    9: 12.0 if (has_lean_specs and not has_ci) else 2.0,  # CI: critical when lean files exist but no CI; regular check otherwise\n}\n\nrun_id = int(os.environ.get('GITHUB_RUN_ID', '0'))\nrng    = random.Random(run_id)\n\nnon_main  = list(weights.keys())\nnm_weights = list(weights.values())\n\nchosen, seen = [], set()\nfor t in rng.choices(non_main, weights=nm_weights, k=30):\n    if t not in seen:\n        seen.add(t)\n        chosen.append(t)\n    if len(chosen) == 2:\n        break\n\nprint('=== Lean Squad Task Selection ===')\nprint(f'Lean files    : {lean_count}')\nprint(f'Rust files    : {rust_count}')\nprint(f'FV dir        : {bool(fv_dir)}')\nprint(f'FV docs       : {fv_docs}')\nprint(f'Open issues   : {n_issues}')\nprint(f'Open FV PRs   : {n_prs}')\nprint(f'Phase flags   : research={has_research}, inf_specs={has_inf_specs}, '\n      f'lean_specs={has_lean_specs}, impl={has_impl}, proofs={has_proofs}, '\n      f'rust={has_rust}, ci={has_ci}, '\n      f'correspondence={bool(has_correspondence)}, critique={bool(has_critique)}')\nprint()\nprint('Task weights:')\nfor t, w in weights.items():\n    tag = ' <-- SELECTED' if t in chosen else ''\n    print(f'  Task {t} ({task_names[t]}): weight {w:.1f}{tag}')\nprint()\nprint(f'Selected tasks: {chosen} = {[task_names[t] for t in chosen]}')\n\nresult = {\n    'lean_count': lean_count, 'rust_count': rust_count,\n    'fv_dir': bool(fv_dir), 'fv_docs': fv_docs,\n    'n_issues': n_issues, 'n_prs': n_prs,\n    'phase_flags': {\n        'has_research':   has_research,\n        'has_inf_specs':  has_inf_specs,\n        'has_lean_specs': has_lean_specs,\n        'has_impl':       has_impl,\n        'has_proofs':     has_proofs,\n        'has_rust':       has_rust,\n        'has_ci':         has_ci,\n        'has_correspondence': bool(has_correspondence),\n        'has_critique':  bool(has_critique),\n    },\n    'task_names': task_names,\n    'weights': {str(k): round(v, 2) for k, v in weights.items()},\n    'selected_tasks': chosen,\n}\nwith open('/tmp/gh-aw/task_selection.json', 'w') as f:\n    json.dump(result, f, indent=2)\nEOF\n"
 
       # Repo memory git-based storage configuration from frontmatter processed below
       - name: Clone repo-memory branch (default)
@@ -476,12 +476,12 @@ jobs:
           mkdir -p ${RUNNER_TEMP}/gh-aw/safeoutputs
           mkdir -p /tmp/gh-aw/safeoutputs
           mkdir -p /tmp/gh-aw/mcp-logs/safeoutputs
-          cat > ${RUNNER_TEMP}/gh-aw/safeoutputs/config.json << 'GH_AW_SAFE_OUTPUTS_CONFIG_c73e26fc27a8a2f5_EOF'
+          cat > ${RUNNER_TEMP}/gh-aw/safeoutputs/config.json << 'GH_AW_SAFE_OUTPUTS_CONFIG_d87b4f36020832aa_EOF'
           {"add_comment":{"max":3,"target":"*"},"create_issue":{"labels":["automation","lean-squad","aeneas-bug"],"max":4,"title_prefix":"[Lean Squad] "},"create_pull_request":{"draft":false,"labels":["automation","lean-squad"],"max":2,"max_patch_size":1024,"protected_files":["package.json","bun.lockb","bunfig.toml","deno.json","deno.jsonc","deno.lock","global.json","NuGet.Config","Directory.Packages.props","mix.exs","mix.lock","go.mod","go.sum","stack.yaml","stack.yaml.lock","pom.xml","build.gradle","build.gradle.kts","settings.gradle","settings.gradle.kts","gradle.properties","package-lock.json","yarn.lock","pnpm-lock.yaml","npm-shrinkwrap.json","requirements.txt","Pipfile","Pipfile.lock","pyproject.toml","setup.py","setup.cfg","Gemfile","Gemfile.lock","uv.lock","CODEOWNERS"],"protected_files_policy":"fallback-to-issue","protected_path_prefixes":[".github/",".agents/"],"title_prefix":"[Lean Squad] "},"missing_data":{},"missing_tool":{},"noop":{"max":1,"report-as-issue":"true"},"push_repo_memory":{"memories":[{"dir":"/tmp/gh-aw/repo-memory/default","id":"default","max_file_count":100,"max_file_size":10240,"max_patch_size":102400}]},"push_to_pull_request_branch":{"if_no_changes":"warn","max":4,"max_patch_size":1024,"protected_files":["package.json","bun.lockb","bunfig.toml","deno.json","deno.jsonc","deno.lock","global.json","NuGet.Config","Directory.Packages.props","mix.exs","mix.lock","go.mod","go.sum","stack.yaml","stack.yaml.lock","pom.xml","build.gradle","build.gradle.kts","settings.gradle","settings.gradle.kts","gradle.properties","package-lock.json","yarn.lock","pnpm-lock.yaml","npm-shrinkwrap.json","requirements.txt","Pipfile","Pipfile.lock","pyproject.toml","setup.py","setup.cfg","Gemfile","Gemfile.lock","uv.lock","CODEOWNERS"],"protected_path_prefixes":[".github/",".agents/"],"target":"*","title_prefix":"[Lean Squad] "},"update_issue":{"allow_body":true,"max":1,"target":"*","title_prefix":"[Lean Squad] "}}
-          GH_AW_SAFE_OUTPUTS_CONFIG_c73e26fc27a8a2f5_EOF
+          GH_AW_SAFE_OUTPUTS_CONFIG_d87b4f36020832aa_EOF
       - name: Write Safe Outputs Tools
         run: |
-          cat > ${RUNNER_TEMP}/gh-aw/safeoutputs/tools_meta.json << 'GH_AW_SAFE_OUTPUTS_TOOLS_META_80456815dc15bb96_EOF'
+          cat > ${RUNNER_TEMP}/gh-aw/safeoutputs/tools_meta.json << 'GH_AW_SAFE_OUTPUTS_TOOLS_META_399f08fce3fba029_EOF'
           {
             "description_suffixes": {
               "add_comment": " CONSTRAINTS: Maximum 3 comment(s) can be added. Target: *.",
@@ -493,8 +493,8 @@ jobs:
             "repo_params": {},
             "dynamic_tools": []
           }
-          GH_AW_SAFE_OUTPUTS_TOOLS_META_80456815dc15bb96_EOF
-          cat > ${RUNNER_TEMP}/gh-aw/safeoutputs/validation.json << 'GH_AW_SAFE_OUTPUTS_VALIDATION_fcebbeb744ee8f99_EOF'
+          GH_AW_SAFE_OUTPUTS_TOOLS_META_399f08fce3fba029_EOF
+          cat > ${RUNNER_TEMP}/gh-aw/safeoutputs/validation.json << 'GH_AW_SAFE_OUTPUTS_VALIDATION_92f1a65d1a2a3f75_EOF'
           {
             "add_comment": {
               "defaultMax": 1,
@@ -715,7 +715,7 @@ jobs:
               "customValidation": "requiresOneOf:status,title,body"
             }
           }
-          GH_AW_SAFE_OUTPUTS_VALIDATION_fcebbeb744ee8f99_EOF
+          GH_AW_SAFE_OUTPUTS_VALIDATION_92f1a65d1a2a3f75_EOF
           node ${RUNNER_TEMP}/gh-aw/actions/generate_safe_outputs_tools.cjs
       - name: Generate Safe Outputs MCP Server Config
         id: safe-outputs-config
@@ -783,7 +783,7 @@ jobs:
           export MCP_GATEWAY_DOCKER_COMMAND='docker run -i --rm --network host -v /var/run/docker.sock:/var/run/docker.sock -e MCP_GATEWAY_PORT -e MCP_GATEWAY_DOMAIN -e MCP_GATEWAY_API_KEY -e MCP_GATEWAY_PAYLOAD_DIR -e MCP_GATEWAY_PAYLOAD_SIZE_THRESHOLD -e DEBUG -e MCP_GATEWAY_LOG_DIR -e GH_AW_MCP_LOG_DIR -e GH_AW_SAFE_OUTPUTS -e GH_AW_SAFE_OUTPUTS_CONFIG_PATH -e GH_AW_SAFE_OUTPUTS_TOOLS_PATH -e GH_AW_ASSETS_BRANCH -e GH_AW_ASSETS_MAX_SIZE_KB -e GH_AW_ASSETS_ALLOWED_EXTS -e DEFAULT_BRANCH -e GITHUB_MCP_SERVER_TOKEN -e GITHUB_MCP_GUARD_MIN_INTEGRITY -e GITHUB_MCP_GUARD_REPOS -e GITHUB_REPOSITORY -e GITHUB_SERVER_URL -e GITHUB_SHA -e GITHUB_WORKSPACE -e GITHUB_TOKEN -e GITHUB_RUN_ID -e GITHUB_RUN_NUMBER -e GITHUB_RUN_ATTEMPT -e GITHUB_JOB -e GITHUB_ACTION -e GITHUB_EVENT_NAME -e GITHUB_EVENT_PATH -e GITHUB_ACTOR -e GITHUB_ACTOR_ID -e GITHUB_TRIGGERING_ACTOR -e GITHUB_WORKFLOW -e GITHUB_WORKFLOW_REF -e GITHUB_WORKFLOW_SHA -e GITHUB_REF -e GITHUB_REF_NAME -e GITHUB_REF_TYPE -e GITHUB_HEAD_REF -e GITHUB_BASE_REF -e GH_AW_SAFE_OUTPUTS_PORT -e GH_AW_SAFE_OUTPUTS_API_KEY -v /tmp/gh-aw/mcp-payloads:/tmp/gh-aw/mcp-payloads:rw -v /opt:/opt:ro -v /tmp:/tmp:rw -v '"${GITHUB_WORKSPACE}"':'"${GITHUB_WORKSPACE}"':rw ghcr.io/github/gh-aw-mcpg:v0.2.6'
           
           mkdir -p /home/runner/.copilot
-          cat << GH_AW_MCP_CONFIG_1a3bf0cdf4415491_EOF | bash ${RUNNER_TEMP}/gh-aw/actions/start_mcp_gateway.sh
+          cat << GH_AW_MCP_CONFIG_be959f6b5686821e_EOF | bash ${RUNNER_TEMP}/gh-aw/actions/start_mcp_gateway.sh
           {
             "mcpServers": {
               "github": {
@@ -824,7 +824,7 @@ jobs:
               "payloadDir": "${MCP_GATEWAY_PAYLOAD_DIR}"
             }
           }
-          GH_AW_MCP_CONFIG_1a3bf0cdf4415491_EOF
+          GH_AW_MCP_CONFIG_be959f6b5686821e_EOF
       - name: Download activation artifact
         uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
         with:
