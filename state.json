@@ -1,88 +1,88 @@
 {
   "last_run": "2026-03-26",
-  "run_id": "23596842437",
+  "run_id": "23597968749",
   "fv_tool": "Lean4+Mathlib",
   "lake_project": "formal-verification/lean/",
   "targets": [
     {
-      "id": "vote_result",
-      "phase": 1,
-      "lean_file": null,
-      "notes": "Identified. src/quorum/majority.rs Configuration::vote_result. High tractability."
-    },
-    {
-      "id": "committed_index",
-      "phase": 1,
-      "lean_file": null,
-      "notes": "Identified. src/quorum/majority.rs Configuration::committed_index. Medium tractability."
-    },
-    {
-      "id": "find_conflict",
-      "phase": 1,
-      "lean_file": null,
-      "notes": "Identified. src/raft_log.rs RaftLog::find_conflict. High tractability."
-    },
-    {
-      "id": "maybe_append",
-      "phase": 1,
-      "lean_file": null,
-      "notes": "Identified. src/raft_log.rs RaftLog::maybe_append. Depends on find_conflict."
-    },
-    {
-      "id": "inflights",
-      "phase": 1,
-      "lean_file": null,
-      "notes": "Identified. src/tracker/inflights.rs ring buffer. Medium tractability."
-    },
-    {
-      "id": "progress",
-      "phase": 1,
-      "lean_file": null,
-      "notes": "Identified. src/tracker/progress.rs state machine. Medium tractability."
-    },
-    {
-      "id": "joint_quorum",
-      "phase": 1,
-      "lean_file": null,
-      "notes": "Identified. src/quorum/joint.rs. Depends on vote_result and committed_index."
-    },
-    {
       "id": "limit_size",
       "phase": 1,
       "lean_file": null,
-      "notes": "Identified. src/util.rs limit_size. Very high tractability - good first target."
-    },
-    {
-      "id": "uncommitted_size",
-      "phase": 1,
-      "lean_file": null,
-      "notes": "Identified. src/raft.rs maybe_increase/reduce_uncommitted_size. High tractability."
+      "notes": "Top priority. src/util.rs. Very high tractability. Truncation postconditions, prefix, non-empty. Pure functional."
     },
     {
       "id": "config_validate",
       "phase": 1,
       "lean_file": null,
-      "notes": "Identified. src/config.rs Config::validate. Very high tractability."
+      "notes": "Top priority. src/config.rs Config::validate. Decidable conjunction of arithmetic constraints. Very high tractability."
+    },
+    {
+      "id": "vote_result",
+      "phase": 1,
+      "lean_file": null,
+      "notes": "src/quorum/majority.rs Configuration::vote_result. High tractability. Majority quorum. aeneas-safe variant exists."
+    },
+    {
+      "id": "committed_index",
+      "phase": 1,
+      "lean_file": null,
+      "notes": "src/quorum/majority.rs Configuration::committed_index. Medium tractability. Sort-then-index. aeneas-safe variant exists."
+    },
+    {
+      "id": "find_conflict",
+      "phase": 1,
+      "lean_file": null,
+      "notes": "src/raft_log.rs RaftLog::find_conflict. High tractability. Scan for first term mismatch."
+    },
+    {
+      "id": "maybe_append",
+      "phase": 1,
+      "lean_file": null,
+      "notes": "src/raft_log.rs RaftLog::maybe_append. Medium tractability. Depends on find_conflict."
+    },
+    {
+      "id": "joint_vote_result",
+      "phase": 1,
+      "lean_file": null,
+      "notes": "src/quorum/joint.rs JointConfig::vote_result. Depends on vote_result."
+    },
+    {
+      "id": "joint_committed_index",
+      "phase": 1,
+      "lean_file": null,
+      "notes": "src/quorum/joint.rs JointConfig::committed_index. Depends on committed_index."
+    },
+    {
+      "id": "inflights",
+      "phase": 1,
+      "lean_file": null,
+      "notes": "src/tracker/inflights.rs ring buffer. Medium tractability."
+    },
+    {
+      "id": "progress",
+      "phase": 1,
+      "lean_file": null,
+      "notes": "src/tracker/progress.rs state machine. Medium tractability."
     }
   ],
   "next_steps": [
-    "Run Task 2: informal spec for limit_size or vote_result (easiest entry points).",
-    "Run Task 3: Lean spec for limit_size (very tractable, good first Lean file).",
-    "lean-ci.yml now exists - will verify proofs in CI once Lean files are added.",
-    "Aeneas targets: vote_result and committed_index have #[cfg(feature=aeneas)] versions."
+    "Run Task 2: informal spec for limit_size (simplest entry point).",
+    "Run Task 3: Lean spec for limit_size once elan/network available.",
+    "Run Task 8: Aeneas extraction for vote_result/committed_index (have aeneas-feature variants).",
+    "lean-ci.yml created run79 - will verify proofs once Lean files added."
   ],
-  "build_note": "Lean toolchain install blocked by network firewall. Tasks 3-5 require working elan.",
+  "build_note": "Lean toolchain install blocked by network firewall. Tasks 3-5 require working elan. Do NOT submit .lean files without successful lake build.",
   "open_prs": [
     {
-      "branch": "lean-squad/run78-research-ci-20260326",
-      "description": "PR run78: RESEARCH.md + TARGETS.md (10 targets) + lean-ci.yml"
+      "branch": "lean-squad/run79-research-ci-20260326",
+      "description": "PR run79: RESEARCH.md + TARGETS.md (10 targets) + lean-ci.yml"
     }
   ],
-  "status_issue": "To be created run78",
+  "status_issue": "To be created run79",
   "ci_status": {
-    "lean_ci_yml": "created run78",
-    "aeneas_generate_yml": "pre-existing",
+    "lean_ci_yml": "created run79 - awaiting first .lean files",
+    "aeneas_generate_yml": "pre-existing in repo",
     "last_lean_ci_run": null
   },
-  "conflicts_noted": "Prior run memory (runs 1-77) was stale - repo had single grafted commit with no FV content. Starting fresh from run 78."
+  "conflicts_noted": "No conflicts. Fresh start from run 79."
 }
