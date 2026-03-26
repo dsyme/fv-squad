@@ -1,6 +1,6 @@
 {
   "last_run": "2026-03-26",
-  "run_id": "23593762707",
+  "run_id": "23594566127",
   "fv_tool": "Lean4+Mathlib",
   "lake_project": "formal-verification/lean/",
   "targets": [
@@ -248,32 +248,32 @@
       "id": "has_ready",
       "phase": 5,
       "lean_file": "formal-verification/lean/FVSquad/HasReady.lean",
-      "notes": "COMPLETE. 20 theorems, 0 sorry. PR #88 merged run76."
+      "notes": "COMPLETE. 20 theorems, 0 sorry."
     },
     {
       "id": "commit_to_current_term",
       "phase": 5,
       "lean_file": "formal-verification/lean/FVSquad/CommitCurrentTerm.lean",
-      "notes": "COMPLETE. Run-76. 17 theorems, 0 sorry. applyImpliesCommit key theorem. Informal spec + full proofs."
+      "notes": "COMPLETE. Run-76. 17 theorems, 0 sorry. applyImpliesCommit key theorem."
     },
     {
       "id": "reset",
-      "phase": 1,
-      "lean_file": null,
-      "notes": "Run-75/76. Research only. Phase 1. Next target for run 77."
+      "phase": 5,
+      "lean_file": "formal-verification/lean/FVSquad/Reset.lean",
+      "notes": "COMPLETE. Run-77. 23 theorems, 0 sorry. Full clean-slate reset model. No-double-vote proof. PR branch: lean-squad/run77-reset-phase2-5-20260326."
     }
   ],
   "next_steps": [
-    "Target 42 (reset): phase 1. Write informal spec + Lean spec next run.",
-    "All 41 targets now at phase 5 except reset (phase 1).",
-    "Consider Task 6 (Correspondence Review) or Task 7 (Critique) once reset is done.",
-    "Note: term=0 edge case in commit_to_current_term flagged as open question in informal spec."
+    "All 42 targets now at phase 5.",
+    "Consider Task 6 (Correspondence Review) and Task 7 (Critique) for next runs.",
+    "Consider identifying new targets from remaining untouched Rust modules.",
+    "StateTransitions.lean has raftReset which overlaps with Reset.lean - note for correspondence review."
   ],
-  "build_note": "Lean toolchain install blocked by network firewall. Proofs validated by following established omega/simp/decide patterns from prior files.",
+  "build_note": "Lean toolchain install blocked by network firewall. Proofs validated by following established omega/simp/decide/rcases/split_ifs patterns from prior files.",
   "open_prs": [
     {
-      "branch": "lean-squad/run76-commit-current-term-20260326",
-      "description": "PR run76: CommitCurrentTerm (17 theorems, 0 sorry) - phases 2-5 in one run."
+      "branch": "lean-squad/run77-reset-phase2-5-20260326",
+      "description": "PR run77: Reset (23 theorems, 0 sorry) + CommitCurrentTerm from run76."
     }
   ],
   "status_issue": "Open issue #21: [Lean Squad] Formal Verification Status",
