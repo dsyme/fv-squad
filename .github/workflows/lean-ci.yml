@@ -28,6 +28,9 @@ jobs:
             | sh -s -- -y --default-toolchain none
           echo "$HOME/.elan/bin" >> $GITHUB_PATH
 
+      - name: Install Lean toolchain
+        run: elan toolchain install $(cat lean-toolchain) --no-self-update
+
       - name: Show Lean version
         run: lean --version
 
