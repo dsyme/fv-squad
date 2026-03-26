@@ -7,8 +7,8 @@ correspondence level, known divergences, and the impact on any proofs that rely 
 definition.
 
 ## Last Updated
-- **Date**: 2026-03-26 19:00 UTC
-- **Commit**: `6d88bf60986287d9ad1967df86e7d001db974a88`
+- **Date**: 2026-03-26 19:41 UTC
+- **Commit**: `ded94e365cb9d269883a6de2d50d297919499b16`
 
 ---
 
@@ -139,9 +139,54 @@ Theorems in `MajorityVote.lean` prove properties about `voteResult`. The main ca
 
 ---
 
+## `formal-verification/lean/FVSquad/JointVote.lean`
+
+### Target: `Configuration::vote_result` (joint) — `src/quorum/joint.rs`
+
+Rust source: [`src/quorum/joint.rs#L63`](../src/quorum/joint.rs#L63)
+
+#### Lean definitions
+
+| Lean name | Rust name | Rust location | Correspondence | Notes |
+|-----------|-----------|---------------|----------------|-------|
+| `combineVotes` | *(match expression)* | `src/quorum/joint.rs#L68–75` | Exact | Directly mirrors the four-arm `match (i, o)` pattern. Semantically identical. |
+| `jointVoteResult` | `Configuration::vote_result` | `src/quorum/joint.rs#L63` | Abstraction | See divergences below. |
+
+#### Known divergences (Abstraction-level)
+
+1. **Voter representation** — Rust `Configuration` holds `incoming: MajorityConfig` and
+   `outgoing: MajorityConfig`, each backed by a `HashSet<u64>`. Lean represents these
+   as `List Nat` parameters passed directly to `jointVoteResult`, abstracting the struct wrapper.
+
+2. **`outgoing` default** — In a single-group (non-joint) configuration, Rust leaves
+   `outgoing` as `MajorityConfig::default()` (empty). Lean's theorem `J4` proves that
+   `jointVoteResult incoming [] check = voteResult incoming check`, confirming the
+   non-joint case is handled correctly.
+
+3. **Check function sharing** — Rust passes `&check` to `incoming.vote_result` and
+   `check` (by move) to `outgoing.vote_result`. In Lean the same `check : Nat → Option Bool`
+   function is passed to both calls. This is equivalent because the function is pure.
+
+4. **Numeric types and voter IDs** — Same as `MajorityVote.lean`: `u64` → `Nat`, no overflow.
+
+#### Impact on proofs
+
+- `JointVote.lean` directly reuses the `voteResult` function and all lemmas from
+  `MajorityVote.lean`. Its 14 theorems (CL1–CL4, J1–J10) are sound given the
+  `MajorityVote.lean` model.
+- The `combineVotes` function is a direct structural translation of the Rust `match`; no
+  approximation is needed.
+- Theorems about symmetry (J9, J10) have no direct Rust counterpart but are natural
+  corollaries of the structure.
+
+**Assessment**: The Lean model is a sound abstraction of the joint `vote_result`. The
+14 proved theorems fully characterise the joint quorum decision rule.
+
+---
+
 ## Known Mismatches
 
-No mismatches found. All three Lean models are sound abstractions of their Rust counterparts.
+No mismatches found. All four Lean models are sound abstractions of their Rust counterparts.
 
 ---
 
@@ -151,4 +196,5 @@ No mismatches found. All three Lean models are sound abstractions of their Rust 
 |-----------|-------------|---------------------|-----------------|------|
 | `LimitSize.lean` | `src/util.rs` `limit_size` | Abstraction | 12 | Overflow not modelled (safe) |
 | `ConfigValidate.lean` | `src/config.rs` `Config::validate` | Abstraction | 10 | Error messages not captured (by design) |
-| `MajorityVote.lean` | `src/quorum/majority.rs` `vote_result` | Abstraction | 15 | Duplicates in voter list not excluded by type |
+| `MajorityVote.lean` | `src/quorum/majority.rs` `vote_result` | Abstraction | 21 | Duplicates in voter list not excluded by type |
+| `JointVote.lean` | `src/quorum/joint.rs` `vote_result` | Abstraction | 14 | Struct wrapper abstracted; non-joint degeneration proved (J4) |
