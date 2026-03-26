@@ -212,6 +212,76 @@ private theorem limitSize_list_ge2 {α : Type} {l : List α} (h : 2 ≤ l.length
   | [_] => simp at h
   | e :: e' :: rest => exact ⟨e, e', rest, rfl⟩
 
+/-- Total size is monotone in the prefix length: taking fewer elements gives a smaller total. -/
+private theorem totalSize_take_mono {α : Type} (size : α → Nat) (l : List α)
+    (k n : Nat) (hkn : k ≤ n) :
+    totalSize size (l.take k) ≤ totalSize size (l.take n) := by
+  induction l generalizing k n with
+  | nil => simp [totalSize]
+  | cons e es ih =>
+    cases k with
+    | zero => simp [totalSize]
+    | succ k' =>
+      cases n with
+      | zero => omega
+      | succ n' =>
+        simp only [List.take_succ_cons, totalSize_cons]
+        have := ih k' n' (Nat.le_of_succ_le_succ hkn)
+        omega
+
+/-- If `limitSizeCount` stops early (count < k + len when k ≥ 1), adding the next element
+    would push the cumulative total over the budget. -/
+private theorem limitSizeCount_stops_at_budget
+    {α : Type} (size : α → Nat) (budget : Nat)
+    (entries : List α) (k cum : Nat) (hk : 1 ≤ k)
+    (hearly : limitSizeCount size budget entries k cum < k + entries.length) :
+    budget < cum + totalSize size
+        (entries.take (limitSizeCount size budget entries k cum - k + 1)) := by
+  induction entries generalizing k cum with
+  | nil =>
+    simp only [limitSizeCount, List.length, Nat.add_zero] at hearly; omega
+  | cons e' rest ih =>
+    have hkne : k ≠ 0 := Nat.ne_of_gt hk
+    by_cases hce : cum + size e' > budget
+    · -- Function stops here: limitSizeCount = k, so count - k = 0, take 1 = [e']
+      have heq : limitSizeCount size budget (e' :: rest) k cum = k := by
+        simp only [limitSizeCount, beq_iff_eq, if_neg hkne, if_pos hce]
+      rw [heq, Nat.sub_self, Nat.zero_add]
+      simp [List.take_succ_cons, totalSize]
+      omega
+    · -- Function continues recursively
+      have hrec : limitSizeCount size budget (e' :: rest) k cum =
+                  limitSizeCount size budget rest (k + 1) (cum + size e') := by
+        simp only [limitSizeCount, beq_iff_eq, if_neg hkne, if_neg hce]
+      rw [hrec] at hearly ⊢
+      have hearly' : limitSizeCount size budget rest (k + 1) (cum + size e') <
+                     (k + 1) + rest.length := by
+        simp only [List.length_cons] at hearly; omega
+      have hge := limitSizeCount_ge_k size budget rest (k + 1) (cum + size e')
+      have ih' := ih (k + 1) (cum + size e') (by omega) hearly'
+      have htake : (e' :: rest).take
+                    (limitSizeCount size budget rest (k + 1) (cum + size e') - k + 1) =
+                  e' :: rest.take
+                    (limitSizeCount size budget rest (k + 1) (cum + size e') - k) := by
+        simp [List.take_succ_cons]
+      rw [htake, totalSize_cons]
+      have heq : limitSizeCount size budget rest (k + 1) (cum + size e') - (k + 1) + 1 =
+                 limitSizeCount size budget rest (k + 1) (cum + size e') - k := by omega
+      rw [heq] at ih'
+      omega
+
+/-- If all elements fit in the budget, `limitSize` is a no-op. -/
+private theorem limitSize_all_fit_noop
+    {α : Type} (size : α → Nat) (budget : Nat)
+    (l : List α) (hfit : totalSize size l ≤ budget) :
+    limitSize size l (some budget) = l := by
+  simp only [limitSize]
+  by_cases h1 : l.length ≤ 1
+  · simp [h1]
+  · simp only [if_neg h1]
+    rw [limitSizeCount_all_fit_zero size budget l hfit]
+    simp
+
 /-! ## Specification theorems -/
 
 section Spec
@@ -341,11 +411,32 @@ theorem limitSize_maximality (entries : List α) (budget : Nat)
     (hlt : (limitSize size entries (some budget)).length < entries.length) :
     budget < totalSize size
       (entries.take ((limitSize size entries (some budget)).length + 1)) := by
-  -- Proof sketch: the scan stopped at the current count because the next element
-  -- would push the cumulative size over budget.
-  -- Requires formalising the stopping condition of limitSizeCount.
-  -- TODO: formalise the stopping condition of limitSizeCount.
-  sorry
+  simp only [limitSize] at *
+  by_cases h1 : entries.length ≤ 1
+  · simp only [if_pos h1] at hlt; omega
+  · simp only [if_neg h1] at *
+    have hn_le : limitSizeCount size budget entries 0 0 ≤ entries.length :=
+      limitSizeCount_le_length size budget entries 0
+    have hlen_n : (entries.take (limitSizeCount size budget entries 0 0)).length =
+                  limitSizeCount size budget entries 0 0 := by
+      simp [List.length_take, Nat.min_eq_left hn_le]
+    rw [hlen_n] at hlt ⊢
+    cases entries with
+    | nil => simp at h1
+    | cons e es =>
+      rw [limitSizeCount_step_zero] at hlt ⊢
+      simp only [List.length_cons] at hlt
+      -- hlt : limitSizeCount ... < es.length + 1; stopping lemma needs < 1 + es.length
+      have hlt' : limitSizeCount size budget es 1 (size e) < 1 + es.length := by omega
+      have hn_ge1 : 1 ≤ limitSizeCount size budget es 1 (size e) :=
+        limitSizeCount_ge_k size budget es 1 (size e)
+      have hstop_lem := limitSizeCount_stops_at_budget size budget es 1 (size e) (by omega) hlt'
+      have heq1 : limitSizeCount size budget es 1 (size e) - 1 + 1 =
+                  limitSizeCount size budget es 1 (size e) := by omega
+      rw [heq1] at hstop_lem
+      rw [List.take_succ_cons]
+      simp [totalSize]
+      omega
 
 /-! ### P11: Idempotence — a second application is a no-op. -/
 
@@ -385,17 +476,34 @@ theorem limitSize_idempotent (entries : List α) (max : Option Nat) :
 theorem limitSize_prefix_of_prefix (entries : List α) (max : Option Nat)
     (k : Nat) (hk : k ≤ (limitSize size entries max).length) :
     limitSize size (entries.take k) max = entries.take k := by
-  -- When k ≤ 1: entries.take k has length ≤ 1, so limitSize is a no-op.
-  -- When k ≥ 2: entries.take k is a strict sub-prefix of the result.
-  --   The result fits in the budget (by P9), so the sub-prefix also fits,
-  --   meaning a second limitSize call is a no-op (by limitSizeCount_all_fit_zero).
-  -- TODO: formalise the sub-prefix size bound.
-  -- For now handle the easy case k ≤ 1.
   by_cases hk1 : k ≤ 1
-  · apply limitSize_le_one
-    simp [List.length_take]
-    omega
-  · -- k ≥ 2; requires the sub-prefix size bound from P9.
-    sorry
+  · apply limitSize_le_one; simp [List.length_take]; omega
+  · cases max with
+    | none => simp [limitSize]
+    | some budget =>
+      simp only [limitSize] at hk
+      by_cases h1 : entries.length ≤ 1
+      · simp only [if_pos h1] at hk; omega
+      · simp only [if_neg h1] at hk
+        have hn_le : limitSizeCount size budget entries 0 0 ≤ entries.length :=
+          limitSizeCount_le_length size budget entries 0
+        have hlen_n : (entries.take (limitSizeCount size budget entries 0 0)).length =
+                      limitSizeCount size budget entries 0 0 := by
+          simp [List.length_take, Nat.min_eq_left hn_le]
+        rw [hlen_n] at hk
+        -- hk : k ≤ limitSizeCount budget entries 0 0
+        -- Get P9 result: count = 1 OR totalSize(entries.take count) ≤ budget
+        have hp9 := limitSize_size_bound size entries budget
+        simp only [limitSize, if_neg h1] at hp9
+        rw [hlen_n] at hp9
+        rcases hp9 with hn1 | hfit
+        · -- count = 1 but k ≥ 2: contradiction
+          omega
+        · -- totalSize(entries.take count) ≤ budget; so entries.take k also fits
+          have hfit_k : totalSize size (entries.take k) ≤ budget := by
+            have hmono := totalSize_take_mono size entries k
+                            (limitSizeCount size budget entries 0 0) hk
+            omega
+          exact limitSize_all_fit_noop size budget (entries.take k) hfit_k
 
 end Spec
