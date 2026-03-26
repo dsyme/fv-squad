@@ -1,6 +1,6 @@
 {
   "last_run": "2026-03-26",
-  "run_id": "23614880045",
+  "run_id": "23615775895",
   "fv_tool": "Lean4 (stdlib only, no Mathlib)",
   "lake_project": "formal-verification/lean/",
   "lean_version": "4.28.0",
@@ -29,13 +29,13 @@
       "id": "joint_vote_result",
       "phase": 5,
       "lean_file": "formal-verification/lean/FVSquad/JointVote.lean",
-      "notes": "ALL 14 theorems proved (0 sorry). CL1-CL4 + J1-J10. PR #103 merged run88."
+      "notes": "ALL 14 theorems proved (0 sorry). CL1-CL4 + J1-J10. PR #103 merged."
     },
     {
       "id": "committed_index",
-      "phase": 4,
+      "phase": 5,
       "lean_file": "formal-verification/lean/FVSquad/CommittedIndex.lean",
-      "notes": "Phase 4: Lean spec + implementation model. 9 proved (0 sorry in proved), 4 sorry-guarded (safety/maximality/mono/all-zero). PR in progress run88. Next: Task 5 to prove safety/maximality requires list order-statistic lemmas (pairwise sorted list position access)."
+      "notes": "ALL 17 theorems proved (0 sorry). CI1-CI8 + Safety + Maximality + Mono + helpers. PR pending run89. Key: Safety proves majority<=countGe, Maximality proves count<majority when k>ci, Mono via safety+maximality."
     },
     {
       "id": "find_conflict",
@@ -53,15 +53,18 @@
       "id": "joint_committed_index",
       "phase": 1,
       "lean_file": null,
-      "notes": "src/quorum/joint.rs JointConfig::committed_index. Just min of two committed indices. Depends on committed_index (phase 4)."
+      "notes": "src/quorum/joint.rs JointConfig::committed_index. Just min of two committed indices. Depends on committed_index (now phase 5)."
     }
   ],
-  "total_theorems_proved": 66,
+  "total_theorems_proved": 74,
   "correspondence_file": "formal-verification/CORRESPONDENCE.md",
   "lean_stdlib_notes": {
-    "no_mathlib_tactics": ["split_ifs", "push_neg", "linarith"],
-    "use_instead": ["omega (replaces linarith)", "by_cases h : cond (replaces split_ifs)", "by_contra h + omega (replaces push_neg)"],
-    "list_mem": "List.mem_cons_self has NO extra args. List.Mem.tail v hw for cons membership.",
+    "no_by_contra": "by_contra is 'unknown tactic' in Lean 4.28.0 - use Nat.le_of_not_lt instead",
+    "no_push_neg": "push_neg not available without Mathlib - use Nat.not_le.mp or omega",
+    "no_pairwise_iff_get": "List.pairwise_iff_get does not exist - use List.pairwise_cons + List.get_mem",
+    "no_mathlib_tactics": ["split_ifs", "push_neg", "linarith", "by_contra"],
+    "use_instead": ["omega (replaces linarith)", "by_cases h : cond (replaces split_ifs)", "Nat.le_of_not_lt (replaces by_contra)", "simp [Nat.not_le] (replaces push_neg)"],
+    "list_mem": "List.mem_cons_self has NO extra args (implicit). List.get_mem xs Fin for membership.",
     "import_placement": "imports MUST be at the very top of the file, before any doc comments or code",
     "theorem_ordering": "Define theorems BEFORE use - cannot forward-reference.",
     "barrel_file": "formal-verification/lean/FVSquad.lean must import ALL module files for lake build to compile them",
@@ -69,19 +72,23 @@
     "open_namespace": "MajorityVote.lean has no namespace - use majority etc. directly after import, no open needed.",
     "length_mergeSort": "List.length_mergeSort l (no underscore arg)",
     "mergeSort_perm": "List.mergeSort_perm l (fun a b => decide (a >= b)) (must be explicit)",
-    "filter_sublist": "Use by_cases + List.Sublist.cons₂/cons for filter monotone proofs",
-    "countGe_antitone": "Proved via filter_ge_sublist + List.Sublist.length_le"
+    "filter_sublist": "Use by_cases + List.Sublist.cons2/cons for filter monotone proofs",
+    "countGe_antitone": "Proved via filter_ge_sublist + List.Sublist.length_le",
+    "getD_in_bounds": "l.getD i 0 = l.get {i, h} - use induction + simp [List.getD_eq_getElem?_getD]",
+    "pairwise_get_antitone": "Prove by induction on l: zero case uses pairwise_cons + get_mem, succ case uses get_cons_succ",
+    "sortDesc_get_antitone": "i <= j -> sortDesc(l)[j] <= sortDesc(l)[i]: split eq/lt, use pairwise_ge_antitone for strict"
   },
   "open_prs": [
     {
-      "branch": "lean-squad/committed-index-spec-impl-run88",
-      "commit": "5bee462",
-      "title": "feat(fv): CommittedIndex Lean spec + implementation model (Tasks 2+3+4)",
-      "status": "PR in progress run88"
+      "branch": "lean-squad/committed-index-full-proofs-run89",
+      "commit": "394097e",
+      "title": "feat(fv): prove all 4 CommittedIndex order-statistic theorems (Task 5)",
+      "status": "PR pending run89"
     }
   ],
   "aeneas_status": "BLOCKED - no-new-privileges container prevents opam/sudo install. Charon.toml exists in repo. Try again when container has sudo access.",
   "status_issue": 94,
-  "next_targets": ["committed_index_proofs", "joint_committed_index"],
-  "ci_workflow": ".github/workflows/lean-ci.yml"
+  "next_targets": ["joint_committed_index", "find_conflict"],
+  "ci_workflow": ".github/workflows/lean-ci.yml",
+  "ci_status": "HEALTHY - lean-ci.yml exists, uses lean-toolchain pin, runs lake build. No issues found."
 }
