@@ -6,8 +6,8 @@ Prioritised target list. Phases: 1=Research, 2=Informal Spec, 3=Lean Spec, 4=Lea
 
 | Priority | ID | File | Function | Phase | Notes |
 |----------|----|------|----------|-------|-------|
-| 1 | `limit_size` | `src/util.rs` | `limit_size` | 2 | Informal spec written. Pure list truncation. Very high tractability. |
-| 2 | `config_validate` | `src/config.rs` | `Config::validate` | 1 | Decidable arithmetic constraints. Very high tractability. |
+| 1 | `limit_size` | `src/util.rs` | `limit_size` | 5 ✅ | All 12 theorems proved (0 sorry). `FVSquad/LimitSize.lean`. |
+| 2 | `config_validate` | `src/config.rs` | `Config::validate` | 5 ✅ | All 10 theorems proved (0 sorry). `FVSquad/ConfigValidate.lean`. |
 | 3 | `vote_result` | `src/quorum/majority.rs` | `Configuration::vote_result` | 1 | Majority quorum. Aeneas-safe variant available. |
 | 4 | `committed_index` | `src/quorum/majority.rs` | `Configuration::committed_index` | 1 | Sort-then-index quorum commit. Aeneas-safe variant. |
 | 5 | `find_conflict` | `src/raft_log.rs` | `RaftLog::find_conflict` | 1 | First term mismatch scan. |
@@ -19,7 +19,6 @@ Prioritised target list. Phases: 1=Research, 2=Informal Spec, 3=Lean Spec, 4=Lea
 
 ## Next Steps
 
-1. **Task 3** (Lean Spec for `limit_size`) — blocked on Lean toolchain availability (network firewall in CI).
-2. **Task 3** (Lean Spec for `config_validate`) — same blocker.
-3. **Task 8** (Aeneas extraction for `vote_result` / `committed_index`) — blocked on Charon+Aeneas build.
-4. Once CI has network access, all Lean work can proceed.
+1. **Task 2+3** (Informal + Lean Spec for `vote_result`) — majority quorum predicate, decidable, Aeneas-safe.
+2. **Task 2+3** (Informal + Lean Spec for `committed_index`) — sort-then-index, depends on sorted list Mathlib lemmas.
+3. **Task 8** (Aeneas extraction for `vote_result` / `committed_index`) — blocked on OCaml/opam in no-new-privileges containers.
