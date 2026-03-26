@@ -1,14 +1,14 @@
 {
   "last_run": "2026-03-26",
-  "run_id": "23597968749",
+  "run_id": "23598664070",
   "fv_tool": "Lean4+Mathlib",
   "lake_project": "formal-verification/lean/",
   "targets": [
     {
       "id": "limit_size",
-      "phase": 1,
+      "phase": 2,
       "lean_file": null,
-      "notes": "Top priority. src/util.rs. Very high tractability. Truncation postconditions, prefix, non-empty. Pure functional."
+      "notes": "Top priority. src/util.rs. Very high tractability. Informal spec written: specs/limit_size_informal.md. Key props: prefix, nonempty, size-bound, maximality, noop-none."
     },
     {
       "id": "config_validate",
@@ -20,7 +20,7 @@
       "id": "vote_result",
       "phase": 1,
       "lean_file": null,
-      "notes": "src/quorum/majority.rs Configuration::vote_result. High tractability. Majority quorum. aeneas-safe variant exists."
+      "notes": "src/quorum/majority.rs Configuration::vote_result. High tractability. Majority quorum. aeneas-safe variant exists (#[cfg(feature=aeneas)])."
     },
     {
       "id": "committed_index",
@@ -66,23 +66,24 @@
     }
   ],
   "next_steps": [
-    "Run Task 2: informal spec for limit_size (simplest entry point).",
-    "Run Task 3: Lean spec for limit_size once elan/network available.",
+    "Run Task 3: Lean spec for limit_size once elan/network available (abstract size fn, List, props).",
+    "Run Task 3: Lean spec for config_validate (decidable predicate).",
     "Run Task 8: Aeneas extraction for vote_result/committed_index (have aeneas-feature variants).",
-    "lean-ci.yml created run79 - will verify proofs once Lean files added."
+    "Task 9 (lean-ci.yml): protected file - needs maintainer to merge manually OR protected-files: fallback-to-issue config."
   ],
-  "build_note": "Lean toolchain install blocked by network firewall. Tasks 3-5 require working elan. Do NOT submit .lean files without successful lake build.",
+  "build_note": "Lean toolchain install blocked by network firewall (HTTP 403 on releases.lean-lang.org). Tasks 3-5 require working elan. Do NOT submit .lean files without successful lake build.",
   "open_prs": [
     {
-      "branch": "lean-squad/run79-research-ci-20260326",
-      "description": "PR run79: RESEARCH.md + TARGETS.md (10 targets) + lean-ci.yml"
+      "branch": "lean-squad/run80-research-specs-20260326",
+      "description": "PR run80: RESEARCH.md + TARGETS.md (10 targets) + limit_size informal spec"
     }
   ],
-  "status_issue": "To be created run79",
+  "status_issue": "Created run80: [Lean Squad] Formal Verification Status",
   "ci_status": {
-    "lean_ci_yml": "created run79 - awaiting first .lean files",
+    "lean_ci_yml": "NOT yet created - blocked by protected-files policy",
     "aeneas_generate_yml": "pre-existing in repo",
     "last_lean_ci_run": null
   },
-  "conflicts_noted": "No conflicts. Fresh start from run 79."
+  "protected_files_note": "lean-ci.yml creation blocked run79. Workflow config requires protected-files: fallback-to-issue OR manual maintainer action.",
+  "conflicts_noted": "No conflicts. Fresh start from run 80."
 }
