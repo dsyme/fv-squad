@@ -417,3 +417,116 @@ the validation logic, including the C7 liveness/safety property for LeaseBased r
 **Informal spec**: `formal-verification/specs/config_validate_informal.md`
 **Current phase**: 2 (Informal Spec)
 
+
+---
+
+### Target 40 — `RawNode::has_ready` (★★★ Priority)
+
+**Files**: `src/raw_node.rs`
+
+**What it does**: A pure Boolean predicate — `has_ready()` returns `true` if and only if any of
+seven disjunctive conditions holds, indicating that the application needs to call `ready()` and
+process the resulting work. The conditions are:
+
+1. `!raft.msgs.is_empty()` — there are outbound messages to send
+2. `raft.soft_state() != self.prev_ss` — leadership/role has changed
+3. `raft.hard_state() != self.prev_hs` — term/vote/commit changed (must be persisted)
+4. `!raft.read_states.is_empty()` — completed read-index requests are available
+5. `!raft.raft_log.unstable_entries().is_empty()` — new log entries to persist
+6. `self.snap().is_some_and(|s| !s.is_empty())` — a snapshot is pending installation
+7. `raft.raft_log.has_next_entries_since(self.commit_since_index)` — committed entries to apply
+
+**Why FV**: `has_ready` is the gate that determines when an application must call `ready()`.
+A false negative (returning `false` when work exists) would silently stall progress.
+A false positive is harmless but wasteful. Proving the exact characterisation
+theorem provides a complete formal certificate of all seven conditions.
+
+**Key properties to verify**:
+1. `hasReady_iff` — full disjunctive characterisation
+2. `notHasReady_no_msgs` — `¬has_ready → msgs = []`
+3. `notHasReady_ss_stable` — `¬has_ready → ss = prevSS`
+4. `notHasReady_hs_stable` — `¬has_ready → hs = prevHS`
+5. `notHasReady_no_readStates` — `¬has_ready → readStates = []`
+6. `notHasReady_no_unstable` — `¬has_ready → ¬hasUnstableEntries`
+7. `notHasReady_no_snapshot` — `¬has_ready → ¬snapshotPending`
+8. `notHasReady_no_committed` — `¬has_ready → ¬hasNextEntries`
+9. `each_condition_implies_hasReady` — each of the 7 conditions individually suffices
+10. Idempotence: calling twice without state change leaves `has_ready` stable
+
+**Spec size**: ~150 Lean lines
+**Proof tractability**: `simp [hasReady]` / `decide` / `tauto` — essentially all proofs
+are one-liners. The interesting part is the model and spec structure, not proof difficulty.
+**Approach**: Model the 7 observable flags as Booleans in a `RawNodeState` structure.
+Define `hasReady` as a disjunction. State and prove all component theorems.
+**Approximations**:
+- The full Raft node state is abstracted to just the 7 observable Boolean conditions
+- No modelling of how each condition becomes true/false (that's in the per-function specs)
+- `soft_state`, `hard_state`, and snapshot comparison abstracted to equality predicates
+
+**Informal spec**: `formal-verification/specs/has_ready_informal.md`
+**Current phase**: 1 (Research)
+
+---
+
+### Target 41 — `RaftCore::commit_to_current_term` / `apply_to_current_term` (★★ Priority)
+
+**Files**: `src/raft.rs`
+
+**What they do**:
+```rust
+pub fn commit_to_current_term(&self) -> bool {
+    self.raft_log.term(self.raft_log.committed).is_ok_and(|t| t == self.term)
+}
+
+pub fn apply_to_current_term(&self) -> bool {
+    self.raft_log.term(self.raft_log.applied).is_ok_and(|t| t == self.term)
+}
+```
+Both are pure Boolean predicates checking that the committed/applied index was
+written in the current term. These are liveness predicates: a leader can only
+serve linearisable reads if `commit_to_current_term` holds.
+
+**Why FV**: These two predicates gate important behaviours (read-index serving,
+no-op commit on leader promotion). Proving their characterisation and the
+relationship `apply_to_current_term → commit_to_current_term` is useful.
+
+**Key properties**:
+1. Full characterisation of each predicate
+2. `apply_implies_commit` — if apply_to_current_term, then commit_to_current_term
+   (since `applied ≤ committed` and term is monotone)
+3. `commit_to_current_term_leader_guard` — safety-critical usage gate
+
+**Spec size**: ~100 Lean lines
+**Proof tractability**: `omega` / `simp` — straightforward given RaftLog model
+**Current phase**: 1 (Research)
+
+---
+
+### Target 42 — `RaftCore::reset` (★★ Priority)
+
+**Files**: `src/raft.rs`
+
+**What it does**: Resets all ephemeral Raft state when transitioning to a new term.
+Called by `become_leader`, `become_follower`, `become_candidate`, and `become_pre_candidate`.
+The postconditions are:
+- If `term ≠ old_term`: `self.term = term`, `self.vote = INVALID_ID`
+- Always: `leader_id = INVALID_ID`, `election_elapsed = 0`, `heartbeat_elapsed = 0`
+- Progress for each peer reset to `(last_index + 1)`; self gets `matched = persisted`
+- `pending_conf_index = 0`, `pending_request_snapshot = INVALID_INDEX`
+- Fresh `ReadOnly` state
+
+**Why FV**: `reset` is called at every state transition. Proving its postconditions
+ensures that no stale state from a previous term leaks into the new term — a
+critical safety property.
+
+**Key properties**:
+1. `reset_term_monotone` — `term ≥ old_term` (reset only increases term)
+2. `reset_vote_cleared` — if `term ≠ old_term`, then `vote = INVALID_ID`
+3. `reset_leader_cleared` — `leader_id = INVALID_ID` after reset
+4. `reset_elapsed_zero` — both `election_elapsed` and `heartbeat_elapsed` = 0
+5. `reset_pending_cleared` — `pending_conf_index = 0`, `pending_request_snapshot = INVALID_INDEX`
+6. `reset_same_term_preserves_vote` — if `term = old_term`, vote is preserved
+
+**Spec size**: ~120 Lean lines
+**Proof tractability**: `simp` / `omega` — postconditions are direct field assignments
+**Current phase**: 1 (Research)

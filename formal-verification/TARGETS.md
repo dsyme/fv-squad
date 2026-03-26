@@ -43,6 +43,9 @@
 | 37 | `handle_append_response` | `src/raft.rs` | 5 — Proofs | ✅ Done | Leader-side handling of MsgAppendResponse: progress tracking, backtracking optimisation, commit advancement, leadership transfer. 15 theorems, 0 sorry. `FVSquad/HandleAppendResponse.lean` |
 | 38 | `restore` (node-level) | `src/raft.rs` | 5 — Proofs | ✅ Done | 20 theorems, 0 `sorry`. 5 paths: StaleSnapshot/NonFollower/NotInConfig/FastForward/FullRestore. Commit-monotone, term-monotone, state-follower, pendingReqSnap cleared. See `FVSquad/RestoreNode.lean`. |
 | 39 | `handle_snapshot_status` | `src/raft.rs` | 5 — Proofs | ✅ Done | Snapshot→Probe transition: 13 theorems, 0 `sorry`. Success/failure paths, next_idx correctness, pause semantics. See `FVSquad/HandleSnapshotStatus.lean`. |
+| 40 | `RawNode::has_ready` | `src/raw_node.rs` | 3 — Lean Spec | 🔄 In progress | 7-condition disjunctive predicate. `hasReady_iff` + 9 component theorems. See `FVSquad/HasReady.lean`. |
+| 41 | `commit_to_current_term` / `apply_to_current_term` | `src/raft.rs` | 5 — Proofs | ✅ Done | Liveness gate predicates for leader reads. 17 theorems, 0 `sorry`. Key theorem: `applyImpliesCommit` (under log monotonicity + term boundedness). See `FVSquad/CommitCurrentTerm.lean`. |
+| 42 | `RaftCore::reset` | `src/raft.rs` | 1 — Research | ⬜ Not started | Term-change state reset; postconditions: term mono, vote cleared, elapsed zeroed. |
 
 ## Phase Legend
 
