@@ -246,7 +246,9 @@ Investigate all existing issues to see what work remains to be done and maintain
 
 ## Lean 4 Setup
 
-When performing Tasks 3, 4, or 5, **always** attempt to install Lean 4 and run `lake build`. Capture and report the outcome clearly — do not silently skip.
+> **HARD REQUIREMENT**: The Lean toolchain MUST be successfully installed before you write, modify, or submit any `.lean` files. If `elan` installation fails, **do NOT proceed with Tasks 3, 4, or 5** for this run — update the status issue to document the blocking failure and stop. Never submit `.lean` code claiming to be verified when Lean has not actually been run. There is no acceptable substitute for a real `lake build` pass.
+
+When performing Tasks 3, 4, or 5, install Lean 4 and run `lake build`. Capture and report the outcome clearly — do not silently skip.
 
 ```bash
 # --- Lean toolchain installation ---
@@ -271,6 +273,8 @@ else
   echo "LEAN_AVAILABLE=false" > /tmp/lean_status.txt
 fi
 ```
+
+**If `LEAN_AVAILABLE=false`**: stop immediately. Do NOT write or submit any `.lean` files this run. Update the `[Lean Squad] Formal Verification Status` issue with a note that the toolchain is unavailable, and record the failure in memory. Proceed only with non-Lean tasks (Tasks 1 and 2).
 
 Manage Lean projects with `lake`. If no `lakefile.toml` exists under `formal-verification/lean/`:
 
@@ -411,8 +415,8 @@ formal-verification/
    - State key properties as `theorem` declarations with `sorry` as proofs
    - Include `#check` and `example` expressions to confirm the spec is at least well-typed
 3. Focus on the most valuable properties: correctness of key operations, representation invariants, round-trip properties, monotonicity, idempotence — whatever is most likely to catch bugs or build confidence.
-4. Run `lake build` or `lean --stdin` to verify the file is syntactically correct even with `sorry`. Fix all Lean 4 syntax and type errors.
-5. Create a PR.
+4. **MANDATORY**: Run `lake build` (or `lean --stdin`) to verify the file is syntactically correct even with `sorry`. Fix ALL Lean 4 syntax and type errors before proceeding. Do not create a PR if `lake build` fails due to errors in your new file.
+5. Create a PR. The PR MUST include the verification status block from `/tmp/lean_status.txt`.
 6. Update memory: advance target to phase 3, note the Lean file path, list the stated propositions.
 
 ---
@@ -429,8 +433,8 @@ formal-verification/
    - For complex or non-terminating recursion, use `partial def` with a comment explaining why
    - Use `sorry` only for genuinely hard sub-problems — minimise it
 3. Update the proposition statements to reference the Lean implementation (replace abstract stubs with the actual Lean function names).
-4. Run `lake build` to verify the file is correct. Fix errors.
-5. Create a PR.
+4. **MANDATORY**: Run `lake build` to verify the file is correct. Fix ALL errors — do not create a PR while `lake build` fails. If you cannot fix the errors, leave the file in its last passing state and document the remaining issues in the PR description.
+5. Create a PR. The PR MUST include the verification status block from `/tmp/lean_status.txt`.
 6. Update memory: advance target to phase 4, describe the model and its abstractions.
 
 ---
@@ -448,7 +452,7 @@ formal-verification/
    - Inductive arguments: `induction h`, `cases h`, `rcases h`, `match`
    - Combinations: `constructor`, `intro`, `apply`, `exact`, `refine`
    - When stuck: `aesop`, `tauto`, `decide`, `native_decide`
-4. Run `lean --stdin` or `lake build` after each attempt.
+4. **MANDATORY**: Run `lean --stdin` or `lake build` after each attempt. Never guess at whether a proof works — actually run it. If Lean reports an error, fix it before moving on. Do not count a theorem as proved unless `lake build` genuinely passes with that theorem's `sorry` removed.
 5. When a proof obligation **cannot be proved**:
    - Check whether the proposition is actually true. Try specific counterexamples in `#eval` or `#check`.
    - If the **spec is wrong**: update the spec, document reasoning in memory, do not file a bug.
@@ -568,7 +572,7 @@ are in play, known limitations of the model.}
 - **Prefer decidable propositions**: where possible, formulate properties so that `decide` or `native_decide` can close them automatically.
 - **Explicitly document approximations**: always note in the Lean file what the model does NOT capture from the original implementation (I/O, error paths, aliasing, etc.).
 - **Small focused PRs**: one target per PR. Do not mix spec writing for multiple targets.
-- **Build must pass**: never create a PR if `lake build` fails due to your changes. If Lean toolchain setup fails for infrastructure reasons, create the PR but document the issue.
+- **Lean toolchain is a hard requirement**: you MUST successfully install the Lean toolchain before starting any Task 3, 4, or 5. If installation fails, skip those tasks entirely for this run and document the failure in the status issue. Never submit `.lean` files without a successful `lake build`. Never describe proofs as verified, type-checked, or passing unless `lake build` actually passed. If `lake build` fails due to your changes, fix the errors — do not create a PR with a broken build.
 - **AI transparency**: every PR, issue, and comment must include 🔬 and identify itself as the Lean Squad automation.
 - **Progress over perfection**: a `sorry`-guarded spec file with one proved theorem is real value. Don't wait for a complete proof before creating a PR.
 - **Findings are success**: a counterexample or a proof failure indicating a bug is a valuable outcome. File an issue, document it, be proud of it.
