@@ -1,6 +1,6 @@
 {
   "last_run": "2026-03-26",
-  "run_id": "23599977527",
+  "run_id": "23600959564",
   "fv_tool": "Lean4 (stdlib only, no Mathlib)",
   "lake_project": "formal-verification/lean/",
   "lean_version": "4.28.0",
@@ -8,9 +8,9 @@
   "targets": [
     {
       "id": "limit_size",
-      "phase": 3,
+      "phase": 5,
       "lean_file": "formal-verification/lean/FVSquad/LimitSize.lean",
-      "notes": "Lean spec written. lake build passes. 8/12 theorems proved. 4 sorry remain (P9 size-bound, P10 maximality, P11 idempotence, P12 prefix-idempotence). Also 2 aux lemmas sorry (limitSizeCount_pos, limitSizeCount_le_length). PR submitted: lean-squad/lean-spec-limit-size-run81-20260326. Next: Task 5 proofs."
+      "notes": "Lean spec + proofs in FVSquad/LimitSize.lean. 10/12 theorems proved. 2 sorry remain (P10 maximality, P12 prefix-of-prefix k>=2). PR created: lean-squad/proofs-limit-size-run82-20260326"
     },
     {
       "id": "config_validate",
@@ -68,9 +68,9 @@
     }
   ],
   "next_steps": [
-    "Task 5: Prove 6 sorry-guarded obligations in LimitSize.lean (limitSizeCount_pos, limitSizeCount_le_length, P9 size-bound, P10 maximality, P11 idempotence, P12). Use structural induction + omega.",
-    "Task 2+3: Informal spec + Lean spec for config_validate (decidable arithmetic predicate).",
-    "Task 8: Aeneas extraction for vote_result/committed_index once Charon/Aeneas can be built."
+    "Task 5: Prove P10 (maximality) \u2014 requires formalizing stopping condition of limitSizeCount",
+    "Task 5: Prove P12 k>=2 case (prefix-of-prefix) \u2014 needs sub-prefix size bound lemma",
+    "Task 2+3: Informal spec + Lean spec for config_validate (decidable arithmetic predicate)"
   ],
   "toolchain": {
     "lean_available": true,
