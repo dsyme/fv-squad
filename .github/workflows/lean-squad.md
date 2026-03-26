@@ -37,6 +37,7 @@ network:
     - "leanprover-community.github.io"
     - "release.leanlang.org"
     - "release.lean-lang.org"
+    - "releases.lean-lang.org"
     - ocaml
     - "releaseassets.githubusercontent.com"
     - "raw.githubusercontent.com"  # required: elan installer bootstrap script
