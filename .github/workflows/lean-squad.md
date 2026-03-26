@@ -9,7 +9,8 @@ description: |
   3. Formal Spec Writing — write Lean 4 type signatures and property statements
   4. Implementation Extraction — translate code to a Lean-verifiable functional model
   5. Proof Assistance — attempt proofs, find counterexamples, report bugs
-  6. Maintain Open Lean Squad PRs — fix CI failures and merge conflicts in open Lean Squad PRs
+  6. Correspondence Review — document how the Lean implementation model corresponds to the Rust source
+  7. Proof Utility Critique — assess the value and coverage of what has been proven so far
 
   Phases are sequentially weighted: Task 1 dominates until research is done,
   then Task 2 rises, and so on up to proofs. Each run builds on prior runs
@@ -36,8 +37,6 @@ tools:
   web-fetch:
   github:
     toolsets: [default]
-    #min-integrity: none # BUG: so we can update our own issue for reporting
-    repos: all
   bash: true
   repo-memory:
     max-patch-size: 102400  # 100KB max (default 10KB)
@@ -108,7 +107,8 @@ steps:
           3: 'Formal Spec Writing (Lean 4)',
           4: 'Implementation Extraction',
           5: 'Proof Assistance',
-          6: 'Maintain Open Lean Squad PRs',
+          6: 'Correspondence Review',
+          7: 'Proof Utility Critique',
       }
 
       # Phase progress heuristics derived from repo state
@@ -125,14 +125,15 @@ steps:
           3: (8.0  if not has_lean_specs else 2.0) if has_inf_specs   else 0.3,
           4: (6.0  if not has_impl       else 2.0) if has_lean_specs  else 0.2,
           5: (6.0  if not has_proofs     else 2.0) if has_impl        else 0.1,
-          6: float(n_prs) * 2.0,
+          6: 3.0 if has_impl else 0.5,   # correspondence review: useful once impl exists
+          7: 3.0 if has_proofs else 0.0, # critique: only meaningful once proofs exist
       }
 
       run_id = int(os.environ.get('GITHUB_RUN_ID', '0'))
       rng    = random.Random(run_id)
 
-      non_main  = [t for t in weights if t != 6]
-      nm_weights = [weights[t] for t in non_main]
+      non_main  = list(weights.keys())
+      nm_weights = list(weights.values())
 
       chosen, seen = [], set()
       for t in rng.choices(non_main, weights=nm_weights, k=30):
@@ -153,7 +154,7 @@ steps:
       print()
       print('Task weights:')
       for t, w in weights.items():
-          tag = ' <-- SELECTED' if t in chosen else (' <-- if PRs open' if t == 6 else '')
+          tag = ' <-- SELECTED' if t in chosen else ''
           print(f'  Task {t} ({task_names[t]}): weight {w:.1f}{tag}')
       print()
       print(f'Selected tasks: {chosen} = {[task_names[t] for t in chosen]}')
@@ -227,9 +228,9 @@ for pr in $(gh pr list --state open --label lean-squad --json number --jq '.[].n
 done
 ```
 
-If a PR merges cleanly, treat its content as the baseline for your new work — do not recreate or duplicate it. If a PR conflicts with another, skip it for now and note the conflict in memory so Task 6 can resolve it.
+If a PR merges cleanly, treat its content as the baseline for your new work — do not recreate or duplicate it. If a PR conflicts with another, skip it for now and note the conflict in memory so Task 8 can resolve it.
 
-**Execute both selected tasks**, then always do the mandatory **Task 6: Update Lean Squad Status Issue**.
+**Execute both selected tasks**, then always do the mandatory **Task Final: Update Lean Squad Status Issue**.
 
 Use your memory to refine task selection: if a selected task is not yet applicable (e.g., Task 4 is selected but no Lean specs exist yet), substitute the most logically prior incomplete task instead.
 
@@ -272,6 +273,8 @@ Create and maintain this directory structure:
 formal-verification/
   RESEARCH.md              # FV target survey, tool choice, overall approach
   TARGETS.md               # Prioritised target list with current phase per target
+  CORRESPONDENCE.md        # How each Lean implementation model maps to the Rust source
+  CRITIQUE.md              # Ongoing assessment of proof utility and coverage
   specs/
     <name>_informal.md     # Informal specification per target
   lean/
@@ -390,7 +393,57 @@ formal-verification/
 
 ---
 
-### Task 6: Update Lean Squad Status Issue *(ALWAYS DO THIS EVERY RUN)*
+### Task 6: Correspondence Review
+
+**Goal**: For each Lean file that contains an implementation model, carefully review how that model corresponds to the actual Rust source and create or update `formal-verification/CORRESPONDENCE.md` to make the relationship explicit, honest, and traceable.
+
+This task is important because the value of any proof depends entirely on how faithfully the Lean model captures the real code. Subtle divergences (different overflow behaviour, ignored error paths, abstracted-away state) can make a proof vacuous.
+
+1. Read all existing Lean files under `formal-verification/lean/FVSquad/`. For each file:
+   - Identify the Lean definitions that model Rust functions or data structures.
+   - Read the corresponding Rust source file and function(s).
+   - Compare them carefully: are the types equivalent? Does the Lean function compute the same result on all inputs? What does the Lean model deliberately omit (panics, overflow, mutation, I/O, unsafe blocks)?
+2. For each Lean definition, assess and record:
+   - **Correspondence level**: *exact* (semantics are equivalent), *abstraction* (models a pure subset), *approximation* (semantically different in some known way), or *mismatch* (incorrect — the Lean definition diverges from the Rust in a way that invalidates proofs).
+   - **Divergences**: list all known differences, with references to the exact Rust lines and Lean definitions.
+   - **Impact on proofs**: which theorems rely on this definition, and how do any divergences affect their validity?
+3. Create or update `formal-verification/CORRESPONDENCE.md`:
+   - One section per Lean file / target.
+   - For each modelled function or type, include a markdown table or enumerated list with: Lean name, Rust name, file + line reference, correspondence level, and a brief justification.
+   - Include links to the Rust source lines (use relative paths, e.g. `src/raft_log.rs#L42`).
+   - Summarise any known gaps or mismatches that should be resolved before trusting associated proofs.
+4. If any **mismatches** are found (Lean model is incorrect relative to the Rust): flag them prominently in CORRESPONDENCE.md under a `## Known Mismatches` heading. Open a GitHub issue for each mismatch that invalidates a proved theorem.
+5. Create a PR with the updated CORRESPONDENCE.md.
+6. Update memory: note the correspondence status for each modelled target, flag any mismatches found.
+
+---
+
+### Task 7: Proof Utility Critique
+
+**Goal**: Step back and honestly assess whether the formal verification work done so far is actually useful — are the proved properties meaningful, at the right level of abstraction, and likely to catch real bugs?
+
+This is a reflective task. The goal is not to prove more things, but to evaluate what has been proved and whether it matters.
+
+1. Read all existing Lean files, informal specs, and CORRESPONDENCE.md (if it exists).
+2. For each proved theorem, assess:
+   - **Level**: is this a low-level arithmetic lemma, a structural invariant, a protocol-level safety property, or something else?
+   - **Bug-catching potential**: would a real implementation bug cause this theorem to fail? Or is it so abstract/simplified that bugs in the Rust would not be visible?
+   - **Coverage**: what aspects of the original code's correctness are *not* captured by any current theorem?
+   - **Strength**: is the property tight (captures exactly the right behaviour) or weak (too easy to satisfy, even by incorrect implementations)?
+3. For unproved / `sorry`-guarded theorems, assess whether they are worth proving or should be revised.
+4. Identify the **highest-value gaps**: which properties, if proved, would give the most confidence in the codebase? Are there important invariants or safety properties that have not yet been attempted?
+5. Write or update `formal-verification/CRITIQUE.md`:
+   - **Overall assessment**: 2–4 sentences on the current state of formal verification and its utility.
+   - **Proved theorems** table: theorem name, file, level (low/mid/high), bug-catching potential (low/medium/high), notes.
+   - **Gaps and recommendations**: what should be proved next and why — prioritised by impact.
+   - **Concerns**: any theorems that look proved but may be vacuous due to model approximations (cross-reference CORRESPONDENCE.md).
+   - **Positive findings**: highlight any case where FV revealed or confirmed something non-obvious.
+6. Create a PR with the updated CRITIQUE.md.
+7. Update memory: record the critique findings, flag high-priority gaps for future runs.
+
+---
+
+### Task Final: Update Lean Squad Status Issue *(ALWAYS DO THIS EVERY RUN)*
 
 Maintain a single open issue titled `[Lean Squad] Formal Verification Status` as a continuously-updated dashboard for maintainers.
 
@@ -440,7 +493,7 @@ are in play, known limitations of the model.}
 
 ## Guidelines
 
-- **Always build on open PRs**: at the start of every run, merge all open `[Lean Squad]` PRs into your branch before doing any new work. New specs, implementations, and proofs must stack on top of in-progress work — not replace or duplicate it. If a PR merges cleanly, treat its contents as already done. If it conflicts, note it in memory and address the conflict in Task 6 before proceeding.
+- **Always build on open PRs**: at the start of every run, merge all open `[Lean Squad]` PRs into your branch before doing any new work. New specs, implementations, and proofs must stack on top of in-progress work — not replace or duplicate it. If a PR merges cleanly, treat its contents as already done. If it conflicts, note it in memory and address the conflict in Task 8 before proceeding.
 - **One target per task per run**: go deep on one thing rather than skimming across many.
 - **Don't duplicate**: check memory and the repo before creating a new spec or Lean file — it may already exist from a prior merged PR.
 - **Read AGENTS.md first**: if the repository has an AGENTS.md, read it before opening any PR.

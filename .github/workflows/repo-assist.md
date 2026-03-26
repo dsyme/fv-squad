@@ -42,7 +42,7 @@ tools:
   github:
     toolsets: [all]
     min-integrity: none # This workflow is allowed to examine and comment on any issues or PRs
-    repos: all
+    allowed-repos: all
   bash: true
   repo-memory: true
 
