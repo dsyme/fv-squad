@@ -32,6 +32,7 @@ network:
     - "release.leanlang.org"
     - ocaml
     - "releaseassets.githubusercontent.com"
+    - "raw.githubusercontent.com"  # required: elan installer bootstrap script
 
 tools:
   web-fetch:
@@ -245,15 +246,30 @@ Investigate all existing issues to see what work remains to be done and maintain
 
 ## Lean 4 Setup
 
-When performing Tasks 3, 4, or 5, install Lean 4 via elan if not already present:
+When performing Tasks 3, 4, or 5, **always** attempt to install Lean 4 and run `lake build`. Capture and report the outcome clearly — do not silently skip.
 
 ```bash
+# --- Lean toolchain installation ---
 if ! command -v lean &>/dev/null; then
-  curl -sSf https://raw.githubusercontent.com/leanprover/elan/master/elan-init.sh \
-    | sh -s -- -y --default-toolchain leanprover/lean4:stable
+  echo "=== Lean Squad: attempting elan installation ==="
+  if curl -sSf https://raw.githubusercontent.com/leanprover/elan/master/elan-init.sh \
+       | sh -s -- -y --default-toolchain leanprover/lean4:stable 2>&1; then
+    echo "=== Lean Squad: elan installation SUCCEEDED ==="
+  else
+    echo "=== Lean Squad: elan installation FAILED — check network/firewall ==="
+  fi
   export PATH="$HOME/.elan/bin:$PATH"
 fi
-lean --version
+
+# --- Record lean availability ---
+if command -v lean &>/dev/null; then
+  lean --version
+  echo "LEAN_AVAILABLE=true"  > /tmp/lean_status.txt
+  lean --version            >> /tmp/lean_status.txt
+else
+  echo "=== Lean Squad: lean not available — proofs will be UNVERIFIED ==="
+  echo "LEAN_AVAILABLE=false" > /tmp/lean_status.txt
+fi
 ```
 
 Manage Lean projects with `lake`. If no `lakefile.toml` exists under `formal-verification/lean/`:
@@ -264,6 +280,56 @@ cd formal-verification/lean
 lake init FVSquad math   # creates a lake project with Mathlib
 lake update              # resolves Mathlib version
 ```
+
+After writing or modifying `.lean` files, **always** attempt `lake build` and capture the result:
+
+```bash
+cd formal-verification/lean
+if lean --version &>/dev/null 2>&1; then
+  echo "=== Lean Squad: running lake build ==="
+  if lake build 2>&1 | tee /tmp/lake_build.log; then
+    echo "=== Lean Squad: lake build PASSED — $(grep -c 'sorry' /tmp/lake_build.log || echo 0) sorry(s) remain ==="
+    echo "LAKE_BUILD=passed" >> /tmp/lean_status.txt
+  else
+    echo "=== Lean Squad: lake build FAILED ==="
+    echo "LAKE_BUILD=failed" >> /tmp/lean_status.txt
+    tail -40 /tmp/lake_build.log
+  fi
+else
+  echo "=== Lean Squad: skipping lake build — lean not installed ==="
+  echo "LAKE_BUILD=skipped" >> /tmp/lean_status.txt
+fi
+```
+
+**Every PR that includes `.lean` files MUST include a verification status block** (copy
+the relevant lines from `/tmp/lean_status.txt`). Use one of these templates:
+
+```
+> ⚠️ Lean toolchain not available: elan installation failed (network/firewall — see run logs).
+> Proofs have NOT been type-checked by Lean. They are pattern-based drafts.
+```
+
+or
+
+```
+> ✅ Proofs verified: `lake build` passed with Lean <version>. No `sorry` remain.
+```
+
+or
+
+```
+> 🔄 Partial verification: `lake build` passed with Lean <version>. <N> `sorry` remain (listed below).
+```
+
+or
+
+```
+> ❌ Build failure: `lake build` failed. Error output included below. Proofs are NOT verified.
+```
+
+Never use language like "All proofs follow patterns validated across prior files" as a
+substitute for actual `lake build` verification. If Lean is not available, say so
+explicitly and unambiguously.
 
 ## Repository Layout for FV Artifacts
 
