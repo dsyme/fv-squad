@@ -61,6 +61,17 @@ jobs:
           echo "=== 'sorry' occurrences in build output: $SORRY_COUNT ==="
           exit $BUILD_EXIT
 
+      - name: Report linter warnings
+        if: success()
+        run: |
+          WARNING_COUNT=$(grep -c 'warning:' /tmp/lake_build.log || true)
+          if [ "$WARNING_COUNT" -gt 0 ]; then
+            echo "⚠️  $WARNING_COUNT linter warning(s) found (build still passed):"
+            grep 'warning:' /tmp/lake_build.log || true
+          else
+            echo "✅  No linter warnings"
+          fi
+
       - name: Upload build log on failure
         if: failure()
         uses: actions/upload-artifact@v4

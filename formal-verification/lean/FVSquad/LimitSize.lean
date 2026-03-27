@@ -217,10 +217,10 @@ private theorem totalSize_take_mono {α : Type} (size : α → Nat) (l : List α
     (k n : Nat) (hkn : k ≤ n) :
     totalSize size (l.take k) ≤ totalSize size (l.take n) := by
   induction l generalizing k n with
-  | nil => simp [totalSize]
+  | nil => simp
   | cons e es ih =>
     cases k with
-    | zero => simp [totalSize]
+    | zero => simp
     | succ k' =>
       cases n with
       | zero => omega
@@ -368,8 +368,7 @@ theorem limitSize_length_pos (entries : List α) (hne : entries ≠ [])
 private theorem limitSize_size_bound_step (e e' : α) (rest : List α) (budget : Nat) :
     (limitSize size (e :: e' :: rest) (some budget)).length = 1 ∨
     totalSize size (limitSize size (e :: e' :: rest) (some budget)) ≤ budget := by
-  simp only [limitSize, List.length_cons, show ¬(2 + rest.length ≤ 1) from by omega,
-             if_false, limitSizeCount_step_zero]
+  simp only [limitSize, List.length_cons, limitSizeCount_step_zero]
   by_cases hse : size e > budget
   · left
     have : limitSizeCount size budget (e' :: rest) 1 (size e) = 1 := by
@@ -384,7 +383,7 @@ private theorem limitSize_size_bound_step (e e' : α) (rest : List α) (budget :
     rw [show limitSizeCount size budget (e' :: rest) 1 (size e) =
             (limitSizeCount size budget (e' :: rest) 1 (size e) - 1) + 1 from by omega,
         @List.take_succ_cons]
-    simp [totalSize]; omega
+    simp; omega
 
 theorem limitSize_size_bound (entries : List α) (budget : Nat) :
     (limitSize size entries (some budget)).length = 1 ∨
@@ -399,8 +398,7 @@ theorem limitSize_size_bound (entries : List α) (budget : Nat) :
     have h2 : 2 ≤ entries.length := by omega
     obtain ⟨e, e', rest, rfl⟩ := limitSize_list_ge2 h2
     have := limitSize_size_bound_step size e e' rest budget
-    simp only [limitSize, List.length_cons,
-               show ¬(2 + rest.length ≤ 1) from by omega, if_false] at this
+    simp only [limitSize, List.length_cons] at this
     exact this
 
 /-! ### P10: Maximality

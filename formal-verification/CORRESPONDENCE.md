@@ -7,8 +7,8 @@ correspondence level, known divergences, and the impact on any proofs that rely 
 definition.
 
 ## Last Updated
-- **Date**: 2026-03-27 13:44 UTC
-- **Commit**: `53666d08282d081a9911e88e38d9b3e2b2d86eec`
+- **Date**: 2026-03-27 13:54 UTC
+- **Commit**: `52eb13408ac52e43bf86291953239b7d790236d9`
 
 ---
 
@@ -323,16 +323,80 @@ No mismatches found. All six Lean models are sound abstractions of their Rust co
 
 ---
 
+## Planned Targets (no Lean file yet)
+
+The following targets have been identified (see `TARGETS.md` and `RESEARCH.md`) and have
+informal specs or research notes but no Lean file yet.  The correspondence entries below
+document the *planned* model so that future runs can implement them consistently.
+
+### `joint_committed_index` — `src/quorum/joint.rs#L47`
+
+Rust source: [`src/quorum/joint.rs#L47`](../src/quorum/joint.rs#L47)
+
+```rust
+pub fn committed_index(&self, use_group_commit: bool, l: &impl AckedIndexer) -> (u64, bool) {
+    let (i_idx, i_use_gc) = self.incoming.committed_index(use_group_commit, l);
+    let (o_idx, o_use_gc) = self.outgoing.committed_index(use_group_commit, l);
+    (cmp::min(i_idx, o_idx), i_use_gc && o_use_gc)
+}
+```
+
+**Planned Lean model** (`formal-verification/lean/FVSquad/JointCommittedIndex.lean`):
+
+| Lean name (planned) | Rust name | Rust location | Planned correspondence | Notes |
+|---------------------|-----------|---------------|------------------------|-------|
+| `jointCommittedIndex` | `Configuration::committed_index` (joint) | `src/quorum/joint.rs#L47` | Abstraction | `min(incoming_ci, outgoing_ci)` using `CommittedIndex.committedIndex` |
+
+**Key properties to prove**:
+- `jci_min`: `jointCommittedIndex incoming outgoing acked = min (committedIndex incoming acked) (committedIndex outgoing acked)`
+- `jci_safety`: at least `majority` of voters in *both* `incoming` and `outgoing` have acked ≥ `jointCommittedIndex`
+- `jci_maximality`: no index greater than `jointCommittedIndex` is jointly safe
+- `jci_monotone`: monotone in the `acked` function
+- `jci_degenerate`: when `outgoing = []`, degenerates to the majority `committedIndex`
+
+**Known planned divergences**:
+1. `use_group_commit = false` only — the group-commit boolean is dropped (as in `CommittedIndex.lean`).
+2. Return type: Rust returns `(u64, bool)`; Lean will return just `Nat` (dropping the group-commit bool).
+3. Empty-config sentinel: Rust returns `u64::MAX` for empty incoming/outgoing so that `min` degrades correctly.  The Lean model uses `0` but `jci_degenerate` will document this precisely.
+4. Voter list vs. set: same `List Nat` abstraction as the other models.
+
+**Status**: Phase 3 (informal spec noted in memory; Lean file not yet created).  This is the highest-priority next target — the `Nat.min` structure makes proofs tractable using `by_cases` + `omega`.
+
+---
+
+### `maybe_append` — `src/raft_log.rs#L218`
+
+Rust source: [`src/raft_log.rs#L218`](../src/raft_log.rs#L218)
+
+**Planned Lean model** (`formal-verification/lean/FVSquad/MaybeAppend.lean`):
+
+Lean will model the pure log-mutation logic: if the incoming entries conflict with the
+stored log (detected via `find_conflict`), truncate at the conflict point and append the
+new entries.  The model will build directly on `FindConflict.findConflict` and the
+`FindConflict` theorems.
+
+**Key properties to prove**:
+- `maybeAppend_no_conflict_noop`: if `find_conflict` returns 0, the log is unchanged.
+- `maybeAppend_conflict_truncates`: if `find_conflict` returns `k`, the log is truncated to `k - 1` entries then the new entries are appended.
+- `maybeAppend_prefix_preserved`: the prefix before any conflict point is unchanged.
+- `maybeAppend_result_is_suffix`: the result ends with the supplied `ents` suffix.
+
+**Status**: Phase 1 (identified; no informal spec yet).  Depends on `FindConflict` (now done ✅).
+
+---
+
 ## Summary
 
 | Lean file | Rust target | Correspondence level | Proved theorems | Gaps |
 |-----------|-------------|---------------------|-----------------|------|
-| `LimitSize.lean` | `src/util.rs` `limit_size` | Abstraction | 17 | Overflow not modelled (safe) |
+| `LimitSize.lean` | `src/util.rs` `limit_size` | Abstraction | 17 | Overflow not modelled (safe); lint clean ✅ |
 | `ConfigValidate.lean` | `src/config.rs` `Config::validate` | Abstraction | 10 | Error messages not captured (by design) |
 | `MajorityVote.lean` | `src/quorum/majority.rs` `vote_result` | Abstraction | 21 | Duplicates in voter list not excluded by type |
 | `JointVote.lean` | `src/quorum/joint.rs` `vote_result` | Abstraction | 14 | Struct wrapper abstracted; non-joint degeneration proved (J4) |
 | `CommittedIndex.lean` | `src/quorum/majority.rs` `committed_index` | Abstraction | 17 | group-commit path omitted; empty→0 (Rust→MAX) documented |
 | `FindConflict.lean` | `src/raft_log.rs` `find_conflict` | Abstraction | 12 | Entry payload omitted; positive-index precondition explicit |
+| `JointCommittedIndex.lean` | `src/quorum/joint.rs` `committed_index` | — (planned) | 0 | Next target — `min(incoming_ci, outgoing_ci)` |
+| `MaybeAppend.lean` | `src/raft_log.rs` `maybe_append` | — (planned) | 0 | Depends on FindConflict (done); log truncate+append |
 
 ---
 
