@@ -7,8 +7,8 @@ correspondence level, known divergences, and the impact on any proofs that rely 
 definition.
 
 ## Last Updated
-- **Date**: 2026-03-26 20:30 UTC
-- **Commit**: `0ebbf48bfad3dd111b9ea32afdcec01cca1f796e`
+- **Date**: 2026-03-26 23:09 UTC
+- **Commit**: `e8e2c39`
 
 ---
 
@@ -51,11 +51,16 @@ Rust source: [`src/util.rs#L54`](../src/util.rs#L54)
 
 #### Impact on proofs
 
-All 12 theorems proved in `LimitSize.lean` rely on `limitSize` and `limitSizeCount`. The divergences above are all safe abstractions:
+All 17 theorems proved in `LimitSize.lean` rely on `limitSize` and `limitSizeCount`. The divergences above are all safe abstractions:
 
 - Overflow is not modelled (safe: NO_LIMIT guard prevents overflow in practice).
 - Mutation is replaced by pure return (safe: semantically equivalent post-state).
 - Type abstraction is strictly more general (safe: proofs hold for any `size` function).
+
+The 17 theorems include 5 helper lemmas about `totalSize` and `limitSizeCount`
+(`totalSize_take_le`, `limitSizeCount_ge_k`, `limitSizeCount_le_add_length`,
+`limitSizeCount_pos`, `limitSizeCount_le_length`) that were added in a later pass to
+support the higher-level proofs; plus 12 main theorems about `limitSize` itself.
 
 **Assessment**: The Lean model is a sound abstraction of the Rust. No proofs are invalidated by these divergences, provided the precondition `budget < Nat.max` is respected (vacuously satisfied by `Nat`).
 
@@ -248,8 +253,8 @@ No mismatches found. All five Lean models are sound abstractions of their Rust c
 
 | Lean file | Rust target | Correspondence level | Proved theorems | Gaps |
 |-----------|-------------|---------------------|-----------------|------|
-| `LimitSize.lean` | `src/util.rs` `limit_size` | Abstraction | 12 | Overflow not modelled (safe) |
+| `LimitSize.lean` | `src/util.rs` `limit_size` | Abstraction | 17 | Overflow not modelled (safe) |
 | `ConfigValidate.lean` | `src/config.rs` `Config::validate` | Abstraction | 10 | Error messages not captured (by design) |
 | `MajorityVote.lean` | `src/quorum/majority.rs` `vote_result` | Abstraction | 21 | Duplicates in voter list not excluded by type |
 | `JointVote.lean` | `src/quorum/joint.rs` `vote_result` | Abstraction | 14 | Struct wrapper abstracted; non-joint degeneration proved (J4) |
-| `CommittedIndex.lean` | `src/quorum/majority.rs` `committed_index` | Abstraction | 13 | group-commit path omitted; empty→0 (Rust→MAX) documented |
+| `CommittedIndex.lean` | `src/quorum/majority.rs` `committed_index` | Abstraction | 17 | group-commit path omitted; empty→0 (Rust→MAX) documented |
