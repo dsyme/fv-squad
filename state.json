@@ -1,6 +1,6 @@
 {
-  "last_run": "2026-03-26",
-  "run_id": "23623919739",
+  "last_run": "2026-03-27",
+  "run_id": "23624304458",
   "fv_tool": "Lean4 (stdlib only, no Mathlib)",
   "lake_project": "formal-verification/lean/",
   "lean_version": "4.28.0",
@@ -42,25 +42,25 @@
       "phase": 5,
       "lean_file": "formal-verification/lean/FVSquad/FindConflict.lean",
       "informal_spec": "formal-verification/specs/find_conflict_informal.md",
-      "notes": "ALL 12 theorems proved (0 sorry). FC1-FC12 including findConflict_first_mismatch (FC7) and findConflict_zero_iff_all_match (FC11). PR #109 pending merge."
+      "notes": "ALL 12 theorems proved (0 sorry). FC1-FC12 including findConflict_first_mismatch (FC7) and findConflict_zero_iff_all_match (FC11). PRs #108, #109 pending merge."
     },
     {
       "id": "joint_committed_index",
       "phase": 5,
       "lean_file": "formal-verification/lean/FVSquad/JointCommittedIndex.lean",
-      "notes": "ALL 10 theorems proved (0 sorry). JCI1-JCI10 including jci_safety_incoming, jci_safety_outgoing (Raft joint-consensus invariant), jci_mono. PR #111 pending merge (run 23623919739)."
+      "notes": "ALL 11 theorems proved (0 sorry). jci_safety_incoming, jci_safety_outgoing (Raft joint-consensus invariant), jci_mono, jci_symm. PR created in run 23624304458, pending merge."
     },
     {
       "id": "maybe_append",
       "phase": 1,
       "lean_file": null,
-      "notes": "Depends on find_conflict. Connects find_conflict to log mutation. Next high-priority target."
+      "notes": "Depends on find_conflict (now proved). Highest-priority next target. Connects find_conflict to log mutation."
     },
     {
       "id": "inflights",
       "phase": 1,
       "lean_file": null,
-      "notes": "src/tracker/inflights.rs ring buffer ops. Medium priority per CRITIQUE.md."
+      "notes": "src/tracker/inflights.rs ring buffer ops. Medium priority."
     },
     {
       "id": "voter_dedup",
@@ -69,7 +69,7 @@
       "notes": "Add List.Nodup precondition to vote_result/committed_index theorems. Closes semantic gap: Lean uses List Nat, Rust uses HashSet."
     }
   ],
-  "total_theorems_proved": 113,
+  "total_theorems_proved": 124,
   "correspondence_file": "formal-verification/CORRESPONDENCE.md",
   "critique_file": "formal-verification/CRITIQUE.md",
   "lean_stdlib_notes": {
@@ -78,25 +78,29 @@
     "no_split_ifs": "split_ifs not available without Mathlib - use by_cases h : cond",
     "no_mathlib_tactics": ["split_ifs", "push_neg", "linarith", "by_contra"],
     "use_instead": ["omega (replaces linarith)", "by_cases h : cond (replaces split_ifs)", "Nat.le_of_not_lt (replaces by_contra)", "simp [Nat.not_le] (replaces push_neg)"],
-    "omega_cant_min": "omega cannot reason about Nat.min directly - use by_cases on the min expression, simp [Nat.min_def], then omega. OR use Nat.le_min.mpr with Nat.min_le_left/right.",
-    "min_lemmas": "Nat.min_le_left, Nat.min_le_right available. Nat.le_min is iff: a <= min b c <-> a <= b /\\ a <= c. NO Nat.min_le_min in stdlib - use Nat.le_min.mpr ⟨Nat.le_trans (Nat.min_le_left _ _) h1, Nat.le_trans (Nat.min_le_right _ _) h2⟩.",
+    "omega_cant_min": "omega cannot reason about Nat.min directly - use by_cases or show/rfl approach",
+    "no_le_min": "le_min is undefined - use Nat.le_min.mpr ⟨h1, h2⟩ (Nat.le_min : k ≤ min m n ↔ k ≤ m ∧ k ≤ n)",
+    "no_min_le_min": "Nat.min_le_min does not exist in stdlib. Use Nat.le_min.mpr ⟨Nat.le_trans (Nat.min_le_left ..) h1, Nat.le_trans (Nat.min_le_right ..) h2⟩",
+    "min_simp_failure": "simp [jointCommittedIndex] often fails to unfold match defs. Use 'show' with explicit computed form (via rfl/definitional equality) instead",
+    "show_tactic": "Use 'show <explicit_form>' to change goal via definitional equality for match-defined functions. E.g.: show Nat.min ci_in ci_out <= ci_in",
+    "rfl_for_match": "For def by match, rfl works: jci_non_joint/jci_joint proved by rfl",
+    "min_lemmas": "Nat.min_le_left, Nat.min_le_right, Nat.min_eq_left (h : m <= n : min m n = m), Nat.min_eq_right (h : n <= m : min m n = n), Nat.min_comm",
     "barrel_file": "formal-verification/lean/FVSquad.lean must import ALL module files for lake build to compile them",
     "import_placement": "imports MUST be at the very top of the file, before any doc comments or code",
     "theorem_ordering": "Define theorems BEFORE use - cannot forward-reference.",
-    "list_isEmpty": "List.isEmpty is a Bool function. Use 'cases outgoing with | nil => ... | cons h t => ...' to case-split on emptiness, not List.isEmpty_iff_eq_nil or List.not_isEmpty_iff.",
-    "sortDesc_get_antitone": "i <= j -> sortDesc(l)[j] <= sortDesc(l)[i]: split eq/lt, use pairwise_ge_antitone for strict",
-    "list_mem_cons_self": "List.mem_cons_self takes NO explicit args in 4.28.0 - use just 'List.mem_cons_self' (implicit args inferred from context)",
+    "list_isEmpty": "List.isEmpty is a Bool function. Use 'cases outgoing with | nil => ... | cons h t => ...' to case-split on emptiness",
+    "list_mem_cons_self": "List.mem_cons_self takes NO explicit args in 4.28.0",
     "list_mem_cons_of_mem": "List.mem_cons_of_mem takes the element as explicit arg: List.mem_cons_of_mem e he'",
     "not_mem_nil": "List.not_mem_nil takes type arg not value - just use 'simp at he' to dispatch membership-in-nil goals",
     "cases_bool": "To case-split on a Bool expression b: use 'cases hm : b with | false => ... | true => ...' to get hm : b = false or hm : b = true",
     "list_noconfusion": "To prove x :: xs ≠ []: use 'by simp' or 'List.cons_ne_nil x xs'"
   },
   "open_prs": [
-    {"number": 107, "branch": "lean-squad/critique-correspondence-run92-b01e53c88e305140", "title": "docs(fv): proof utility critique + correspondence update", "run_id": "23622476848"},
+    {"number": 107, "branch": "lean-squad/critique-correspondence-run92-b01e53c88e305140", "title": "feat(fv): proof utility critique + correspondence update", "run_id": "23622476848"},
     {"number": 108, "branch": "lean-squad/tasks7-2-run93-6bd91dfe438493ff", "title": "feat(fv): informal spec for RaftLog::find_conflict + proof utility critique", "run_id": "23623177395"},
     {"number": 109, "branch": "lean-squad/find-conflict-proofs-a7dd4e10ebeab449", "title": "feat(fv): prove all 12 find_conflict theorems (0 sorry)", "run_id": "23623425092"},
     {"number": 110, "branch": "lean-squad/proof-utility-critique-5b9bb72b453e1ee7", "title": "docs(fv): add proof utility critique (CRITIQUE.md)", "run_id": "23623425092"},
-    {"number": 111, "branch": "lean-squad/run-94-tasks7-3", "title": "feat(fv): prove JointCommittedIndex (10 theorems, 0 sorry) + update CRITIQUE.md", "run_id": "23623919739"}
+    {"number": "new_run95", "branch": "lean-squad/jci-findconflict-critique-run95-97216fa", "title": "feat(fv): prove JointCommittedIndex (11 theorems, 0 sorry) + CRITIQUE.md update", "run_id": "23624304458"}
   ],
   "aeneas_status": "BLOCKED - no-new-privileges container prevents opam/sudo install. Charon.toml exists in repo. Try again when container has sudo access.",
   "status_issue": 94,
@@ -108,6 +112,6 @@
     "main_semantic_gap": "Voter lists use List Nat instead of deduplicated Finset/HashSet - theorems hold under implicit Nodup assumption not formally enforced",
     "no_bugs_found": true,
     "total_sorry": 0,
-    "total_theorems": 113
+    "total_theorems": 124
   }
 }
