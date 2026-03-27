@@ -7,8 +7,8 @@ correspondence level, known divergences, and the impact on any proofs that rely 
 definition.
 
 ## Last Updated
-- **Date**: 2026-03-26 23:09 UTC
-- **Commit**: `e8e2c39`
+- **Date**: 2026-03-27 13:44 UTC
+- **Commit**: `53666d08282d081a9911e88e38d9b3e2b2d86eec`
 
 ---
 
@@ -245,7 +245,81 @@ confidence in the sort-then-index algorithm's correctness. No mismatches found.
 
 ---
 
-No mismatches found. All five Lean models are sound abstractions of their Rust counterparts.
+No mismatches found. All six Lean models are sound abstractions of their Rust counterparts.
+
+---
+
+## `formal-verification/lean/FVSquad/FindConflict.lean`
+
+### Target: `RaftLog::find_conflict` — `src/raft_log.rs`
+
+Rust source: [`src/raft_log.rs#L195`](../src/raft_log.rs#L195)
+
+#### Lean definitions
+
+| Lean name | Rust name | Rust location | Correspondence | Notes |
+|-----------|-----------|---------------|----------------|-------|
+| `LogEntry` | `Entry` (protobuf) | `proto/eraftpb.proto` | Abstraction | Lean captures only `index` and `term`; payload bytes are not modelled. |
+| `LogTerm` | *(combined `RaftLog` stable + unstable store)* | `src/raft_log.rs` | Abstraction | Rust splits log storage across `RaftLog.store` and `RaftLog.unstable`; Lean abstracts both as a single `Nat → Option Nat` (index → term) function. |
+| `matchTerm` | `RaftLog::match_term` | `src/raft_log.rs#L248` | Abstraction | Rust: `term(idx).map_or(false, |t| t == term)`. Lean: `match log idx with | some t => t == term | none => false`. Semantically identical (both return `false` for out-of-range indices). |
+| `findConflict` | `RaftLog::find_conflict` | `src/raft_log.rs#L201` | Abstraction | See divergences below. |
+
+#### Known divergences (Abstraction-level)
+
+1. **Entry payload omitted** — Rust `Entry` is a protobuf message carrying `data`, `context`,
+   `entry_type`, etc.  Lean `LogEntry` stores only `index` and `term`.  The `find_conflict`
+   function only inspects `index` and `term` (via `match_term`), so this omission does not
+   affect the semantic correctness of the model.
+
+2. **Log storage split** — The real `RaftLog` stores entries in two regions:
+   `self.store` (stable, via the `Storage` trait) and `self.unstable` (in-memory append
+   buffer).  The Lean model unifies these as a single `LogTerm` function.  The Rust
+   `match_term` method transparently queries both regions; the Lean `matchTerm` mirrors the
+   observable behaviour, not the internal storage layout.
+
+3. **Error handling** — Rust `term(idx)` returns `Result<u64, Error>`.  An `Err` result
+   (e.g., storage I/O failure) causes `match_term` to return `false` via
+   `unwrap_or_default()`.  Lean models this by returning `none` (→ `matchTerm` returns
+   `false`) for any index not present.  Panics or storage errors are not modelled.
+
+4. **Logging side effects** — The Rust implementation logs a diagnostic message when a
+   conflict is found at or below `last_index()`.  This has no semantic effect and is not
+   modelled.
+
+5. **Index type** — Raft indices are `u64` in Rust; Lean uses `Nat` (unbounded). Overflow
+   is not modelled (safe in practice: log indices never exceed ~2^63 in realistic
+   deployments).
+
+6. **Positive-index precondition** — Lean theorems FC4b and FC11 require
+   `∀ e ∈ ents, 0 < e.index` to distinguish the "no conflict" sentinel (0) from a
+   genuine index-0 entry.  Raft log indices start at 1 by convention; this precondition
+   is always satisfied by the Rust caller.  It is an explicit precondition in Lean rather
+   than enforced by a type invariant.
+
+#### Impact on proofs
+
+All 12 theorems in `FindConflict.lean` are:
+
+- **FC1–FC3**: definitional lemmas; exact correspondence.
+- **FC4a / FC4b**: "all match ↔ result is 0" — hold under the stated positive-index
+  precondition.  The precondition is always met by real Raft callers.
+- **FC5+FC6 (combined as `findConflict_nonzero_witness`)**: existence of the first
+  mismatching entry.  Sound under the Abstraction model.
+- **FC7 (`findConflict_first_mismatch`)**: first-mismatch characterisation.  The most
+  precise correctness statement; holds exactly under the Lean model.
+- **FC8 (`findConflict_skip_match_prefix`)**: transparency of a matching prefix.  Sound.
+- **FC9–FC10**: singleton cases.  Exact.
+- **FC11 (`findConflict_zero_iff_all_match`)**: biconditional combining FC4a and FC4b.
+  The most useful single theorem for downstream reasoning.
+- **FC12 (`findConflict_result_in_indices`)**: result is an entry's index.  Sound.
+
+**Assessment**: No mismatches found.  The Lean model is a sound Abstraction of
+`RaftLog::find_conflict`.  The payload and storage-split omissions are appropriate and
+documented.  All 12 theorems are valid under the stated model and preconditions.
+
+---
+
+No mismatches found. All six Lean models are sound abstractions of their Rust counterparts.
 
 ---
 
@@ -258,3 +332,8 @@ No mismatches found. All five Lean models are sound abstractions of their Rust c
 | `MajorityVote.lean` | `src/quorum/majority.rs` `vote_result` | Abstraction | 21 | Duplicates in voter list not excluded by type |
 | `JointVote.lean` | `src/quorum/joint.rs` `vote_result` | Abstraction | 14 | Struct wrapper abstracted; non-joint degeneration proved (J4) |
 | `CommittedIndex.lean` | `src/quorum/majority.rs` `committed_index` | Abstraction | 17 | group-commit path omitted; empty→0 (Rust→MAX) documented |
+| `FindConflict.lean` | `src/raft_log.rs` `find_conflict` | Abstraction | 12 | Entry payload omitted; positive-index precondition explicit |
+
+---
+
+> �� Generated by [Lean Squad](https://github.com/dsyme/fv-squad/actions/runs/23649096928) automated formal verification.

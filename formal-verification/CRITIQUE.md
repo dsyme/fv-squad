@@ -3,22 +3,22 @@
 > 🔬 *Lean Squad — automated formal verification for `dsyme/fv-squad`.*
 
 ## Last Updated
-- **Date**: 2026-03-26 23:09 UTC
-- **Commit**: ???
+- **Date**: 2026-03-27 13:44 UTC
+- **Commit**: `53666d08282d081a9911e88e38d9b3e2b2d86eec`
 
 ---
 
 ## Overall Assessment
 
-Formal verification coverage is in a strong intermediate state: **79 theorems proved across
-5 functions, with 0 `sorry` remaining**.  The most safety-critical Raft quorum computations
-(`vote_result`, `committed_index`, and their joint-config variants) are now formally
-verified at a semantically meaningful level — the Safety and Maximality theorems for
-`committed_index` are genuine protocol-level properties that would catch real implementation
-bugs.  The remaining gap is that only the quorum-subsystem *outputs* are verified; the
-upstream log operations (`find_conflict`, `maybe_append`) and the downstream state-machine
-(`progress`, `inflights`) are untouched, so no end-to-end Raft correctness theorem exists
-yet.
+Formal verification coverage has advanced to **91 theorems proved across 6 functions, with
+0 `sorry` remaining**.  The quorum subsystem is fully specified and proved
+(`vote_result`, `committed_index`, and their joint-config variants), and log-layer coverage
+has now begun: all 12 key correctness theorems for `RaftLog::find_conflict` are proved.
+The remaining gap is that the log operations beyond `find_conflict` (`maybe_append`,
+`append_entry`, `commit_to`) and the downstream state-machine (`progress`, `inflights`) are
+untouched, so no end-to-end Raft correctness theorem exists yet.  The next natural target
+is `RaftLog::maybe_append`, which calls `find_conflict` and whose specification can build
+directly on the `FindConflict` theorems.
 
 ---
 
@@ -178,41 +178,62 @@ correctness is required for the high-level proofs to go through.
 
 ---
 
+### `FindConflict.lean` — 12 theorems
+
+| Theorem | Level | Bug-catching potential | Notes |
+|---------|-------|----------------------|-------|
+| `findConflict_empty` (FC1) | Low | Low | Empty input → 0; trivial boundary case |
+| `findConflict_head_mismatch` (FC2) | Low | Medium | Head mismatch → return head index immediately |
+| `findConflict_head_match` (FC3) | Low | Medium | Head match → recurse into tail |
+| `findConflict_zero_of_all_match` (FC4a) | Mid | **High** | All entries match → result is 0 (no truncation needed) |
+| `findConflict_all_match_of_zero` (FC4b) | Mid | **High** | Result 0 + positive indices → all entries match (converse) |
+| `findConflict_nonzero_witness` (FC5+FC6) | Mid | **High** | Non-zero result → witnessing entry exists with that index and a term mismatch |
+| `findConflict_first_mismatch` (FC7) | **High** | **Very High** | First-mismatch characterisation: all `pre` match, `e` mismatches → returns `e.index` |
+| `findConflict_skip_match_prefix` (FC8) | Mid | **High** | Matching prefix is transparent — result depends only on the suffix after the prefix |
+| `findConflict_singleton_match` (FC9) | Low | Low | Single matching entry → 0 |
+| `findConflict_singleton_mismatch` (FC10) | Low | Low | Single mismatching entry → that entry's index |
+| `findConflict_zero_iff_all_match` (FC11) | **High** | **Very High** | Biconditional: zero ↔ all match (for positive-index entries) — combines FC4a + FC4b |
+| `findConflict_result_in_indices` (FC12) | Mid | Medium | Non-zero result is always the index of some entry in the input |
+
+**Assessment**: `findConflict_zero_iff_all_match` (FC11) and `findConflict_first_mismatch`
+(FC7) are the most valuable results.  FC11 establishes the central "no conflict detected ↔
+all entries agree with the log" equivalence — the exact correctness criterion a Raft
+implementation needs.  FC7 proves the output is the *first* mismatch index, not an
+arbitrary one: this would catch any implementation that skips entries, re-orders the scan,
+or returns the wrong index upon detecting a conflict.  The positive-index precondition in
+FC4b and FC11 accurately documents the protocol assumption that index 0 is only used as a
+sentinel return value, not as a real log position.
+
+---
+
 ## Gaps and Recommendations
 
 Prioritised by impact:
 
-### 1. `JointConfig::committed_index` — **High priority** *(phase 1)*
+### 1. `JointConfig::committed_index` — **High priority** *(phase 3 — Lean spec written; awaiting reprovement after branch loss)*
 
 `src/quorum/joint.rs` `committed_index` is simply `min(incoming.committed_index(acked),
-outgoing.committed_index(acked))` (with the Rust empty-→-MAX divergence handled).  The
-key property: the joint committed index is ≤ both sub-quorum committed indices (safety),
-and = each in the non-joint case.  Since `committedIndex` is now fully proved, this is
-a thin shim — a fast win.  The `empty→MAX` Rust divergence is the main subtlety.
+outgoing.committed_index(acked))` (with the Rust empty-→-MAX divergence handled).  All 14
+theorems (safety, maximality, monotonicity for incoming/outgoing quorums, joint safety,
+joint maximality) were proved in a prior run but the PR was not merged.  This is the
+highest-priority target to recover and resubmit.  The `empty→MAX` Rust divergence is the
+main subtlety.
 
-### 2. `RaftLog::find_conflict` — **High priority** *(phase 1)*
-
-The function scans entries to find the first index where the incoming entries conflict
-with the existing log (term mismatch or missing entry).  A bug here could cause log
-corruption or missed conflicts.  Key properties to verify:
-- If there is no conflict, the result is 0 (no truncation needed).
-- If there is a conflict at index `i`, all entries before `i` match.
-- The result is bounded by the first entry's index and the last entry's index.
-This target requires modelling log terms as lists of `(index, term)` pairs.
-
-### 3. `RaftLog::maybe_append` — **Medium priority** *(phase 1, depends on `find_conflict`)*
+### 2. `RaftLog::maybe_append` — **High priority** *(phase 1, depends on `find_conflict` — now done)*
 
 Calls `find_conflict`, then truncates and appends.  Key properties: log suffix is replaced
-only after the conflict point; log never shrinks if there is no conflict.
+only after the conflict point; log never shrinks if there is no conflict; the output log
+has the same prefix up to the conflict index.  The `FindConflict` theorems (especially FC7
+and FC11) provide the key building blocks — this is the natural next step.
 
-### 4. `Inflights` ring buffer — **Medium priority** *(phase 1)*
+### 3. `Inflights` ring buffer — **Medium priority** *(phase 1)*
 
 `src/tracker/inflights.rs` implements a ring buffer of in-flight message counts.
 Key invariants: `add` does not lose elements; `free_to` advances the buffer correctly;
 the count never exceeds capacity.  Ring buffer invariants are the kind of property
 where bugs hide in index arithmetic — FV would add real value here.
 
-### 5. Bridging theorem for `committedIndex_empty` — **Low priority**
+### 4. Bridging theorem for `committedIndex_empty` — **Low priority**
 
 The `committedIndex_empty_contract` theorem documents that the Lean model returns `0`
 where Rust returns `u64::MAX`, but does not prove a bridging equivalence for joint-quorum
@@ -220,7 +241,7 @@ callers.  Once `JointConfig::committed_index` is formalised, a theorem showing
 `joint.committedIndex ≤ min(incoming.committedIndex, outgoing.committedIndex)` (with
 appropriate handling of the 0/MAX difference) would close this gap.
 
-### 6. Composition / end-to-end safety property — **Long-term goal**
+### 5. Composition / end-to-end safety property — **Long-term goal**
 
 No end-to-end Raft safety theorem exists yet (e.g., "two entries committed at the same
 index by the same term are identical").  This requires composing proofs about the quorum
@@ -273,9 +294,16 @@ unreachable, but the gap is worth noting.
    *best* output satisfying those constraints.  The maximality proof provides confidence
    that `limit_size` never produces unnecessarily small batches.
 
-4. **No bugs found** in any of the five verified functions.  This is evidence (not proof)
-   that the Raft quorum logic as implemented is correct for the modelled path.
+4. **`findConflict_zero_iff_all_match`** (FC11) provides a clean biconditional
+   characterisation of the "no conflict" case, and **`findConflict_first_mismatch`** (FC7)
+   pins down exactly *which* entry's index is returned.  Together they eliminate a whole
+   class of subtle off-by-one bugs (returning the wrong conflict index, or returning a
+   conflict index when none exists).
+
+5. **No bugs found** in any of the six verified functions.  This is evidence (not proof)
+   that the Raft quorum logic and the log-conflict scan as implemented are correct for the
+   modelled paths.
 
 ---
 
-> 🔬 Generated by [Lean Squad](https://github.com/dsyme/fv-squad/actions/runs/23622476848) automated formal verification.
+> 🔬 Generated by [Lean Squad](https://github.com/dsyme/fv-squad/actions/runs/23649096928) automated formal verification.
