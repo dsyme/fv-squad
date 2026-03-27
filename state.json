@@ -1,16 +1,16 @@
 {
   "last_run": "2026-03-27",
-  "run_id": "23649096928",
+  "run_id": "23649534132",
   "fv_tool": "Lean4 (stdlib only, no Mathlib)",
   "lake_project": "formal-verification/lean/",
   "lean_version": "4.28.0",
-  "lean_build_note": "lake build PASSED with Lean 4.28.0. No Mathlib needed (network blocked). Use stdlib omega/simp.",
+  "lean_build_note": "lake build PASSED with Lean 4.28.0. 0 warnings, 0 errors, 0 sorry. Use stdlib omega/simp.",
   "targets": [
     {
       "id": "limit_size",
       "phase": 5,
       "lean_file": "formal-verification/lean/FVSquad/LimitSize.lean",
-      "notes": "ALL 17 public theorems proved (0 sorry). 8 private helpers. Merged."
+      "notes": "ALL 17 public theorems proved (0 sorry). 8 private helpers. Merged. Lint warnings fixed run101."
     },
     {
       "id": "config_validate",
@@ -42,31 +42,27 @@
       "phase": 5,
       "lean_file": "formal-verification/lean/FVSquad/FindConflict.lean",
       "informal_spec": "formal-verification/specs/find_conflict_informal.md",
-      "notes": "ALL 12 theorems proved (0 sorry). FC1-FC12. Merged. CRITIQUE and CORRESPONDENCE updated run100."
+      "notes": "ALL 12 theorems proved (0 sorry). FC1-FC12. Merged. CRITIQUE and CORRESPONDENCE updated run100+run101."
     },
     {
       "id": "joint_committed_index",
       "phase": 3,
       "lean_file": null,
-      "notes": "14 theorems were proved in prior run (branch lean-squad/tasks7-6-run98-1743069069) but PR was never merged and branch was lost. Need to recreate JointCommittedIndex.lean. High priority next target."
+      "rust_source": "src/quorum/joint.rs#L47",
+      "notes": "Planned correspondence documented in CORRESPONDENCE.md (run101). Key: jointCommittedIndex = min(committedIndex incoming, committedIndex outgoing). 5 properties planned: jci_min, jci_safety, jci_maximality, jci_monotone, jci_degenerate. Use by_cases + Nat.min_eq_left/right + omega. HIGH PRIORITY NEXT TARGET."
     },
     {
       "id": "maybe_append",
-      "phase": 1,
+      "phase": 2,
       "lean_file": null,
-      "notes": "Next after joint_committed_index. Models log truncate+append. src/raft_log.rs ~lines 218-240. Can build on FindConflict theorems."
+      "rust_source": "src/raft_log.rs#L218",
+      "notes": "Planned correspondence documented in CORRESPONDENCE.md (run101). Depends on FindConflict (done). Log truncate+append. 4 properties planned."
     },
     {
       "id": "inflights",
       "phase": 1,
       "lean_file": null,
       "notes": "src/tracker/inflights.rs ring buffer ops. Medium priority."
-    },
-    {
-      "id": "voter_dedup",
-      "phase": 1,
-      "lean_file": null,
-      "notes": "Add List.Nodup precondition to vote_result/committed_index theorems. Closes semantic gap."
     }
   ],
   "total_theorems_proved": 91,
@@ -92,14 +88,15 @@
     "cases_bool": "To case-split on a Bool expression b: use 'cases hm : b with | false => ... | true => ...' to get hm : b = false or hm : b = true",
     "list_noconfusion": "To prove x :: xs ≠ []: use 'by simp' or 'List.cons_ne_nil x xs'",
     "unfold_vs_simp": "For if-then-else definitions, use 'unfold def' before 'cases' - simp may over-simplify",
-    "list_get_consecutive": "For Consecutive ents start proof, use 'rw [List.mem_iff_get] at hmem; obtain <(i, hi), heqe> := hmem' then access hcon i hi"
+    "list_get_consecutive": "For Consecutive ents start proof, use 'rw [List.mem_iff_get] at hmem; obtain <(i, hi), heqe> := hmem' then access hcon i hi",
+    "unused_simp_args": "Lean 4.28.0 linter warns on unused simp args - do not pass 'totalSize', 'if_false', or 'show ...' to simp only unless confirmed needed"
   },
-  "open_prs": [],
+  "open_prs": ["lean-squad/tasks6-9-run101-1743083660"],
   "aeneas_status": "BLOCKED - no-new-privileges container prevents opam/sudo install. Charon.toml exists in repo.",
   "status_issue": 94,
   "next_targets": ["joint_committed_index", "maybe_append", "inflights"],
   "ci_workflow": ".github/workflows/lean-ci.yml",
-  "ci_status": "HEALTHY - lean-ci.yml exists, uses lean-toolchain pin, runs lake build.",
+  "ci_status": "HEALTHY - lean-ci.yml updated run101 with warning-count reporting step. 0 warnings after LimitSize lint fixes.",
   "critique_notes": {
     "highest_value_proved": ["committedIndex_safety", "committedIndex_maximality", "committedIndex_mono", "findConflict_first_mismatch", "findConflict_zero_iff_all_match", "configValidate_iff_valid"],
     "main_semantic_gap": "Voter lists use List Nat instead of deduplicated Finset/HashSet - theorems hold under implicit Nodup assumption not formally enforced",
