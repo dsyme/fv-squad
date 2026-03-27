@@ -1,6 +1,6 @@
 {
   "last_run": "2026-03-27",
-  "run_id": "23629802273",
+  "run_id": "23639117595",
   "fv_tool": "Lean4 (stdlib only, no Mathlib)",
   "lake_project": "formal-verification/lean/",
   "lean_version": "4.28.0",
@@ -10,7 +10,7 @@
       "id": "limit_size",
       "phase": 5,
       "lean_file": "formal-verification/lean/FVSquad/LimitSize.lean",
-      "notes": "ALL 25 theorems proved (0 sorry). 12 top-level + helpers fully verified. Merged."
+      "notes": "ALL 17 public theorems proved (0 sorry). 8 private helpers. Merged."
     },
     {
       "id": "config_validate",
@@ -35,7 +35,7 @@
       "id": "committed_index",
       "phase": 5,
       "lean_file": "formal-verification/lean/FVSquad/CommittedIndex.lean",
-      "notes": "ALL 28 theorems proved (0 sorry). committedIndex_safety, committedIndex_maximality, committedIndex_mono all proved. Merged."
+      "notes": "ALL 17 public theorems + 11 private proved (0 sorry). committedIndex_safety, committedIndex_maximality, committedIndex_mono all proved. Merged."
     },
     {
       "id": "find_conflict",
@@ -48,13 +48,13 @@
       "id": "joint_committed_index",
       "phase": 5,
       "lean_file": "formal-verification/lean/FVSquad/JointCommittedIndex.lean",
-      "notes": "ALL 13 theorems proved (0 sorry) in run 23629802273. jci_safety_incoming, jci_safety_outgoing, jci_joint_maximality, jci_mono all proved. PR open, branch lean-squad/joint-committed-index-run97-29802273."
+      "notes": "ALL 14 theorems proved (0 sorry). jci_safety_incoming/outgoing_quorum, jci_joint_maximality, jci_mono all proved. PR open, branch lean-squad/tasks7-6-run98-1743069069."
     },
     {
       "id": "maybe_append",
       "phase": 1,
       "lean_file": null,
-      "notes": "Next high-priority target. Depends on find_conflict. Models log truncate+append."
+      "notes": "Next high-priority target. Depends on find_conflict (done). Models log truncate+append. src/raft_log.rs ~lines 218-240."
     },
     {
       "id": "inflights",
@@ -69,7 +69,7 @@
       "notes": "Add List.Nodup precondition to vote_result/committed_index theorems. Closes semantic gap."
     }
   ],
-  "total_theorems_proved": 123,
+  "total_theorems_proved": 105,
   "correspondence_file": "formal-verification/CORRESPONDENCE.md",
   "critique_file": "formal-verification/CRITIQUE.md",
   "lean_stdlib_notes": {
@@ -79,11 +79,9 @@
     "no_mathlib_tactics": ["split_ifs", "push_neg", "linarith", "by_contra"],
     "use_instead": ["omega (replaces linarith)", "by_cases h : cond (replaces split_ifs)", "Nat.le_of_not_lt (replaces by_contra)", "simp [Nat.not_le] (replaces push_neg)"],
     "omega_cant_min": "omega cannot reason about Nat.min directly - use by_cases with Nat.min_eq_left/Nat.min_eq_right then rw",
-    "nat_min_pattern": "To prove goal involving min(a,b): use by_cases h : a <= b; then Nat.min_eq_left h (or Nat.min_eq_right) to rewrite, then rw [heq] at hypothesis; exact hypothesis",
-    "nat_le_min_mpr": "Nat.le_min.mpr ⟨h1, h2⟩ proves k <= min m n from h1 : k <= m and h2 : k <= n",
-    "no_le_min": "le_min is undefined - use Nat.le_min.mpr",
-    "no_min_le_min": "Nat.min_le_min does not exist in stdlib - use Nat.le_min.mpr with Nat.le_trans (Nat.min_le_left _ _) h1",
-    "min_simp_failure": "simp [def] often fails to unfold match defs when min is involved. Use explicit heq approach.",
+    "nat_min_pattern": "For jci_joint_maximality: unfold jointCommittedIndex at hk; by_cases h : ci_in <= ci_out; rw [Nat.min_eq_left h] at hk; else rw [Nat.min_eq_right (Nat.le_of_not_le h)] at hk",
+    "nat_le_min_mpr": "Nat.le_min.mpr <h1, h2> proves k <= min m n from h1 : k <= m and h2 : k <= n",
+    "no_simp_min_eq_left": "Do NOT use simp [jointCommittedIndex] then rw Nat.min_eq_left - use unfold then rw directly",
     "barrel_file": "formal-verification/lean/FVSquad.lean must import ALL module files for lake build to compile them",
     "import_placement": "imports MUST be at the very top of the file, before any doc comments or code",
     "theorem_ordering": "Define theorems BEFORE use - cannot forward-reference.",
@@ -123,9 +121,9 @@
     },
     {
       "number": "new",
-      "branch": "lean-squad/joint-committed-index-run97-29802273",
-      "title": "feat(fv): prove JointCommittedIndex (13 theorems, 0 sorry) + critique/correspondence update",
-      "run_id": "23629802273"
+      "branch": "lean-squad/tasks7-6-run98-1743069069",
+      "title": "feat(fv): JointCommittedIndex (14 theorems, 0 sorry) + CRITIQUE/CORRESPONDENCE updates (Tasks 7+6)",
+      "run_id": "23639117595"
     }
   ],
   "aeneas_status": "BLOCKED - no-new-privileges container prevents opam/sudo install. Charon.toml exists in repo.",
@@ -134,10 +132,10 @@
   "ci_workflow": ".github/workflows/lean-ci.yml",
   "ci_status": "HEALTHY - lean-ci.yml exists, uses lean-toolchain pin, runs lake build.",
   "critique_notes": {
-    "highest_value_proved": ["committedIndex_safety", "committedIndex_maximality", "committedIndex_mono", "jci_safety_incoming", "jci_safety_outgoing", "jci_joint_maximality", "jci_mono", "findConflict_first_mismatch", "configValidate_iff_valid"],
+    "highest_value_proved": ["committedIndex_safety", "committedIndex_maximality", "committedIndex_mono", "jci_safety_incoming_quorum", "jci_safety_outgoing_quorum", "jci_joint_maximality", "jci_mono", "findConflict_first_mismatch", "findConflict_zero_iff_all_match", "configValidate_iff_valid"],
     "main_semantic_gap": "Voter lists use List Nat instead of deduplicated Finset/HashSet - theorems hold under implicit Nodup assumption not formally enforced",
     "no_bugs_found": true,
     "total_sorry": 0,
-    "total_theorems": 123
+    "total_public_theorems": 105
   }
 }
