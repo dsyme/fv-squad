@@ -1,6 +1,6 @@
 {
   "last_run": "2026-03-28",
-  "run_id": "23676329480",
+  "run_id": "23681818905",
   "fv_tool": "Lean4 (stdlib only, no Mathlib)",
   "lake_project": "formal-verification/lean/",
   "lean_version": "4.28.0",
@@ -49,14 +49,15 @@
       "phase": 5,
       "lean_file": "formal-verification/lean/FVSquad/JointCommittedIndex.lean",
       "rust_source": "src/quorum/joint.rs#L47",
-      "notes": "ALL 10 theorems proved (0 sorry). JCI1-JCI10. Merged. CORRESPONDENCE.md updated run106 to include full analysis section."
+      "notes": "ALL 10 theorems proved (0 sorry). JCI1-JCI10. Merged. CORRESPONDENCE.md updated."
     },
     {
       "id": "maybe_append",
-      "phase": 1,
-      "lean_file": null,
-      "rust_source": "src/raft_log.rs#L218",
-      "notes": "Phase 1 - next target. Depends on FindConflict (done). CORRESPONDENCE.md has planned entry. Key properties: no-conflict noop, conflict truncates, prefix preserved, result is suffix."
+      "phase": 3,
+      "lean_file": "formal-verification/lean/FVSquad/MaybeAppend.lean",
+      "informal_spec": "formal-verification/specs/maybe_append_informal.md",
+      "rust_source": "src/raft_log.rs#L267",
+      "notes": "Phase 3: Lean spec written (run109). 13 theorems proved (0 sorry). MA1-MA13. Covers return value correctness, committed index monotonicity/bounds, persisted rollback/preservation, and log prefix preservation. PR opened run109. Next: Task 4 (Lean implementation extraction) - applyEntries is defined but needs to be connected to append semantics more tightly. Task 5 to prove stronger log-content theorems."
     },
     {
       "id": "inflights",
@@ -65,7 +66,7 @@
       "notes": "src/tracker/inflights.rs ring buffer ops. After maybe_append."
     }
   ],
-  "total_theorems_proved": 101,
+  "total_theorems_proved": 114,
   "correspondence_file": "formal-verification/CORRESPONDENCE.md",
   "critique_file": "formal-verification/CRITIQUE.md",
   "lean_stdlib_notes": {
@@ -75,8 +76,8 @@
     "no_mathlib_tactics": ["split_ifs", "push_neg", "linarith", "by_contra"],
     "use_instead": ["omega (replaces linarith)", "by_cases h : cond (replaces split_ifs)", "Nat.le_of_not_lt (replaces by_contra)", "simp [Nat.not_le] (replaces push_neg)"],
     "no_nat_le_or_lt": "Nat.le_or_lt does NOT exist in Lean 4.28-4.29 - use 'by_cases h : a <= b' instead",
-    "omega_cant_min": "omega cannot reason about Nat.min directly - use by_cases with Nat.min_eq_left/Nat.min_eq_right then rw",
-    "nat_min_pattern": "For min proofs: by_cases h : a <= b; rw [Nat.min_eq_left h]; else rw [Nat.min_eq_right (Nat.le_of_lt (Nat.not_le.mp h))]",
+    "omega_cant_min_max": "omega cannot reason about Nat.min/max directly (treats as uninterpreted) - use Nat.le_max_left, Nat.max_le.mpr, Nat.min_le_left, Nat.min_le_right, Nat.min_eq_left/right, Nat.max_eq_left/right",
+    "nat_min_pattern": "For min bounds: use Nat.min_le_left/right. For equality: use Nat.min_eq_left (h: a<=b) : min a b = a. For le: use by_cases + Nat.min_eq_left/right + calc",
     "nat_max_le_mpr": "Nat.max_le.mpr <h1, h2> proves max a b <= k from h1 : a <= k and h2 : b <= k",
     "nat_le_max_left": "Nat.le_max_left a b : a <= max a b",
     "nat_max_eq_left": "Nat.max_eq_left (h : b <= a) : max a b = a",
@@ -88,22 +89,25 @@
     "unused_simp_args": "Lean 4.29 linter warns on unused simp args - do not pass hm after 'cases hm :' in <;> simp",
     "barrel_file": "formal-verification/lean/FVSquad.lean must import ALL module files for lake build to compile them",
     "import_placement": "imports MUST be at the very top of the file, before any doc comments or code",
-    "theorem_ordering": "Define theorems BEFORE use - cannot forward-reference."
+    "theorem_ordering": "Define theorems BEFORE use - cannot forward-reference.",
+    "simp_handles_if_false": "simp [h] where h : matchTerm ... = true resolves 'if matchTerm ... = false then none else ...' to the else branch. Also resolves prop 'conflict = 0' with hfc.",
+    "prop_if_cleaner": "Use Prop equality 'if conflict = 0 then ...' rather than Bool 'if conflict == 0 then ...' for cleaner proofs with if_neg/if_pos",
+    "simp_maybe_append_pattern": "simp [maybeAppend, h, hfc] resolves match + conflict branches together; then use order lemmas for max/min"
   },
   "open_prs": [
-    "lean-squad/correspondence-ci-run106-23676329480"
+    "lean-squad/ci-maybe-append-run109-23681818905"
   ],
   "aeneas_status": "BLOCKED - no-new-privileges container prevents opam/sudo install. Charon.toml exists in repo.",
   "status_issue": 94,
-  "next_targets": ["maybe_append (phase 1->3: informal spec + Lean spec)", "inflights"],
+  "next_targets": ["maybe_append (phase 3->5: Task 4 impl extraction, Task 5 proofs for log content)", "inflights (phase 1->2)"],
   "ci_workflow": ".github/workflows/lean-ci.yml",
-  "ci_status": "HEALTHY - lean-ci.yml present and updated run106. Cache key now includes lean-toolchain version. Added sorry source check step.",
+  "ci_status": "IMPROVED run109 - cache key now includes lean-toolchain version hash, added sorry source check step, added lake update step",
   "critique_notes": {
-    "highest_value_proved": ["committedIndex_safety", "committedIndex_maximality", "committedIndex_mono", "findConflict_first_mismatch", "findConflict_zero_iff_all_match", "configValidate_iff_valid", "jointCommittedIndex_safety_in", "jointCommittedIndex_safety_out", "jointCommittedIndex_maximality", "jointCommittedIndex_le_in", "jointCommittedIndex_le_out", "jointCommittedIndex_ge_lower_bound"],
+    "highest_value_proved": ["committedIndex_safety", "committedIndex_maximality", "committedIndex_mono", "findConflict_first_mismatch", "findConflict_zero_iff_all_match", "configValidate_iff_valid", "jointCommittedIndex_safety_in", "jointCommittedIndex_safety_out", "jointCommittedIndex_maximality", "maybeAppend_committed_eq", "maybeAppend_log_prefix_preserved"],
     "main_semantic_gap": "Voter lists use List Nat instead of deduplicated Finset/HashSet - theorems hold under implicit Nodup assumption not formally enforced",
     "empty_outgoing_divergence": "jointCommittedIndex empty-config returns 0 in Lean model vs u64::MAX in Rust - documented in JCI9+JCI10 and CORRESPONDENCE.md",
     "no_bugs_found": true,
     "total_sorry": 0,
-    "total_public_theorems": 101
+    "total_public_theorems": 114
   }
 }
