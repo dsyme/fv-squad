@@ -6,3 +6,4 @@ import FVSquad.JointVote
 import FVSquad.CommittedIndex
 import FVSquad.JointCommittedIndex
 import FVSquad.FindConflict
+import FVSquad.MaybeAppend

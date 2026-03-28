@@ -143,7 +143,64 @@ This repository is a Rust implementation of the [Raft distributed consensus algo
 
 ### Target 9: `tracker::inflights` ⭐
 
-**File**: `src/tracker/inflights.rs` — Ring buffer invariants. Medium tractability.
+**File**: `src/tracker/inflights.rs`  
+**Struct**: `pub struct Inflights` — FIFO ring buffer for tracking in-flight Raft messages
+
+**What it does**: Tracks log indices of sent-but-unacknowledged AppendEntries RPCs.
+The leader uses this to bound the pipeline window (up to `cap` messages in flight).
+
+**Data structure**:
+- `buffer : Vec<u64>` — ring buffer of capacity `cap`
+- `start : usize` — index of the oldest (first valid) entry in the ring
+- `count : usize` — number of valid entries currently stored (`0 ≤ count ≤ cap`)
+- `cap : usize` — maximum capacity
+- `incoming_cap : Option<usize>` — pending capacity resize (applied when buffer drains)
+
+**Key operations**:
+| Method | Behaviour |
+|--------|-----------|
+| `new(cap)` | Creates empty buffer with capacity `cap` |
+| `add(v)` | Appends `v` to the ring (panics if `full()`) |
+| `free_to(k)` | Removes all entries ≤ `k` from the front |
+| `free_first_one()` | Removes the single oldest entry |
+| `reset()` | Clears all entries; applies any pending cap resize |
+| `full()` | True iff `count = cap` (or pending cap already reached) |
+| `set_cap(n)` | Schedules a capacity resize to `n` |
+
+**Why FV-amenable**:
+- The *logical content* is simply an ordered sequence of `u64` values — the ring
+  buffer is a performance detail orthogonal to the correctness properties.
+- Clear pre/postconditions for each operation.
+- The `free_to` correctness criterion ("all entries ≤ k are removed, others remain")
+  is a textbook invariant, provable by induction on the sequence.
+- Well-covered by existing unit tests that serve as specification hints.
+
+**Key properties to verify**:
+1. **Capacity invariant** (`INF-1`): `count ≤ cap` is maintained by all operations.
+2. **`add` content** (`INF-2`): After `add(v)`, `v` is the last element of the logical sequence.
+3. **`free_to` correctness** (`INF-3`): After `free_to(k)`, no remaining entry satisfies `≤ k`.
+4. **`free_to` preservation** (`INF-4`): After `free_to(k)`, all entries that were `> k` are still present.
+5. **`reset` clears** (`INF-5`): After `reset()`, `count = 0`.
+6. **`full` spec** (`INF-6`): `full() = true ↔ count = cap` (ignoring `incoming_cap` case).
+
+**Lean model**:
+- Abstract the ring buffer as `List Nat` (the ordered sequence of inflights).
+- `add` ≡ `l ++ [v]`
+- `free_to k` ≡ `l.dropWhile (· ≤ k)`
+- `full` ≡ `l.length = cap`
+- No need to model the ring layout — that is an implementation detail.
+- `set_cap` and `incoming_cap` can be modelled separately or omitted in a first pass.
+
+**Proof tractability**: High for INF-1, INF-2, INF-5, INF-6 (direct from definitions).
+Medium for INF-3, INF-4 (require `dropWhile` induction). No difficult arithmetic.
+
+**Approximations**:
+- Ring layout (`start`, `buffer` vec) abstracted away — Lean model is a pure `List Nat`.
+- `incoming_cap` resize logic omitted in the first pass (it is a secondary concern).
+- `u64` → `Nat` (no overflow concern; inflights are log indices, bounded in practice).
+- `add` panic on full buffer not modelled (assumed pre: `¬full()`).
+
+**Recommended next step**: Task 2 — write `formal-verification/specs/inflights_informal.md`.
 
 ---
 

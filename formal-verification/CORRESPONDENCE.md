@@ -7,8 +7,8 @@ correspondence level, known divergences, and the impact on any proofs that rely 
 definition.
 
 ## Last Updated
-- **Date**: 2026-03-27 13:54 UTC
-- **Commit**: `52eb13408ac52e43bf86291953239b7d790236d9`
+- **Date**: 2026-03-28 16:55 UTC
+- **Commit**: `d082b09`
 
 ---
 
@@ -364,24 +364,57 @@ pub fn committed_index(&self, use_group_commit: bool, l: &impl AckedIndexer) -> 
 
 ---
 
-### `maybe_append` — `src/raft_log.rs#L218`
+### `maybe_append` — `src/raft_log.rs#L267`
 
-Rust source: [`src/raft_log.rs#L218`](../src/raft_log.rs#L218)
+Rust source: [`src/raft_log.rs#L267`](../src/raft_log.rs#L267)
 
-**Planned Lean model** (`formal-verification/lean/FVSquad/MaybeAppend.lean`):
+**Lean model**: `formal-verification/lean/FVSquad/MaybeAppend.lean`
 
-Lean will model the pure log-mutation logic: if the incoming entries conflict with the
-stored log (detected via `find_conflict`), truncate at the conflict point and append the
-new entries.  The model will build directly on `FindConflict.findConflict` and the
-`FindConflict` theorems.
+**Correspondence**: Abstraction
 
-**Key properties to prove**:
-- `maybeAppend_no_conflict_noop`: if `find_conflict` returns 0, the log is unchanged.
-- `maybeAppend_conflict_truncates`: if `find_conflict` returns `k`, the log is truncated to `k - 1` entries then the new entries are appended.
-- `maybeAppend_prefix_preserved`: the prefix before any conflict point is unchanged.
-- `maybeAppend_result_is_suffix`: the result ends with the supplied `ents` suffix.
+| Lean name | Rust equivalent | Rust location | Correspondence | Notes |
+|-----------|-----------------|---------------|----------------|-------|
+| `RaftState` | `RaftLog` fields: `entries`, `committed`, `persisted` | `src/raft_log.rs#L38–L60` | Abstraction | Only `log`, `committed`, `persisted` modelled; stable storage, logger, `applied` omitted |
+| `LogTerm` (`Nat → Option Nat`) | `RaftLog::term(idx)` | `src/raft_log.rs#L168` | Abstraction | Log represented as index→term function; entry payload and stable/unstable split omitted |
+| `logWithEntries` | `RaftLog::append(suffix)` | `src/raft_log.rs#L338` | Abstraction | Models the pure index→term update; does not model Vec allocation, stable storage write, or truncation beyond last entry |
+| `applyConflict` | conflict branch in `maybe_append` | `src/raft_log.rs#L281–L290` | Abstraction | Combines find-suffix and logWithEntries into one step |
+| `maybeAppend` | `RaftLog::maybe_append` | `src/raft_log.rs#L267` | Abstraction | See divergences below |
 
-**Status**: Phase 1 (identified; no informal spec yet).  Depends on `FindConflict` (now done ✅).
+**Divergences (all Abstraction level, no Mismatches)**:
+
+1. **Stable/unstable storage split omitted**: Rust splits entries between `stable_entries` and
+   `unstable`. The Lean model uses a single abstract `LogTerm` function. The `persisted` index
+   tracks the stable boundary. *Impact*: proofs about `persisted` rollback (MA10–MA12) are
+   sound; proofs about storage-level operations are out of scope.
+
+2. **`conflict ≤ committed` panic not modelled**: Rust panics if `find_conflict` returns an
+   index ≤ `committed`. The Lean model assumes this case does not arise (it is a safety invariant
+   that Raft's leader adherence guarantees). *Impact*: MA13–MA16 assume `conflict > committed`
+   implicitly via the Raft protocol.
+
+3. **`Nat` vs `u64`**: Log indices are `Nat` in Lean vs `u64` in Rust. Overflow is not modelled.
+   *Impact*: safe given practical log size bounds.
+
+4. **Entry payload omitted**: `LogEntry` has only `index` and `term`; Rust `Entry` also has
+   `entry_type`, `data`, `context`, etc. *Impact*: content of entries is irrelevant to the
+   correctness properties proved here.
+
+5. **`commit_to` range check omitted**: Rust panics if `to_commit > last_index()`. Lean uses
+   `max` to enforce monotonicity without a range guard. *Impact*: safe since `min(ca, lastNew) ≤ lastNew`.
+
+**Theorems proved** (18 total, 0 sorry):
+
+| ID | Property | Level |
+|----|----------|-------|
+| MA1–MA4 | Return value correctness (None/Some with conflict, lastNew) | High |
+| MA5–MA9 | Committed index: exact formula, monotonicity, upper bounds, equality | High |
+| MA10–MA12 | Persisted index: no-conflict no-op, rollback, preservation | Mid |
+| MA13 | Log prefix preserved (entries before conflict unchanged) | High |
+| MA14 | Suffix entries applied (new log has suffix entry terms) | High |
+| MA15 | No-conflict: log unchanged | Mid |
+| MA16 | Failure: entire state unchanged | Mid |
+
+**No mismatches found.** All divergences are documented Abstractions.
 
 ---
 
@@ -395,8 +428,8 @@ new entries.  The model will build directly on `FindConflict.findConflict` and t
 | `JointVote.lean` | `src/quorum/joint.rs` `vote_result` | Abstraction | 14 | Struct wrapper abstracted; non-joint degeneration proved (J4) |
 | `CommittedIndex.lean` | `src/quorum/majority.rs` `committed_index` | Abstraction | 17 | group-commit path omitted; empty→0 (Rust→MAX) documented |
 | `FindConflict.lean` | `src/raft_log.rs` `find_conflict` | Abstraction | 12 | Entry payload omitted; positive-index precondition explicit |
-| `JointCommittedIndex.lean` | `src/quorum/joint.rs` `committed_index` | — (planned) | 0 | Next target — `min(incoming_ci, outgoing_ci)` |
-| `MaybeAppend.lean` | `src/raft_log.rs` `maybe_append` | — (planned) | 0 | Depends on FindConflict (done); log truncate+append |
+| `JointCommittedIndex.lean` | `src/quorum/joint.rs` `committed_index` | Abstraction | 10 | `use_group_commit=false` path only; empty→0 (Rust→MAX) documented |
+| `MaybeAppend.lean` | `src/raft_log.rs` `maybe_append` | Abstraction | 18 | Stable/unstable split abstracted; panic not modelled; Nat vs u64 |
 
 ---
 
