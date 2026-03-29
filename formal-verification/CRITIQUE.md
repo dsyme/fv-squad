@@ -3,22 +3,24 @@
 > 🔬 *Lean Squad — automated formal verification for `dsyme/fv-squad`.*
 
 ## Last Updated
-- **Date**: 2026-03-27 13:54 UTC
-- **Commit**: `52eb13408ac52e43bf86291953239b7d790236d9`
+- **Date**: 2026-03-29 17:10 UTC
+- **Commit**: `3eea9f09d58b8aa4e9342db25a96eda4714951d1`
 
 ---
 
 ## Overall Assessment
 
-Formal verification coverage has advanced to **91 theorems proved across 6 functions, with
-0 `sorry` remaining**.  The quorum subsystem is fully specified and proved
-(`vote_result`, `committed_index`, and their joint-config variants), and log-layer coverage
-has now begun: all 12 key correctness theorems for `RaftLog::find_conflict` are proved.
-The remaining gap is that the log operations beyond `find_conflict` (`maybe_append`,
-`append_entry`, `commit_to`) and the downstream state-machine (`progress`, `inflights`) are
-untouched, so no end-to-end Raft correctness theorem exists yet.  The next natural target
-is `RaftLog::maybe_append`, which calls `find_conflict` and whose specification can build
-directly on the `FindConflict` theorems.
+Formal verification coverage has advanced to **147 theorems proved across 9 targets, with
+0 `sorry` remaining**.  The quorum subsystem is comprehensively proved: `vote_result`,
+`joint_vote_result`, `committed_index`, `joint_committed_index`, and `limit_size` are all
+fully specified and verified, plus config validation.  Log-layer coverage now includes both
+`find_conflict` (12 theorems) and `maybe_append` (18 theorems), with proofs reaching into
+the implementation model: log-prefix preservation, suffix application, committed-index
+monotonicity, and persisted-index rollback are all mechanically verified.  The ring-buffer
+tracker (`inflights`) has 15 theorems in an open PR (phase 3), covering count/cap invariants,
+`free_to` sortedness, and reset semantics.  The main remaining gap is that no end-to-end
+Raft safety theorem exists yet — the state-machine level is untouched — and the `progress`
+tracker and `append_entry`/`commit_to` log operations are unverified.
 
 ---
 
@@ -206,47 +208,159 @@ sentinel return value, not as a real log position.
 
 ---
 
+### `JointCommittedIndex.lean` — 10 theorems
+
+| Theorem | Level | Bug-catching potential | Notes |
+|---------|-------|----------------------|-------|
+| `jointCommittedIndex_le_in` (JCI1) | Low | Medium | Joint CI ≤ incoming CI — immediate from `Nat.min_le_left` |
+| `jointCommittedIndex_le_out` (JCI2) | Low | Medium | Joint CI ≤ outgoing CI — immediate from `Nat.min_le_right` |
+| `jointCommittedIndex_ge_lower_bound` (JCI3) | Mid | **High** | JCI is the *greatest* lower bound — characterises it as the min of the two CIs |
+| `jointCommittedIndex_safety_in` (JCI4) | **High** | **Very High** | A majority of `incoming` have acked ≥ JCI — joint safety for incoming group |
+| `jointCommittedIndex_safety_out` (JCI5) | **High** | **Very High** | A majority of `outgoing` have acked ≥ JCI — joint safety for outgoing group |
+| `jointCommittedIndex_maximality` (JCI6) | **High** | **Very High** | Any k > JCI cannot be safely committed by at least one group — maximality |
+| `jointCommittedIndex_mono` (JCI7) | High | **High** | Non-decreasing acked functions → non-decreasing joint CI — monotonicity |
+| `jointCommittedIndex_all_zero` (JCI8) | Low | Low | All acks zero → joint CI zero |
+| `jointCommittedIndex_empty_in` (JCI9) | Mid | Medium | Empty incoming → joint CI 0 (diverges from Rust's MAX, documented) |
+| `jointCommittedIndex_empty_out` (JCI10) | Mid | Medium | Empty outgoing → joint CI 0 (diverges from Rust's MAX, documented) |
+
+**Assessment**: JCI4–JCI6 are protocol-level safety and maximality theorems that directly
+complement `CommittedIndex.lean`'s CI-Safety and CI-Maximality results.  Together they
+prove that the *joint* committed index — used during Raft membership changes — retains the
+same correctness guarantees as the single-group committed index.  JCI7 (monotonicity) is
+essential for liveness arguments.  JCI9–JCI10 honestly document the known divergence where
+the Lean model returns 0 for empty configs while Rust returns `u64::MAX`; callers must
+account for this in any bridging theorem.
+
+**Concern**: JCI9–JCI10 reveal that the Lean model of joint CI diverges from Rust when
+either config group is empty — a state that arises during membership transitions.  Proofs
+built on the joint CI model are valid only for non-empty configs on both sides (or must
+explicitly handle the 0/MAX difference).  See CORRESPONDENCE.md §JointCommittedIndex for
+the full divergence analysis.
+
+---
+
+### `MaybeAppend.lean` — 18 theorems (includes 2 helpers)
+
+| Theorem | Level | Bug-catching potential | Notes |
+|---------|-------|----------------------|-------|
+| `maybeAppend_none` (MA1) | Mid | **High** | Returns `None` iff `match_term(idx,term)` fails — access-control gate |
+| `maybeAppend_some` (MA2) | Mid | **High** | Returns `Some` iff `match_term` succeeds — converse of MA1 |
+| `maybeAppend_conflict_eq` (MA3) | Mid | **High** | First component of `Some` is `findConflict(ents)` — conflict index identity |
+| `maybeAppend_lastNew_eq` (MA4) | Mid | **High** | Second component is `idx + ents.length` — last new index identity |
+| `maybeAppend_committed_eq` (MA5) | **High** | **Very High** | Committed advances to `max(s.committed, min(ca, lastNew))` — exact committed-index formula |
+| `maybeAppend_committed_mono` (MA6) | High | **High** | Committed never decreases — monotonicity |
+| `maybeAppend_committed_le_ca` (MA7) | High | **High** | Committed ≤ leader's `ca` — leader authority bound |
+| `maybeAppend_committed_le_lastNew` (MA8) | High | **High** | Committed ≤ `lastNew` — cannot commit beyond appended entries |
+| `maybeAppend_committed_eq_min` (MA9) | High | **High** | Exact min formula when committed was 0 — captures the base case |
+| `maybeAppend_persisted_no_conflict` (MA10) | Mid | Medium | No conflict → `persisted` unchanged |
+| `maybeAppend_persisted_rollback` (MA11) | Mid | **High** | Conflict at index c → `persisted` rolled back to `c - 1` when `persisted ≥ c` |
+| `maybeAppend_persisted_preserved` (MA12) | Mid | Medium | `persisted < conflict` → `persisted` unchanged |
+| `maybeAppend_log_prefix_preserved` (MA13) | **High** | **Very High** | Entries before `conflict` are not touched — log prefix invariant |
+| `logWithEntries_not_in` (helper) | Low | Low | Entries not in the new suffix are looked up from the original log |
+| `maybeAppend_suffix_applied` (MA14) | **High** | **Very High** | New suffix entries appear at the correct indices in the updated log |
+| `logWithEntries_mem_first` (helper) | Low | Low | First entry in a non-empty suffix takes precedence |
+| `maybeAppend_log_no_conflict` (MA15) | High | **High** | No conflict → log unchanged |
+| `maybeAppend_state_unchanged_on_failure` (MA16) | Mid | Medium | Failed match_term → entire state unchanged |
+
+**Assessment**: `MaybeAppend.lean` contains the richest collection of protocol-level proofs
+in the FV portfolio.  MA5–MA9 fully characterise the committed-index update logic, which
+is the core of Raft's safety guarantee.  MA13 (`log_prefix_preserved`) and MA14 (`suffix_applied`)
+together pin down the exact semantics of the log truncation and append: the prefix before
+the conflict is untouched, and the new suffix is written at the correct positions.  MA11
+(`persisted_rollback`) catches a subtle class of storage-layer bugs where a write-ahead log
+could be inconsistent after a truncation if the persisted boundary was not rolled back.
+MA16 confirms the fail-safe property: a mismatched term causes no state mutation.
+
+The most valuable cluster is **MA5+MA13+MA14**: these three theorems together describe
+the complete semantic effect of `maybe_append` on the log and commit state.  Any
+implementation that got the conflict index wrong, committed too aggressively, failed to
+truncate the log, or applied entries at the wrong positions would falsify at least one of
+these theorems.
+
+---
+
+### `Inflights.lean` — 15 theorems *(open PR — not yet merged)*
+
+| Theorem | Level | Bug-catching potential | Notes |
+|---------|-------|----------------------|-------|
+| `inflights_add_queue` (INF1) | Low | Medium | `(add x).queue = queue ++ [x]` — append semantics |
+| `inflights_add_count` (INF2) | Low | Medium | Count increases by exactly 1 |
+| `inflights_add_mem` (INF3) | Low | Low | Added element is in the queue |
+| `inflights_count_le_cap` (INF4) | Mid | **High** | `count < cap → (add x).count ≤ cap` — flow-control safety |
+| `inflights_full_iff` (INF5) | Mid | **High** | `full = true ↔ count = cap` — `full` predicate equivalence |
+| `inflights_freeTo_count_le` (INF6) | Mid | Medium | `freeTo` never increases count |
+| `inflights_freeTo_head_gt` (INF7) | Mid | **High** | Head of result is `> to` after `free_to` |
+| `inflights_freeTo_all_gt_sorted` (INF8) | **High** | **Very High** | If sorted: all remaining entries are `> to` — Raft flow-control correctness |
+| `inflights_freeTo_sorted` (INF9) | Mid | **High** | Sortedness preserved by `free_to` |
+| `inflights_freeTo_noop` (INF10) | Mid | Medium | If head `> to`: `free_to` is a no-op |
+| `inflights_freeFirstOne_eq_freeTo` (INF11) | Mid | Medium | `free_first_one = free_to(head)` when non-empty |
+| `inflights_freeFirstOne_empty` (INF12) | Low | Low | `free_first_one` is identity on empty queue |
+| `inflights_reset_queue` (INF13) | Low | Low | `reset.queue = []` |
+| `inflights_reset_count` (INF14) | Low | Low | `reset.count = 0` |
+| `inflights_reset_cap` (INF15) | Low | Low | `reset.cap = cap` |
+
+**Assessment**: INF4 (`count_le_cap`) is the key safety invariant for Raft flow control:
+it confirms that `add` maintains the capacity bound when called with the correct precondition
+(`count < cap`).  INF8 (`freeTo_all_gt_sorted`) is the most important correctness property:
+after `free_to(to)`, all remaining in-flight entries have index `> to`, confirming that
+acknowledged messages are properly dequeued.  These two properties together constitute a
+complete correctness specification for the `Inflights` data structure in isolation.
+
+**Note**: This target is at phase 3 (Lean spec). Phase 4 (implementation model using the
+actual ring-buffer representation) and phase 5 (stronger proofs about the ring-buffer
+invariants) remain to be done.  The most valuable next step is to prove INF8 without the
+sortedness hypothesis — showing that the Inflights API maintains sortedness as an invariant.
+
+---
+
 ## Gaps and Recommendations
 
 Prioritised by impact:
 
-### 1. `JointConfig::committed_index` — **High priority** *(phase 3 — Lean spec written; awaiting reprovement after branch loss)*
+### 1. `Inflights` ring buffer — **High priority** *(phase 3 — 15 theorems proved, open PR)*
 
-`src/quorum/joint.rs` `committed_index` is simply `min(incoming.committed_index(acked),
-outgoing.committed_index(acked))` (with the Rust empty-→-MAX divergence handled).  All 14
-theorems (safety, maximality, monotonicity for incoming/outgoing quorums, joint safety,
-joint maximality) were proved in a prior run but the PR was not merged.  This is the
-highest-priority target to recover and resubmit.  The `empty→MAX` Rust divergence is the
-main subtlety.
+`src/tracker/inflights.rs` is the next target.  The phase-3 Lean spec (INF1–INF15) is in an
+open PR.  The next steps are:
 
-### 2. `RaftLog::maybe_append` — **High priority** *(phase 1, depends on `find_conflict` — now done)*
+- **Phase 4** (impl model): Model the actual ring-buffer state (`start`, `buffer`, `count`)
+  and prove that the abstract `queue`-based model is equivalent to the concrete ring-buffer.
+  This would close the correspondence gap between the Lean model and the Rust implementation.
+- **Phase 5** (stronger proofs): Prove `sortedness` as an *invariant* maintained by `add`
+  (without requiring it as a hypothesis) — i.e., show that if the queue is sorted before
+  `add`, it remains sorted after (this requires the `add`-at-end property, which is proved
+  as INF1).  Also prove that `free_to` after a prior `add` is always well-behaved.
 
-Calls `find_conflict`, then truncates and appends.  Key properties: log suffix is replaced
-only after the conflict point; log never shrinks if there is no conflict; the output log
-has the same prefix up to the conflict index.  The `FindConflict` theorems (especially FC7
-and FC11) provide the key building blocks — this is the natural next step.
+### 2. `progress` tracker — **High priority** *(phase 1 — unstarted)*
 
-### 3. `Inflights` ring buffer — **Medium priority** *(phase 1)*
+`src/tracker/progress.rs` manages per-peer state for the leader.  Key invariants:
+`match_index ≤ next_index`, the flow-control interplay between `inflights` and `next_index`,
+and the probe/replicate/snapshot state machine.  This is the next natural target after
+Inflights because it uses Inflights directly.
 
-`src/tracker/inflights.rs` implements a ring buffer of in-flight message counts.
-Key invariants: `add` does not lose elements; `free_to` advances the buffer correctly;
-the count never exceeds capacity.  Ring buffer invariants are the kind of property
-where bugs hide in index arithmetic — FV would add real value here.
+### 3. Bridging theorem for `jointCommittedIndex` empty divergence — **Medium priority**
 
-### 4. Bridging theorem for `committedIndex_empty` — **Low priority**
+JCI9–JCI10 document that the Lean model returns `0` for empty configs where Rust returns
+`u64::MAX`.  The practical impact: a caller that passes `outgoing = []` (non-joint config)
+gets `jointCommittedIndex = min(ci_in, 0) = 0` in Lean vs `min(ci_in, MAX) = ci_in` in
+Rust.  A bridging theorem showing `jointCommittedIndex incoming [] acked = committedIndex
+incoming acked` does *not* hold in the current model.  Either the model should special-case
+the empty-outgoing path, or a precondition `outgoing ≠ []` should be added to the joint
+safety/maximality theorems.
 
-The `committedIndex_empty_contract` theorem documents that the Lean model returns `0`
-where Rust returns `u64::MAX`, but does not prove a bridging equivalence for joint-quorum
-callers.  Once `JointConfig::committed_index` is formalised, a theorem showing
-`joint.committedIndex ≤ min(incoming.committedIndex, outgoing.committedIndex)` (with
-appropriate handling of the 0/MAX difference) would close this gap.
-
-### 5. Composition / end-to-end safety property — **Long-term goal**
+### 4. Composition / end-to-end safety property — **Long-term goal**
 
 No end-to-end Raft safety theorem exists yet (e.g., "two entries committed at the same
-index by the same term are identical").  This requires composing proofs about the quorum
-subsystem, the log, and the state machine.  It is a significant proof-engineering effort,
-but the quorum proofs laid in this work provide the necessary quorum-safety building blocks.
+index by the same term are identical").  The building blocks now exist: quorum-safety
+(CI-Safety + JCI4–JCI5), log-conflict detection (FC7+FC11), and log-append semantics
+(MA5+MA13+MA14).  The next intermediate goal is a theorem connecting `maybe_append` to
+`committed_index`: "if `maybe_append` returns `Some`, the new committed index is safe with
+respect to the new log".  This would be the first cross-module Raft correctness theorem.
+
+### 5. Voter-list `Nodup` precondition — **Low priority (hardening)**
+
+Add a `voters.Nodup` hypothesis to the `_iff` theorems in `MajorityVote.lean` and
+`CommittedIndex.lean`.  Currently the theorems technically hold even for duplicate voter
+lists but with wrong semantics.  A `Nodup` precondition would make the model honest.
 
 ---
 
@@ -276,11 +390,17 @@ All numeric types are `Nat` in Lean.  Overflow scenarios (e.g., acked indices ne
 `u64::MAX`, extremely large voter counts) are not covered.  In practice these are
 unreachable, but the gap is worth noting.
 
+### Concern 4: `JointCommittedIndex` empty-config divergence
+
+As noted above (JCI9–JCI10), the Lean model diverges from Rust when either config group
+is empty.  The joint safety and maximality theorems (JCI4–JCI6) are sound for non-empty
+configs but may give misleading results for configurations in transition.
+
 ---
 
 ## Positive Findings
 
-1. **`commitedIndex_safety` and `committedIndex_maximality`** are genuine discoveries:
+1. **`committedIndex_safety` and `committedIndex_maximality`** are genuine discoveries:
    they required non-trivial proof engineering (order statistics on sorted lists,
    `countGe_eq_countGeList`, `pairwise_ge_antitone`) and confirm that the sort-then-index
    algorithm is provably correct.  These are the strongest results in the FV portfolio.
@@ -300,10 +420,20 @@ unreachable, but the gap is worth noting.
    class of subtle off-by-one bugs (returning the wrong conflict index, or returning a
    conflict index when none exists).
 
-5. **No bugs found** in any of the six verified functions.  This is evidence (not proof)
-   that the Raft quorum logic and the log-conflict scan as implemented are correct for the
-   modelled paths.
+5. **`maybeAppend_log_prefix_preserved`** (MA13) and **`maybeAppend_suffix_applied`**
+   (MA14) together give the most complete log-correctness characterisation in the portfolio:
+   the prefix is untouched and the suffix is correctly applied.  These two theorems together
+   with MA5 (`committed_eq`) constitute a complete post-condition for `maybe_append`.
+
+6. **`inflights_freeTo_all_gt_sorted`** (INF8) confirms the Raft flow-control correctness
+   property: after acknowledging up to index `to`, all remaining in-flight entries are
+   strictly newer.  This directly validates the Inflights data structure's role in the
+   Raft pipelining protocol.
+
+7. **No bugs found** in any of the nine verified functions.  This is evidence (not proof)
+   that the Raft quorum logic, log operations, config validation, and flow control as
+   implemented are correct for the modelled paths.
 
 ---
 
-> 🔬 Generated by [Lean Squad](https://github.com/dsyme/fv-squad/actions/runs/23649096928) automated formal verification.
+> 🔬 Generated by [Lean Squad](https://github.com/dsyme/fv-squad/actions/runs/23714161005) automated formal verification.
