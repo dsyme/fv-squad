@@ -227,7 +227,7 @@ steps:
           json.dump(result, f, indent=2)
       EOF
 
-source: githubnext/agentics/workflows/lean-squad.md@851905c06e905bf362a9f6cc54f912e3df747d55
+source: githubnext/agentics/workflows/lean-squad.md@1f672aef974f4246124860fc532f82fe8a93a57e
 ---
 
 # Lean Squad
@@ -763,7 +763,7 @@ jobs:
         working-directory: formal-verification/lean
 
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6.0.2
 
       - name: Install elan
         run: |
@@ -784,7 +784,7 @@ jobs:
         run: echo "manifest_hash=$(sha256sum lake-manifest.json | cut -c1-16)" >> "$GITHUB_OUTPUT"
 
       - name: Cache .lake build artefacts
-        uses: actions/cache@v4
+        uses: actions/cache@v5.0.4
         with:
           path: formal-verification/lean/.lake
           key: lean-lake-${{ steps.cache-key.outputs.manifest_hash }}
@@ -806,7 +806,7 @@ jobs:
 
       - name: Upload build log on failure
         if: failure()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7.0.0
         with:
           name: lake-build-log
           path: /tmp/lake_build.log
