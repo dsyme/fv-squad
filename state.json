@@ -1,10 +1,10 @@
 {
-  "last_run": "2026-03-31-r118",
-  "run_id": "23810256669",
+  "last_run": "2026-04-01-r119",
+  "run_id": "23830947845",
   "fv_tool": "Lean4 (stdlib only, no Mathlib)",
   "lake_project": "formal-verification/lean/",
   "lean_version": "4.28.0 (project toolchain, 4.29.0 runtime)",
-  "lean_build_note": "lake build PASSED with Lean 4.29.0. 0 sorry. 286 theorems + examples proved.",
+  "lean_build_note": "lake build PASSED with Lean 4.29.0. 0 sorry. 309 theorems proved.",
   "targets": [
     {
       "id": "limit_size",
@@ -74,18 +74,18 @@
       "lean_file": "formal-verification/lean/FVSquad/IsUpToDate.lean",
       "informal_spec": "formal-verification/specs/is_up_to_date_informal.md",
       "rust_source": "src/raft_log.rs",
-      "notes": "ALL 18 theorems proved (0 sorry). PR #126 open."
+      "notes": "ALL 18 theorems proved (0 sorry). PR #126 open. Election restriction (IU16) proved."
     },
     {
-      "id": "find_conflict_by_term",
+      "id": "log_unstable",
       "phase": 5,
-      "lean_file": "formal-verification/lean/FVSquad/FindConflictByTerm.lean",
-      "informal_spec": "formal-verification/specs/find_conflict_by_term_informal.md",
-      "rust_source": "src/raft_log.rs",
-      "notes": "11 theorems + 5 eval examples proved (0 sorry). PR open: lean-squad/find-conflict-by-term-r118. KEY FINDING: maximality holds WITHOUT monotone invariant."
+      "lean_file": "formal-verification/lean/FVSquad/LogUnstable.lean",
+      "informal_spec": "formal-verification/specs/log_unstable_informal.md",
+      "rust_source": "src/log_unstable.rs",
+      "notes": "ALL 23 theorems proved (0 sorry). PR open: lean-squad/log-unstable-spec-r119. truncateAndAppend all 3 cases + maybeTerm + maybeLastIndex."
     }
   ],
-  "total_theorems_proved": 286,
+  "total_theorems_proved": 309,
   "total_sorry": 0,
   "correspondence_file": "formal-verification/CORRESPONDENCE.md",
   "lean_stdlib_notes": {
@@ -104,22 +104,27 @@
     "no_nat_decideGt_eq": "Nat.decideGt_eq does NOT exist in Lean 4.28/4.29 stdlib",
     "no_bool_eq_false_iff_ne_true": "Bool.eq_false_iff_ne_true does NOT exist; use: cases hb : b <;> simp_all",
     "no_prod_le": "LE (Nat × Nat) not available in stdlib without Mathlib; use manual logGe def",
-    "isUpToDate_iff": "Use decide_eq_true_eq + beq_iff_eq for Bool/Nat comparison theorems"
+    "isUpToDate_iff": "Use decide_eq_true_eq + beq_iff_eq for Bool/Nat comparison theorems",
+    "no_list_get?": "List.get? does NOT exist in Lean 4.29! Use l[i]? (List.getElem? notation)",
+    "getElem?_eq_none": "List.getElem?_eq_none : l.length ≤ i → l[i]? = none",
+    "getElem?_eq_getElem": "List.getElem?_eq_getElem : n < l.length → l[n]? = some l[n]",
+    "rintro_rfl_issue": "rintro ⟨rfl, rfl⟩ fails when LHS is a record field (not a free variable). Use 'intro ⟨he, hs⟩; simp [he, hs]' instead.",
+    "if_pos_rw": "Use 'unfold f; rw [if_pos h1, h2]; simp [h3]' for nested if-match in proofs"
   },
   "open_prs": [
     "PR #124 lean-squad/inflights-proofs-complete-r115: INF30+INF31 proved (run115, 0 sorry)",
     "PR #125 lean-squad/progress-formal-spec-r116: Progress phase 5 complete (run116, 31 theorems, 0 sorry)",
     "PR #126 lean-squad/is-up-to-date-spec-r117: is_up_to_date + Progress integrated (run117, 18+31 theorems)",
-    "PR lean-squad/find-conflict-by-term-r118: find_conflict_by_term (run118, 11 theorems + 5 eval, 0 sorry)"
+    "PR lean-squad/log-unstable-spec-r119-23830947845: log_unstable (run119, 23 theorems + 7 eval, 0 sorry) + CRITIQUE update"
   ],
-  "aeneas_status": "BLOCKED - no-new-privileges container prevents opam/sudo install. Confirmed runs 113-118.",
+  "aeneas_status": "BLOCKED - no-new-privileges container prevents opam/sudo install. Confirmed runs 113-119.",
   "status_issue": 94,
   "next_targets": [
     "ProgressTracker (src/tracker.rs) - tally_votes, vote_result, has_quorum, quorum_recently_active",
-    "log_unstable truncate_and_append (src/log_unstable.rs) - append/truncate with offset model",
-    "find_conflict_by_term (DONE in r118)"
+    "log_unstable stable_entries/stable_snap - offset advancement invariant",
+    "End-to-end: connect committed_index + is_up_to_date + maybe_append into log-matching lemma"
   ],
   "ci_workflow": ".github/workflows/lean-ci.yml",
   "ci_status": "CI exists. New PR should trigger CI.",
-  "fvsquad_lean_note": "FVSquad.lean now imports Progress, IsUpToDate, FindConflictByTerm (updated in r118 branch)"
+  "fvsquad_lean_note": "FVSquad.lean now imports all 13 targets including Progress, IsUpToDate, LogUnstable"
 }
