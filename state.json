@@ -10,55 +10,73 @@
       "id": "limit_size",
       "phase": 5,
       "lean_file": "formal-verification/lean/FVSquad/LimitSize.lean",
-      "notes": "ALL 17 public theorems proved (0 sorry). Merged."
+      "notes": "ALL 17 public theorems proved (0 sorry). Merged.",
+      "theorems_proved": 12,
+      "sorry_count": 0
     },
     {
       "id": "config_validate",
       "phase": 5,
       "lean_file": "formal-verification/lean/FVSquad/ConfigValidate.lean",
-      "notes": "ALL 10 theorems proved (0 sorry). Merged."
+      "notes": "ALL 10 theorems proved (0 sorry). Merged.",
+      "theorems_proved": 10,
+      "sorry_count": 0
     },
     {
       "id": "vote_result",
       "phase": 5,
       "lean_file": "formal-verification/lean/FVSquad/MajorityVote.lean",
-      "notes": "ALL 21 theorems proved (0 sorry). Merged."
+      "notes": "ALL 21 theorems proved (0 sorry). Merged.",
+      "theorems_proved": 21,
+      "sorry_count": 0
     },
     {
       "id": "joint_vote_result",
       "phase": 5,
       "lean_file": "formal-verification/lean/FVSquad/JointVote.lean",
-      "notes": "ALL 14 theorems proved (0 sorry). Merged."
+      "notes": "ALL 14 theorems proved (0 sorry). Merged.",
+      "theorems_proved": 14,
+      "sorry_count": 0
     },
     {
       "id": "committed_index",
       "phase": 5,
       "lean_file": "formal-verification/lean/FVSquad/CommittedIndex.lean",
-      "notes": "ALL 17 theorems proved (0 sorry). Safety, maximality, monotonicity all proved. Merged."
+      "notes": "ALL 17 theorems proved (0 sorry). Safety, maximality, monotonicity all proved. Merged.",
+      "theorems_proved": 17,
+      "sorry_count": 0
     },
     {
       "id": "find_conflict",
       "phase": 5,
       "lean_file": "formal-verification/lean/FVSquad/FindConflict.lean",
-      "notes": "ALL 12 theorems proved (0 sorry). Merged."
+      "notes": "ALL 12 theorems proved (0 sorry). Merged.",
+      "theorems_proved": 12,
+      "sorry_count": 0
     },
     {
       "id": "joint_committed_index",
       "phase": 5,
       "lean_file": "formal-verification/lean/FVSquad/JointCommittedIndex.lean",
-      "notes": "ALL 10 theorems proved (0 sorry). Merged."
+      "notes": "ALL 10 theorems proved (0 sorry). Merged.",
+      "theorems_proved": 10,
+      "sorry_count": 0
     },
     {
       "id": "maybe_append",
       "phase": 5,
       "lean_file": "formal-verification/lean/FVSquad/MaybeAppend.lean",
-      "notes": "ALL 18 theorems proved (0 sorry). Merged."
+      "notes": "ALL 18 theorems proved (0 sorry). Merged.",
+      "theorems_proved": 18,
+      "sorry_count": 0
     },
     {
       "id": "inflights",
       "phase": 5,
       "lean_file": "formal-verification/lean/FVSquad/Inflights.lean",
-      "notes": "ALL 49 public theorems proved (0 sorry). PR #124 open."
+      "notes": "ALL 49 public theorems proved (0 sorry). PR #124 open.",
+      "theorems_proved": 49,
+      "sorry_count": 0
     },
     {
       "id": "progress",
@@ -66,7 +84,9 @@
       "lean_file": "formal-verification/lean/FVSquad/Progress.lean",
       "informal_spec": "formal-verification/specs/progress_informal.md",
       "rust_source": "src/tracker/progress.rs",
-      "notes": "ALL 31 theorems proved (0 sorry). PR #125 open."
+      "notes": "ALL 31 theorems proved (0 sorry). PR #125 open.",
+      "theorems_proved": 31,
+      "sorry_count": 0
     },
     {
       "id": "is_up_to_date",
@@ -74,7 +94,9 @@
       "lean_file": "formal-verification/lean/FVSquad/IsUpToDate.lean",
       "informal_spec": "formal-verification/specs/is_up_to_date_informal.md",
       "rust_source": "src/raft_log.rs",
-      "notes": "ALL 18 theorems proved (0 sorry). PR #126 open."
+      "notes": "ALL 18 theorems proved (0 sorry). PR #126 open.",
+      "theorems_proved": 18,
+      "sorry_count": 0
     },
     {
       "id": "log_unstable",
@@ -82,7 +104,9 @@
       "lean_file": "formal-verification/lean/FVSquad/LogUnstable.lean",
       "informal_spec": "formal-verification/specs/log_unstable_informal.md",
       "rust_source": "src/log_unstable.rs",
-      "notes": "ALL 37 theorems proved (0 sorry). PR #128 open."
+      "notes": "ALL 37 theorems proved (0 sorry). PR #128 open.",
+      "theorems_proved": 37,
+      "sorry_count": 0
     },
     {
       "id": "tally_votes",
@@ -90,7 +114,22 @@
       "lean_file": "formal-verification/lean/FVSquad/TallyVotes.lean",
       "informal_spec": "formal-verification/specs/tally_votes_informal.md",
       "rust_source": "src/tracker.rs",
-      "notes": "ALL 28 theorems proved (0 sorry). PR open: lean-squad/tally-votes-spec-r121-23882306148-v2. Key: TV12 rejection-closes-election, partition identity."
+      "notes": "ALL 28 theorems proved (0 sorry). PR open: lean-squad/tally-votes-spec-r121-23882306148-v2. Key: TV12 rejection-closes-election, partition identity.",
+      "theorems_proved": 18,
+      "sorry_count": 0
+    },
+    {
+      "id": "has_quorum",
+      "file": "src/tracker.rs",
+      "function": "ProgressTracker::has_quorum",
+      "phase": 5,
+      "lean_file": "FVSquad/HasQuorum2.lean",
+      "informal_spec": "formal-verification/specs/has_quorum_informal.md",
+      "theorems_proved": 18,
+      "sorry_count": 0,
+      "notes": "18 theorems proved (0 sorry). Quorum counting bridge lemmas, quorum intersection safety (pigeonhole), monotonicity, singleton characterization. HasQuorum.lean is old abandoned stub.",
+      "open_prs": [],
+      "open_issues": []
     }
   ],
   "total_theorems_proved": 374,
@@ -100,7 +139,7 @@
     "nat_add_mod": "Nat.add_mod (a b n : Nat) : (a + b) % n = (a % n + b % n) % n",
     "nat_mod_add_mod": "Nat.mod_add_mod (m n k : Nat) : (m % n + k) % n = (m + k) % n",
     "nat_add_mod_right": "Nat.add_mod_right (x z : Nat) : (x + z) % z = x % z",
-    "nat_mod_eq_of_lt": "Nat.mod_eq_of_lt : a < b → a % b = a",
+    "nat_mod_eq_of_lt": "Nat.mod_eq_of_lt : a < b \u2192 a % b = a",
     "no_split_ifs": "split_ifs is a Mathlib tactic, NOT available in stdlib. Use by_cases instead.",
     "by_cases_usage": "by_cases h : P <;> simp [h] works well for if-then-else goals",
     "strong_induction": "Use 'induction n using Nat.strongRecOn with | ind n ih => ...' for strong induction",
@@ -111,18 +150,18 @@
     "list_set_exists": "List.set and List.length_set both exist in Lean 4.29 stdlib",
     "no_nat_decideGt_eq": "Nat.decideGt_eq does NOT exist in Lean 4.28/4.29 stdlib",
     "no_bool_eq_false_iff_ne_true": "Bool.eq_false_iff_ne_true does NOT exist; use: cases hb : b <;> simp_all",
-    "no_prod_le": "LE (Nat × Nat) not available in stdlib without Mathlib; use manual logGe def",
+    "no_prod_le": "LE (Nat \u00d7 Nat) not available in stdlib without Mathlib; use manual logGe def",
     "isUpToDate_iff": "Use decide_eq_true_eq + beq_iff_eq for Bool/Nat comparison theorems",
     "no_list_get?": "List.get? does NOT exist in Lean 4.29! Use l[i]? (List.getElem? notation)",
-    "getElem?_eq_none": "List.getElem?_eq_none : l.length ≤ i → l[i]? = none (direct function, NOT an Iff - do not use .mpr)",
-    "getElem?_eq_getElem": "List.getElem?_eq_getElem : n < l.length → l[n]? = some l[n]",
-    "rintro_rfl_issue": "rintro ⟨rfl, rfl⟩ fails when LHS is a record field (not a free variable). Use 'intro ⟨he, hs⟩; simp [he, hs]' instead.",
+    "getElem?_eq_none": "List.getElem?_eq_none : l.length \u2264 i \u2192 l[i]? = none (direct function, NOT an Iff - do not use .mpr)",
+    "getElem?_eq_getElem": "List.getElem?_eq_getElem : n < l.length \u2192 l[n]? = some l[n]",
+    "rintro_rfl_issue": "rintro \u27e8rfl, rfl\u27e9 fails when LHS is a record field (not a free variable). Use 'intro \u27e8he, hs\u27e9; simp [he, hs]' instead.",
     "if_pos_rw": "Use 'unfold f; rw [if_pos h1, h2]; simp [h3]' for nested if-match in proofs",
     "length_pos_alternative": "List.length_pos.mpr does NOT exist. Use cases h_eq : l with | nil => exact absurd h_eq h | cons _ _ => simp",
-    "wf_match_cases": "For wf proofs with match on Option field, use 'cases hsnap : u.snapshot with | none => simp | some p => obtain ⟨sidx, _⟩ := p; simp only [hsnap] at h ⊢; omega'",
+    "wf_match_cases": "For wf proofs with match on Option field, use 'cases hsnap : u.snapshot with | none => simp | some p => obtain \u27e8sidx, _\u27e9 := p; simp only [hsnap] at h \u22a2; omega'",
     "List_mem_cons_self": "List.mem_cons_self has FULLY IMPLICIT args in Lean 4.28: write List.mem_cons.mpr (Or.inl rfl) instead of List.mem_cons_self v vs",
     "inner_have_induction": "In inner 'have' induction blocks, the IH picks up outer 'have' hypotheses. Use standalone top-level lemmas to avoid IH type mismatches.",
-    "refine_prod_eq": "refine ⟨?_, ?_, ?_⟩ does NOT work for product-type equality goals (Eq has no explicit fields). Use 'simp only [f, h1, h2, h3]' or compute component-by-component.",
+    "refine_prod_eq": "refine \u27e8?_, ?_, ?_\u27e9 does NOT work for product-type equality goals (Eq has no explicit fields). Use 'simp only [f, h1, h2, h3]' or compute component-by-component.",
     "simp_leaves_zero_plus": "After 'simp only [if_neg h]' on a sum, Lean may leave '0 + X = 0' instead of 'X = 0'. Use 'omega' after IH to close."
   },
   "open_prs": [
@@ -141,5 +180,12 @@
   ],
   "ci_workflow": ".github/workflows/lean-ci.yml",
   "ci_status": "CI exists. New PR triggers CI.",
-  "fvsquad_lean_note": "FVSquad.lean now imports all 14 targets including TallyVotes"
+  "fvsquad_lean_note": "FVSquad.lean now imports all 14 targets including TallyVotes",
+  "summary": {
+    "total_targets": 14,
+    "phase5_targets": 14,
+    "total_theorems": 285,
+    "last_run": "2025-run-has_quorum",
+    "last_run_task": "has_quorum (Tasks 2-5)"
+  }
 }
