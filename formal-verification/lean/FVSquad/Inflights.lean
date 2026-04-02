@@ -539,47 +539,215 @@ theorem inflightsConc_add_buf_length (s : InflightsConc)
   simp only [InflightsConc.addConc]
   exact (listSet_length s.buffer _ _).trans h_inv.2.2
 
-/-! ### Correspondence theorems
+/-! ### Helper lemmas for ring-buffer correspondence proofs -/
 
-The following theorems state that concrete operations correspond to the abstract
-model via `toAbstract`. Full proofs require detailed ring-buffer index arithmetic;
-these are stated as `sorry` pending a more complete proof development.
+/-- `listGet` at the index just set returns the new value. -/
+private theorem listGet_set_eq (l : List Nat) (i v : Nat) (hi : i < l.length) :
+    listGet (l.set i v) i = v := by
+  induction l generalizing i with
+  | nil => exact absurd hi (Nat.not_lt_zero i)
+  | cons a t ih =>
+    cases i with
+    | zero => simp [List.set, listGet]
+    | succ n => exact ih n (Nat.lt_of_succ_lt_succ hi)
 
-The key invariant connecting concrete and abstract is:
-  `s.logicalContent = [buf[(start+0)%cap], buf[(start+1)%cap], ..., buf[(start+count-1)%cap]]`
+/-- `listGet` at a different index is unchanged by `set`. -/
+private theorem listGet_set_ne (l : List Nat) (i j v : Nat) (hij : i ≠ j) :
+    listGet (l.set i v) j = listGet l j := by
+  induction l generalizing i j with
+  | nil => simp [List.set, listGet]
+  | cons a t ih =>
+    cases i with
+    | zero =>
+      cases j with
+      | zero => exact absurd rfl hij
+      | succ m => simp [List.set, listGet]
+    | succ n =>
+      cases j with
+      | zero => simp [List.set, listGet]
+      | succ m =>
+        simp only [List.set, listGet]
+        exact ih n m (fun h => hij (congrArg Nat.succ h))
 
-Proving `addConc` correct requires:
-1. `listGet (listSet buf ((start+count)%cap) x) ((start+i)%cap) = listGet buf ((start+i)%cap)`
-   for `i < count` (prior entries unchanged)
-2. `listGet (listSet buf ((start+count)%cap) x) ((start+count)%cap) = x`
-   (new entry set correctly)
--/
+/-- Helper: one unfolding step of `extractRing` when `cap > 0`. -/
+private theorem extractRing_succ (buf : List Nat) (cap : Nat) (h_cap : 0 < cap) (n start : Nat) :
+    extractRing buf cap (n + 1) start =
+    listGet buf (start % cap) :: extractRing buf cap n ((start + 1) % cap) := by
+  simp [extractRing, h_cap]
+
+/-- `extractRing` is insensitive to reducing `start` modulo `cap`. -/
+private theorem extractRing_mod_start (buf : List Nat) (cap : Nat) (h_cap : 0 < cap) :
+    ∀ (count start : Nat),
+    extractRing buf cap count (start % cap) = extractRing buf cap count start := by
+  intro count
+  induction count with
+  | zero => intro; simp [extractRing]
+  | succ n ih =>
+    intro start
+    rw [extractRing_succ _ _ h_cap, extractRing_succ _ _ h_cap,
+        Nat.mod_eq_of_lt (Nat.mod_lt start h_cap), Nat.mod_add_mod]
+
+/-- The last element appended by `extractRing` sits at `(start + count) % cap`. -/
+private theorem extractRing_append_last (buf : List Nat) (cap : Nat) (h_cap : 0 < cap) :
+    ∀ (count start : Nat),
+    extractRing buf cap (count + 1) start =
+    extractRing buf cap count start ++ [listGet buf ((start + count) % cap)] := by
+  intro count
+  induction count with
+  | zero => intro start; simp [extractRing, h_cap]
+  | succ n ih =>
+    intro start
+    have lhs_step : extractRing buf cap (n + 1 + 1) start =
+                    listGet buf (start % cap) :: extractRing buf cap (n + 1) ((start + 1) % cap) :=
+      extractRing_succ buf cap h_cap (n + 1) start
+    have rhs_step : extractRing buf cap (n + 1) start =
+                    listGet buf (start % cap) :: extractRing buf cap n ((start + 1) % cap) :=
+      extractRing_succ buf cap h_cap n start
+    rw [lhs_step, ih ((start + 1) % cap), rhs_step, List.cons_append]
+    congr 1
+    rw [Nat.mod_add_mod (start + 1) cap n, show start + 1 + n = start + (n + 1) from by omega]
+
+/-- In a ring buffer with `count < cap`, positions `(start+i)%cap` for `i ≤ count` are
+    distinct — specifically, `(start+i)%cap ≠ (start+count)%cap` for `i < count`. -/
+private theorem ring_positions_ne (cap start count i : Nat) (h_cap : 0 < cap)
+    (h_count : count < cap) (hi : i < count) :
+    (start + i) % cap ≠ (start + count) % cap := by
+  intro heq
+  have hci_pos : 0 < count - i := Nat.sub_pos_of_lt hi
+  have hci_lt : count - i < cap := Nat.lt_of_le_of_lt (Nat.sub_le count i) h_count
+  have h1 := Nat.add_mod (start + i) (count - i) cap
+  rw [show start + i + (count - i) = start + count from by omega] at h1
+  have key : (start + i) % cap = ((start + i) % cap + (count - i) % cap) % cap := heq.trans h1
+  have hr_lt : (start + i) % cap < cap := Nat.mod_lt _ h_cap
+  have hd_lt : (count - i) % cap < cap := Nat.mod_lt _ h_cap
+  have hd_pos : 0 < (count - i) % cap := by rw [Nat.mod_eq_of_lt hci_lt]; exact hci_pos
+  have hmod : ((start + i) % cap + (count - i) % cap) % cap = (start + i) % cap := key.symm
+  by_cases hlt : (start + i) % cap + (count - i) % cap < cap
+  · rw [Nat.mod_eq_of_lt hlt] at hmod; omega
+  · have hge : cap ≤ (start + i) % cap + (count - i) % cap := Nat.le_of_not_lt hlt
+    have heq2 : ((start + i) % cap + (count - i) % cap) % cap =
+                (start + i) % cap + (count - i) % cap - cap := by
+      have hlt2 : (start + i) % cap + (count - i) % cap - cap < cap := by omega
+      calc ((start + i) % cap + (count - i) % cap) % cap
+          = ((start + i) % cap + (count - i) % cap - cap + cap) % cap := by congr 1; omega
+          _ = ((start + i) % cap + (count - i) % cap - cap) % cap := Nat.add_mod_right _ _
+          _ = (start + i) % cap + (count - i) % cap - cap := Nat.mod_eq_of_lt hlt2
+    rw [heq2] at hmod; omega
+
+/-- Modifying a buffer position not accessed by `extractRing` leaves the result unchanged. -/
+private theorem extractRing_set_indep (buf : List Nat) (cap : Nat) (h_cap : 0 < cap)
+    (j v : Nat) :
+    ∀ (count start : Nat),
+    (∀ i, i < count → (start + i) % cap ≠ j) →
+    extractRing (buf.set j v) cap count start = extractRing buf cap count start := by
+  intro count
+  induction count with
+  | zero => intros; simp [extractRing]
+  | succ n ih =>
+    intro start hnotin
+    rw [extractRing_succ _ _ h_cap, extractRing_succ _ _ h_cap]
+    have h0 : start % cap ≠ j := by
+      have := hnotin 0 (Nat.zero_lt_succ n); simp only [Nat.add_zero] at this; exact this
+    rw [listGet_set_ne buf j (start % cap) v (Ne.symm h0)]
+    congr 1
+    apply ih ((start + 1) % cap)
+    intro i hi
+    have h1 := hnotin (i + 1) (Nat.succ_lt_succ hi)
+    rwa [show start + (i + 1) = (start + 1) + i from by omega, ← Nat.mod_add_mod] at h1
+
+/-- `freeCount` never exceeds the count argument. -/
+private theorem freeCount_le (buf : List Nat) (cap : Nat) (to : Nat) :
+    ∀ (count start : Nat), freeCount buf cap count start to ≤ count := by
+  intro count
+  induction count with
+  | zero => intro; simp [freeCount]
+  | succ n ih =>
+    intro start
+    simp only [freeCount]
+    by_cases h_cap : 0 < cap
+    · simp only [if_pos h_cap]
+      by_cases hle : listGet buf (start % cap) ≤ to
+      · simp only [if_pos hle]; have := ih ((start + 1) % cap); omega
+      · simp only [if_neg hle]; exact Nat.zero_le _
+    · simp only [if_neg h_cap]; exact Nat.zero_le _
+
+/-- The `dropLeq` of an `extractRing` equals the `extractRing` after advancing `start`
+    by the number of elements freed. -/
+private theorem extractRing_dropLeq_eq (buf : List Nat) (cap : Nat) (h_cap : 0 < cap)
+    (to : Nat) :
+    ∀ (count start : Nat),
+    dropLeq to (extractRing buf cap count start) =
+    extractRing buf cap (count - freeCount buf cap count start to)
+      ((start + freeCount buf cap count start to) % cap) := by
+  intro count
+  induction count with
+  | zero =>
+    intro start
+    simp only [extractRing, freeCount, Nat.sub_zero, Nat.add_zero]
+    simp [dropLeq]
+  | succ n ih =>
+    intro start
+    rw [extractRing_succ _ _ h_cap]
+    simp only [freeCount, if_pos h_cap]
+    by_cases hle : listGet buf (start % cap) ≤ to
+    · simp only [if_pos hle]
+      have hdrop : dropLeq to (listGet buf (start % cap) ::
+                    extractRing buf cap n ((start + 1) % cap)) =
+                  dropLeq to (extractRing buf cap n ((start + 1) % cap)) := by
+        simp [dropLeq, hle]
+      rw [hdrop, ih ((start + 1) % cap)]
+      have hf := freeCount_le buf cap to n ((start + 1) % cap)
+      have h_cnt : n - freeCount buf cap n ((start + 1) % cap) to =
+                   n + 1 - (1 + freeCount buf cap n ((start + 1) % cap) to) := by omega
+      have h_st : ((start + 1) % cap + freeCount buf cap n ((start + 1) % cap) to) % cap =
+                  (start + (1 + freeCount buf cap n ((start + 1) % cap) to)) % cap := by
+        rw [Nat.mod_add_mod (start + 1) cap (freeCount buf cap n ((start + 1) % cap) to),
+            show start + 1 + freeCount buf cap n ((start + 1) % cap) to =
+                 start + (1 + freeCount buf cap n ((start + 1) % cap) to) from by omega]
+      rw [← h_cnt, h_st]
+    · simp only [if_neg hle, Nat.sub_zero, Nat.add_zero]
+      have hkeep : dropLeq to (listGet buf (start % cap) ::
+                    extractRing buf cap n ((start + 1) % cap)) =
+                  listGet buf (start % cap) :: extractRing buf cap n ((start + 1) % cap) := by
+        simp [dropLeq, hle]
+      rw [hkeep, ← extractRing_succ buf cap h_cap n start]
+      exact (extractRing_mod_start buf cap h_cap (n + 1) start).symm
+
+/-! ### Correspondence theorems -/
 
 /-- INF30: `addConc` corresponds to abstract `add`.
 
     Under the invariant, adding to the concrete ring buffer produces the same
-    logical content as appending to the abstract list.
-
-    **sorry**: requires ring-buffer index arithmetic (listSet get-set axioms). -/
+    logical content as appending to the abstract list. -/
 theorem inflightsConc_add_correct (s : InflightsConc) (x : Nat)
     (h_inv : s.Inv) (h_nf : s.count < s.cap) :
     (s.addConc x).toAbstract = s.toAbstract.add x := by
-  simp only [InflightsConc.toAbstract, Inflights.add, InflightsConc.addConc]
+  have h_cap_pos : 0 < s.cap := Nat.lt_of_le_of_lt (Nat.zero_le s.count) h_nf
+  have h_cap_ne : s.cap ≠ 0 := by omega
+  -- Unfold and reduce: cap' = cap (since cap ≠ 0), next = (start+count)%cap
+  simp only [InflightsConc.toAbstract, Inflights.add, InflightsConc.addConc, if_neg h_cap_ne,
+             InflightsConc.logicalContent]
   congr 1
-  -- Goal: (logicalContent of state with buffer updated at next, count+1) = logicalContent s ++ [x]
-  -- This requires: the new entry at position (start+count)%cap is x,
-  -- and all prior entries are unchanged.
-  sorry
+  -- Goal: extractRing (listSet s.buffer ((s.start+s.count)%s.cap) x) s.cap (s.count+1) s.start
+  --       = extractRing s.buffer s.cap s.count s.start ++ [x]
+  let next := (s.start + s.count) % s.cap
+  calc extractRing (listSet s.buffer next x) s.cap (s.count + 1) s.start
+      = extractRing (listSet s.buffer next x) s.cap s.count s.start ++
+        [listGet (listSet s.buffer next x) ((s.start + s.count) % s.cap)] :=
+          extractRing_append_last _ s.cap h_cap_pos s.count s.start
+    _ = extractRing s.buffer s.cap s.count s.start ++
+        [listGet (listSet s.buffer next x) next] := by
+          rw [extractRing_set_indep s.buffer s.cap h_cap_pos next x s.count s.start
+                (fun i hi => ring_positions_ne s.cap s.start s.count i h_cap_pos h_nf hi)]
+    _ = extractRing s.buffer s.cap s.count s.start ++ [x] := by
+          rw [listGet_set_eq s.buffer next x (h_inv.2.2 ▸ Nat.mod_lt _ h_cap_pos)]
 
 /-- INF31: `freeToConc` corresponds to abstract `freeTo`.
 
-    Under the invariant and sortedness, freeing ≤ `to` in the concrete model
-    matches `dropLeq to` on the abstract list.
-
-    **sorry**: requires ring-buffer loop analysis and index arithmetic. -/
+    Under the invariant, freeing entries ≤ `to` in the concrete model
+    matches `dropLeq to` on the abstract list. -/
 theorem inflightsConc_freeTo_correct (s : InflightsConc) (to : Nat)
-    (h_inv : s.Inv)
-    (hsort : s.logicalContent.Pairwise (· ≤ ·)) :
+    (h_inv : s.Inv) :
     (s.freeToConc to).toAbstract = s.toAbstract.freeTo to := by
   have hcap : (s.freeToConc to).cap = s.cap := by
     simp only [InflightsConc.freeToConc]
@@ -589,9 +757,18 @@ theorem inflightsConc_freeTo_correct (s : InflightsConc) (to : Nat)
   simp only [InflightsConc.toAbstract, Inflights.freeTo, hcap]
   congr 1
   -- Goal: logicalContent (freeToConc s to) = dropLeq to (logicalContent s)
-  -- This requires: freeCount computes the length of the ≤-to prefix,
-  -- and advancing start by freed gives the correct new start.
-  sorry
+  simp only [InflightsConc.logicalContent, InflightsConc.freeToConc]
+  by_cases h_cap : 0 < s.cap
+  · simp only [if_pos h_cap]
+    -- Apply the dropLeq correspondence lemma
+    rw [← extractRing_dropLeq_eq s.buffer s.cap h_cap to s.count s.start]
+  · -- When cap = 0, both sides are []
+    have h_cap_eq : s.cap = 0 := by omega
+    have hext : ∀ (n start : Nat), extractRing s.buffer 0 n start = [] := by
+      intro n; induction n with
+      | zero => intro; simp [extractRing]
+      | succ m ih => intro st; simp only [extractRing, if_neg (by omega : ¬(0 < 0))]
+    simp [h_cap_eq, hext, dropLeq]
 
 /-- INF32: `resetConc` corresponds to abstract `reset`. -/
 theorem inflightsConc_reset_correct (s : InflightsConc) :
