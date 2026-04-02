@@ -3,24 +3,26 @@
 > 🔬 *Lean Squad — automated formal verification for `dsyme/fv-squad`.*
 
 ## Last Updated
-- **Date**: 2026-03-29 17:10 UTC
-- **Commit**: `3eea9f09d58b8aa4e9342db25a96eda4714951d1`
+- **Date**: 2026-04-02 17:16 UTC
+- **Commit**: `da6bc87` (tally_votes merged; 14 targets at phase 5, 300+ public theorems)
 
 ---
 
 ## Overall Assessment
 
-Formal verification coverage has advanced to **147 theorems proved across 9 targets, with
-0 `sorry` remaining**.  The quorum subsystem is comprehensively proved: `vote_result`,
-`joint_vote_result`, `committed_index`, `joint_committed_index`, and `limit_size` are all
-fully specified and verified, plus config validation.  Log-layer coverage now includes both
-`find_conflict` (12 theorems) and `maybe_append` (18 theorems), with proofs reaching into
-the implementation model: log-prefix preservation, suffix application, committed-index
-monotonicity, and persisted-index rollback are all mechanically verified.  The ring-buffer
-tracker (`inflights`) has 15 theorems in an open PR (phase 3), covering count/cap invariants,
-`free_to` sortedness, and reset semantics.  The main remaining gap is that no end-to-end
-Raft safety theorem exists yet — the state-machine level is untouched — and the `progress`
-tracker and `append_entry`/`commit_to` log operations are unverified.
+Formal verification coverage has advanced to **300+ public theorems/lemmas across 13 Lean
+files, 14 FV targets all at phase 5, with 0 `sorry` remaining**.  The entire quorum
+subsystem is proved: single-config and joint `vote_result`, single-config and joint
+`committed_index`, plus safety (majority acked), maximality (optimal choice), and
+monotonicity (non-decreasing as acks arrive).  Log-layer coverage is comprehensive:
+`find_conflict` (12 theorems), `maybe_append` (18 theorems), `is_up_to_date` (17 theorems),
+and the unstable log segment `log_unstable` (37 theorems including all three
+truncate-and-append cases).  The flow-control layer is fully proved: `Inflights` (49
+theorems including ring-buffer/abstract correspondence), `Progress` state machine (31
+theorems, `wf` invariant, all state transitions), and `tally_votes` (28 theorems, partition
+identity, rejection-closes-election safety).  The main remaining gap is that no end-to-end
+Raft safety theorem exists yet — the state-machine level is untouched — and cross-module
+composition theorems connecting the proved modules have not been attempted.
 
 ---
 
@@ -279,7 +281,7 @@ these theorems.
 
 ---
 
-### `Inflights.lean` — 15 theorems *(open PR — not yet merged)*
+### `Inflights.lean` — 49 theorems *(phase 5 — complete)*
 
 | Theorem | Level | Bug-catching potential | Notes |
 |---------|-------|----------------------|-------|
@@ -298,18 +300,118 @@ these theorems.
 | `inflights_reset_queue` (INF13) | Low | Low | `reset.queue = []` |
 | `inflights_reset_count` (INF14) | Low | Low | `reset.count = 0` |
 | `inflights_reset_cap` (INF15) | Low | Low | `reset.cap = cap` |
+| `INF16–INF29` (concrete ring buffer) | Mid | **High** | Concrete `InflightsConc` model: `add`, `freeTo`, `reset`, cap/count/buffer invariants |
+| `INF30` (`abstractConc_freeTo`) | **High** | **Very High** | Ring-buffer `freeTo` agrees with abstract queue `freeTo` |
+| `INF31` (`abstractConc_add`) | **High** | **Very High** | Ring-buffer `add` agrees with abstract queue `add` |
+| Sorted-invariant group (INF32–INF49 range) | High | **High** | Sortedness is an invariant maintained by `add` and `freeTo` (no external hypothesis needed) |
 
-**Assessment**: INF4 (`count_le_cap`) is the key safety invariant for Raft flow control:
-it confirms that `add` maintains the capacity bound when called with the correct precondition
-(`count < cap`).  INF8 (`freeTo_all_gt_sorted`) is the most important correctness property:
-after `free_to(to)`, all remaining in-flight entries have index `> to`, confirming that
-acknowledged messages are properly dequeued.  These two properties together constitute a
-complete correctness specification for the `Inflights` data structure in isolation.
+**Assessment**: INF30 and INF31 are the most important results in this file — they bridge
+the abstract (`queue`-based) and concrete (`InflightsConc` ring-buffer) models.  These close
+the correspondence gap between what is proved and what the Rust implements.  INF8
+(`freeTo_all_gt_sorted`) confirms the core Raft flow-control property.  INF4 (`count_le_cap`)
+is the safety invariant that prevents buffer overflow.  Together, the 49 theorems constitute
+a complete and verified specification of the `Inflights` ring buffer including its internal
+representation.
 
-**Note**: This target is at phase 3 (Lean spec). Phase 4 (implementation model using the
-actual ring-buffer representation) and phase 5 (stronger proofs about the ring-buffer
-invariants) remain to be done.  The most valuable next step is to prove INF8 without the
-sortedness hypothesis — showing that the Inflights API maintains sortedness as an invariant.
+---
+
+### `Progress.lean` — 31 theorems
+
+| Theorem | Level | Bug-catching potential | Notes |
+|---------|-------|----------------------|-------|
+| PR1–PR3 (state transitions) | Mid | **High** | `becomeReplicate/Probe/Snapshot` correctly set `state` field |
+| PR4–PR6 (next_idx transitions) | Mid | **High** | `becomeReplicate` resets `next_idx` to `matched+1`; `becomeProbe` from snapshot uses `pending_snapshot` |
+| PR7–PR9 (pause clearing) | Low | Medium | All state transitions clear the `paused` flag |
+| PR10 (`becomeSnapshot` sets `pending`) | Low | Medium | `pending_snapshot = si` after `becomeSnapshot` |
+| PR11–PR13 (`isPaused` characterisation) | Mid | **High** | `isPaused` iff `state=Probe ∧ paused`, or `state=Replicate ∧ ins_full`, or `state=Snapshot` |
+| PR14–PR15 (`maybeUpdate` true/false cases) | Mid | **High** | Update only applies when `n > matched`; preserves state otherwise |
+| PR16–PR19 (`maybeDecrTo` cases) | High | **High** | Four-case analysis: Snapshot/not-found/already-paused/normal; `wf` preserved in all cases |
+| PR20–PR22 (`wf` invariant preservation) | **High** | **Very High** | `matched + 1 ≤ next_idx` is preserved by all transitions |
+| PR23–PR25 (self-healing) | **High** | **High** | `becomeProbe`/`becomeReplicate` restore `wf` even from invalid states |
+| PR26–PR31 (misc) | Mid | Medium | `isSnapshotCaughtUp`, `resume`/`pause`, snapshot index bounds |
+
+**Assessment**: The `wf` invariant (`matched + 1 ≤ next_idx`) is the central result.  PR20–PR22
+prove it is established by `mk_new` and preserved by all state transitions.  The self-healing
+theorems PR23–PR25 are particularly useful: they show that `becomeProbe` and `becomeReplicate`
+*restore* the invariant even if the state was inconsistent — useful in confirming that
+recovery paths cannot leave the state machine in a broken state.  PR16–PR19 for `maybeDecrTo`
+cover the subtle case where a Snapshot transition resets `next_idx` to the snapshot index plus
+one, which requires careful handling to preserve `wf`.
+
+---
+
+### `IsUpToDate.lean` — 17 theorems
+
+| Theorem | Level | Bug-catching potential | Notes |
+|---------|-------|----------------------|-------|
+| IU1–IU3 (basic cases) | Low | Low | `isUpToDate` by term dominance, index tie-break, and reflexivity |
+| IU4–IU6 (negative cases) | Mid | **High** | Not up-to-date if term or index is strictly dominated |
+| IU7–IU9 (completeness) | Mid | **High** | Converse directions confirming no false positives |
+| IU10 (`isUpToDate_total`) | **High** | **Very High** | Log ordering is *total*: for any two logs, one is up-to-date wrt the other |
+| IU11–IU12 (transitivity) | High | **High** | Transitivity of log ordering |
+| IU13 (antisymmetry) | High | **High** | Mutual up-to-date implies equal |
+| IU14–IU16 (reflexivity, monotonicity) | Mid | Medium | Self-comparisons; index monotonicity within the same term |
+| IU17 (election restriction) | **High** | **Very High** | A candidate with up-to-date log beats stale logs — Raft election restriction |
+
+**Assessment**: `IU10` (totality) is a deep result: it formally proves that Raft's log
+ordering is a total preorder.  This is the mathematical foundation for deterministic leader
+election — if ordering were partial, two candidates could both claim to be "more up-to-date"
+than each other.  `IU17` (election restriction) is the most direct Raft safety property in
+this file: a candidate can only be elected if its log is as up-to-date as a quorum's logs,
+which in the Lean model reduces to a bound on the candidate's `(term, index)` pair.
+
+---
+
+### `LogUnstable.lean` — 37 theorems
+
+| Theorem | Level | Bug-catching potential | Notes |
+|---------|-------|----------------------|-------|
+| MFI1–MFI2 (`maybeFirstIndex`) | Low | Medium | Returns snapshot offset when snapshot present; `none` otherwise |
+| MLI1–MLI3 (`maybeLastIndex`) | Low | Medium | Last index from entries if non-empty; snapshot offset if only snapshot; `none` if both empty |
+| MT1–MT5 (`maybeTerm`) | Mid | **High** | Correct term lookup by index: entries, snapshot boundary, none cases; `MT5` (term at first index = snapshot term) |
+| SE1–SE5 (`stableEntries`) | Mid | **High** | Entries up to `idx` are removed; remaining entries start at `idx+1`; length preserved |
+| SS1–SS3 (`stableSnap`) | Mid | **High** | Snapshot cleared when `idx ≥ offset`; snapshot unchanged otherwise |
+| RE1–RE7 (`restore`) | High | **High** | `restore(snap)` replaces snapshot, clears all entries, establishes correct `offset`; `wf` preserved |
+| TAA1–TAA7 (`truncateAndAppend`) | **High** | **Very High** | Three-case analysis: all-append / offset-reset / in-place-truncate; snapshot always preserved (TAA7) |
+| SL1 (`slice`) | Mid | Medium | Slice is a sub-list by index range |
+| WF1–WF4 (`wf` invariant) | **High** | **Very High** | `snapshot.offset ≤ entries[0].index` invariant; established by `restore`, preserved by all transitions |
+
+**Assessment**: The TAA1–TAA7 cluster (truncate-and-append) is the most complex and most
+valuable group.  The three cases cover: (1) appended entries all newer than stored entries
+(simple append), (2) offset reset (entries replaced entirely), (3) in-place truncation at
+conflict point.  `TAA7` proves that the `snapshot` field is *unchanged* across all three
+cases — a subtle invariant with no obvious analogue in the code.  The `wf` group (WF1–WF4)
+establishes the key structural invariant of `Unstable`: the snapshot always precedes the
+first entry in the entries list.  **Open question documented**: Case 2 of `truncateAndAppend`
+can violate `wf` if a snapshot is pending — callers are expected to guarantee safety by
+contract, but this is not enforced by the Rust type system.
+
+---
+
+### `TallyVotes.lean` — 28 theorems
+
+| Theorem | Level | Bug-catching potential | Notes |
+|---------|-------|----------------------|-------|
+| TV1–TV3 (projections) | Low | Medium | `tallyVotes` returns `(yesCount, noCount, voteResult)` exactly |
+| TV4–TV6 (bounds) | Low | Medium | `granted ≤ n`, `rejected ≤ n`, `granted+rejected ≤ n` |
+| TV7 (partition identity) | **High** | **Very High** | `granted + rejected + missing = voters.length` — exact partition |
+| TV8 (empty voters) | Low | Low | `tallyVotes [] _ = (0, 0, Won)` — degenerate case |
+| TV9–TV10, TV17 (iff characterisations) | High | **High** | Won/Lost/Pending iff conditions; `pending_iff` |
+| TV11 (won if granted ≥ majority) | Mid | **High** | Grant quorum → Won |
+| TV12 (`tallyVotes_lost_of_rejected_ge`) | **High** | **Very High** | `rejected ≥ majority(n)` → Lost — rejection closes the election |
+| TV13 (exhaustiveness) | Mid | Medium | Exactly one of Won/Pending/Lost |
+| TV14 (voted positive) | Low | Low | Any vote → granted+rejected > 0 |
+| TV15–TV16 (extreme cases) | Low | Low | All-yes → Won; all-no → Lost |
+| TV18 (no double quorum) | **High** | **Very High** | Won and Lost cannot hold simultaneously |
+| Helper lemmas (8) | Mid | Medium | `lt_two_majority`, partition lemmas, `rej_majority_implies_yes_missing_lt` |
+
+**Assessment**: TV12 and TV18 are the highest-value results.  TV12 formally proves the
+*rejection-closes-the-election* invariant: if ≥ majority voters reject a candidate, the
+remaining voters cannot form a quorum even if all vote yes.  This follows from the exact
+partition identity (TV7) and `n < 2 × majority(n)`.  TV18 formalises mutual exclusion:
+the Raft election outcome is always deterministic — Won and Lost are disjoint.  TV7
+(partition identity) is a surprisingly useful tool that has enabled the proofs of TV11,
+TV12, and TV18; without it, these proofs would require substantially more case analysis.
 
 ---
 
@@ -317,50 +419,48 @@ sortedness hypothesis — showing that the Inflights API maintains sortedness as
 
 Prioritised by impact:
 
-### 1. `Inflights` ring buffer — **High priority** *(phase 3 — 15 theorems proved, open PR)*
+### 1. Composition / end-to-end safety property — **Highest priority**
 
-`src/tracker/inflights.rs` is the next target.  The phase-3 Lean spec (INF1–INF15) is in an
-open PR.  The next steps are:
+No end-to-end Raft safety theorem exists yet (e.g., "two entries committed at the same
+index by the same term are identical").  The building blocks now exist across 13 Lean files:
+quorum-safety (CI-Safety + JCI4–JCI5), log-conflict detection (FC7+FC11), log-append
+semantics (MA5+MA13+MA14), election restriction (IU17), and progress wf invariants.
+The next intermediate goals are:
 
-- **Phase 4** (impl model): Model the actual ring-buffer state (`start`, `buffer`, `count`)
-  and prove that the abstract `queue`-based model is equivalent to the concrete ring-buffer.
-  This would close the correspondence gap between the Lean model and the Rust implementation.
-- **Phase 5** (stronger proofs): Prove `sortedness` as an *invariant* maintained by `add`
-  (without requiring it as a hypothesis) — i.e., show that if the queue is sorted before
-  `add`, it remains sorted after (this requires the `add`-at-end property, which is proved
-  as INF1).  Also prove that `free_to` after a prior `add` is always well-behaved.
+1. A **cross-module theorem** connecting `maybe_append` to `committed_index`: "if
+   `maybe_append` returns `Some(ci, _)`, then `ci ≤ committedIndex(voters, acked_post)`".
+   This would be the first theorem that reasons about two verified modules together.
+2. A **joint tally composition** theorem: extend `TallyVotes` to `JointConfig` using
+   `combineVotes` from `JointVote.lean`.  This would close the gap between `tally_votes`
+   (single config) and the full joint-config election logic.
 
-### 2. `progress` tracker — **High priority** *(phase 1 — unstarted)*
+### 2. `ProgressTracker` / `progress_set` — **High priority** *(unstarted)*
 
-`src/tracker/progress.rs` manages per-peer state for the leader.  Key invariants:
-`match_index ≤ next_index`, the flow-control interplay between `inflights` and `next_index`,
-and the probe/replicate/snapshot state machine.  This is the next natural target after
-Inflights because it uses Inflights directly.
+`src/tracker/progress_set.rs` manages quorum tracking over the peer progress map.
+Key targets: `has_quorum` (does a quorum have acked ≥ committed?), `quorum_recently_active`
+(leader check).  These use `committedIndex` and `Progress` directly — both are now proved —
+making this the natural next target.
 
 ### 3. Bridging theorem for `jointCommittedIndex` empty divergence — **Medium priority**
 
 JCI9–JCI10 document that the Lean model returns `0` for empty configs where Rust returns
-`u64::MAX`.  The practical impact: a caller that passes `outgoing = []` (non-joint config)
-gets `jointCommittedIndex = min(ci_in, 0) = 0` in Lean vs `min(ci_in, MAX) = ci_in` in
-Rust.  A bridging theorem showing `jointCommittedIndex incoming [] acked = committedIndex
+`u64::MAX`.  A bridging theorem showing `jointCommittedIndex incoming [] acked = committedIndex
 incoming acked` does *not* hold in the current model.  Either the model should special-case
-the empty-outgoing path, or a precondition `outgoing ≠ []` should be added to the joint
+the empty-outgoing path, or a `outgoing ≠ []` precondition should be added to joint
 safety/maximality theorems.
 
-### 4. Composition / end-to-end safety property — **Long-term goal**
+### 4. Voter-list `Nodup` precondition — **Low priority (hardening)**
 
-No end-to-end Raft safety theorem exists yet (e.g., "two entries committed at the same
-index by the same term are identical").  The building blocks now exist: quorum-safety
-(CI-Safety + JCI4–JCI5), log-conflict detection (FC7+FC11), and log-append semantics
-(MA5+MA13+MA14).  The next intermediate goal is a theorem connecting `maybe_append` to
-`committed_index`: "if `maybe_append` returns `Some`, the new committed index is safe with
-respect to the new log".  This would be the first cross-module Raft correctness theorem.
+Add a `voters.Nodup` hypothesis to the `_iff` theorems in `MajorityVote.lean`,
+`CommittedIndex.lean`, and `TallyVotes.lean`.  Currently theorems hold for duplicate voter
+lists but with wrong semantics (one physical voter could count multiple times).
 
-### 5. Voter-list `Nodup` precondition — **Low priority (hardening)**
+### 5. `truncateAndAppend` wf guarantee — **Medium priority**
 
-Add a `voters.Nodup` hypothesis to the `_iff` theorems in `MajorityVote.lean` and
-`CommittedIndex.lean`.  Currently the theorems technically hold even for duplicate voter
-lists but with wrong semantics.  A `Nodup` precondition would make the model honest.
+CORRESPONDENCE.md documents that Case 2 of `truncateAndAppend` (when `after ≤ offset`)
+can violate the `wf` invariant if a snapshot is pending.  Callers are expected to guarantee
+safety by contract, but this is not enforced by Rust's type system.  A Lean theorem
+formalising the caller precondition would document this contract mechanically.
 
 ---
 
@@ -369,10 +469,8 @@ lists but with wrong semantics.  A `Nodup` precondition would make the model hon
 ### Concern 1: Voter-list type (List vs. Set)
 
 All Lean models use `List Nat` for voter sets.  The Rust uses `HashSet<u64>`.  Duplicate
-voters in a `List` would inflate vote counts and potentially break `voteResult_Won_iff`
-(e.g., one physical voter voting twice).  The theorems are stated without a `Nodup`
-precondition, which means they technically hold even with duplicates — but the semantics
-are wrong for duplicated voters.
+voters in a `List` would inflate vote counts and potentially affect `voteResult_Won_iff`
+and `tallyVotes_partition`.  The theorems are stated without a `Nodup` precondition.
 
 **Recommendation**: Add a `voters.Nodup` hypothesis to the `_iff` theorems, or add a
 `List.dedup` normalisation step to the Lean model.  This is the most notable semantic gap
@@ -417,23 +515,33 @@ configs but may give misleading results for configurations in transition.
 4. **`findConflict_zero_iff_all_match`** (FC11) provides a clean biconditional
    characterisation of the "no conflict" case, and **`findConflict_first_mismatch`** (FC7)
    pins down exactly *which* entry's index is returned.  Together they eliminate a whole
-   class of subtle off-by-one bugs (returning the wrong conflict index, or returning a
-   conflict index when none exists).
+   class of subtle off-by-one bugs.
 
 5. **`maybeAppend_log_prefix_preserved`** (MA13) and **`maybeAppend_suffix_applied`**
    (MA14) together give the most complete log-correctness characterisation in the portfolio:
    the prefix is untouched and the suffix is correctly applied.  These two theorems together
    with MA5 (`committed_eq`) constitute a complete post-condition for `maybe_append`.
 
-6. **`inflights_freeTo_all_gt_sorted`** (INF8) confirms the Raft flow-control correctness
-   property: after acknowledging up to index `to`, all remaining in-flight entries are
-   strictly newer.  This directly validates the Inflights data structure's role in the
-   Raft pipelining protocol.
+6. **`inflights_freeTo_all_gt_sorted`** (INF8) and the ring-buffer correspondence theorems
+   (INF30+INF31) together confirm that the Inflights ring buffer correctly implements the
+   abstract flow-control model.  INF30+INF31 are the only bridging/correspondence theorems
+   in the FV portfolio — they close the gap between proof and implementation for Inflights.
 
-7. **No bugs found** in any of the nine verified functions.  This is evidence (not proof)
-   that the Raft quorum logic, log operations, config validation, and flow control as
-   implemented are correct for the modelled paths.
+7. **`isUpToDate_total`** (IU10) formally proves that Raft's log ordering is a total
+   preorder.  This is the mathematical foundation for deterministic leader election.
+
+8. **`truncateAndAppend_snapshot_preserved`** (TAA7) proves that all three cases of
+   `truncate_and_append` preserve the snapshot field unchanged.  This is a subtle
+   "non-interference" property with no obvious statement in the original code.
+
+9. **`tallyVotes_lost_of_rejected_ge`** (TV12) formally proves the rejection-closes-election
+   invariant: if ≥ majority voters reject a candidate, the remaining voters cannot form a
+   quorum even if all vote yes.  This is a key Raft safety guarantee.
+
+10. **No bugs found** in any of the 14 verified functions.  This is evidence (not proof)
+    that the Raft quorum logic, log operations, config validation, flow control, and election
+    counting as implemented are correct for the modelled paths.
 
 ---
 
-> 🔬 Generated by [Lean Squad](https://github.com/dsyme/fv-squad/actions/runs/23714161005) automated formal verification.
+> 🔬 Updated by [Lean Squad](https://github.com/dsyme/fv-squad/actions/runs/23912617612) automated formal verification.

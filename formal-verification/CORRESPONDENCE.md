@@ -7,8 +7,8 @@ correspondence level, known divergences, and the impact on any proofs that rely 
 definition.
 
 ## Last Updated
-- **Date**: 2026-03-30 17:20 UTC
-- **Commit**: `cfaa3a9` (+ inflights phase 5 proofs)
+- **Date**: 2026-04-02 17:16 UTC
+- **Commit**: `da6bc87` (tally_votes merged; 14 targets at phase 5, 300+ public theorems)
 
 ---
 
@@ -401,15 +401,21 @@ Rust source: [`src/raft_log.rs#L267`](../src/raft_log.rs#L267)
 
 | Lean file | Rust target | Correspondence level | Proved theorems | Gaps |
 |-----------|-------------|---------------------|-----------------|------|
-| `LimitSize.lean` | `src/util.rs` `limit_size` | Abstraction | 17 | Overflow not modelled (safe); lint clean ✅ |
+| `LimitSize.lean` | `src/util.rs` `limit_size` | Abstraction | 25 | Overflow not modelled (safe); lint clean ✅ |
 | `ConfigValidate.lean` | `src/config.rs` `Config::validate` | Abstraction | 10 | Error messages not captured (by design) |
 | `MajorityVote.lean` | `src/quorum/majority.rs` `vote_result` | Abstraction | 21 | Duplicates in voter list not excluded by type |
 | `JointVote.lean` | `src/quorum/joint.rs` `vote_result` | Abstraction | 14 | Struct wrapper abstracted; non-joint degeneration proved (J4) |
-| `CommittedIndex.lean` | `src/quorum/majority.rs` `committed_index` | Abstraction | 17 | group-commit path omitted; empty→0 (Rust→MAX) documented |
+| `CommittedIndex.lean` | `src/quorum/majority.rs` `committed_index` | Abstraction | 28 | group-commit path omitted; empty→0 (Rust→MAX) documented |
 | `FindConflict.lean` | `src/raft_log.rs` `find_conflict` | Abstraction | 12 | Entry payload omitted; positive-index precondition explicit |
 | `JointCommittedIndex.lean` | `src/quorum/joint.rs` `committed_index` | Abstraction | 10 | `use_group_commit=false` path only; empty→0 (Rust→MAX) documented |
 | `MaybeAppend.lean` | `src/raft_log.rs` `maybe_append` | Abstraction | 18 | Stable/unstable split abstracted; panic not modelled; Nat vs u64 |
 | `Inflights.lean` | `src/tracker/inflights.rs` `Inflights` | Abstraction | 49 | Abstract (List) + concrete (InflightsConc) models; ALL correspondence theorems proved (0 sorry); phase 5 complete |
+| `Progress.lean` | `src/tracker/progress.rs` `Progress` | Abstraction | 31 | `PendingSnapshot` variant abstracted to single index; async effects omitted |
+| `IsUpToDate.lean` | `src/raft_log.rs` `RaftLog::is_up_to_date` | Abstraction | 17 | Log viewed as (term, index) pairs; persistent/unstable split not modelled |
+| `LogUnstable.lean` | `src/log_unstable.rs` `Unstable` | Abstraction | 37 | I/O (persist/stable) not modelled; wf Case-2 caller guarantee documented |
+| `TallyVotes.lean` | `src/tracker.rs` `ProgressTracker::tally_votes` | Abstraction | 28 | HashMap→function; JointConfig→List; mutation→pure return |
+
+**Total: 300 public theorems/lemmas, 0 sorry, 13 Lean files (+ `Basic.lean`).**
 
 ---
 
@@ -688,4 +694,12 @@ All 18 theorems proved (0 sorry). Coverage:
 | Extreme cases | TV15–TV16 | All-yes → (n, 0, Won); all-no → (0, n, Lost) |
 | No double-quorum | TV18 | Won and Lost cannot hold simultaneously |
 
-> 🔬 Updated by Lean Squad run [23882306148](https://github.com/dsyme/fv-squad/actions/runs/23882306148).
+---
+
+## Known Mismatches
+
+No known mismatches as of this update. All Lean models are at *abstraction* level —
+deliberate, documented abstractions that do not invalidate any proved theorem.
+See each file section above for the full divergence lists.
+
+> 🔬 Updated by Lean Squad run [23912617612](https://github.com/dsyme/fv-squad/actions/runs/23912617612).
