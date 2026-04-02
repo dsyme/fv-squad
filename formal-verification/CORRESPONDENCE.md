@@ -7,8 +7,8 @@ correspondence level, known divergences, and the impact on any proofs that rely 
 definition.
 
 ## Last Updated
-- **Date**: 2026-03-30 03:46 UTC
-- **Commit**: `02670b14`
+- **Date**: 2026-03-30 17:20 UTC
+- **Commit**: `cfaa3a9` (+ inflights phase 5 proofs)
 
 ---
 
@@ -409,11 +409,11 @@ Rust source: [`src/raft_log.rs#L267`](../src/raft_log.rs#L267)
 | `FindConflict.lean` | `src/raft_log.rs` `find_conflict` | Abstraction | 12 | Entry payload omitted; positive-index precondition explicit |
 | `JointCommittedIndex.lean` | `src/quorum/joint.rs` `committed_index` | Abstraction | 10 | `use_group_commit=false` path only; empty→0 (Rust→MAX) documented |
 | `MaybeAppend.lean` | `src/raft_log.rs` `maybe_append` | Abstraction | 18 | Stable/unstable split abstracted; panic not modelled; Nat vs u64 |
-| `Inflights.lean` | `src/tracker/inflights.rs` `Inflights` | Abstraction | 40 | Abstract (List) + concrete (InflightsConc) models; 2 sorry for ring-buffer correspondence; phase 4 |
+| `Inflights.lean` | `src/tracker/inflights.rs` `Inflights` | Abstraction | 49 | Abstract (List) + concrete (InflightsConc) models; ALL correspondence theorems proved (0 sorry); phase 5 complete |
 
 ---
 
-## `formal-verification/lean/FVSquad/Inflights.lean` *(phase 4 -- this run)*
+## `formal-verification/lean/FVSquad/Inflights.lean` *(phase 5 -- complete)*
 
 ### Target: `Inflights` -- `src/tracker/inflights.rs`
 
@@ -450,13 +450,21 @@ Rust source: [`src/tracker/inflights.rs`](../src/tracker/inflights.rs)
 4. **Panics omitted**: `add` panics on full; Lean precondition `count < cap` rules this out.
 5. **Sortedness not enforced by type**: Abstract model INF8/INF9 take sortedness as a hypothesis. Concrete model `InflightsConc` also does not enforce sortedness.
 
-#### Correspondence theorems (Task 4 main results)
+#### Correspondence theorems (phase 5 — all proved, 0 sorry)
 
 | Theorem | Status | Meaning |
 |---------|--------|---------|
 | `inflightsConc_reset_correct` | ✅ proved | `resetConc ↔ reset` via `toAbstract` |
-| `inflightsConc_add_correct` | ⚠️ **sorry** | `addConc ↔ add` via `toAbstract`; blocked on listGet/listSet lemmas |
-| `inflightsConc_freeTo_correct` | ⚠️ **sorry** | `freeToConc ↔ freeTo` via `toAbstract`; blocked on ring-buffer loop analysis |
+| `inflightsConc_add_correct` | ✅ **proved** | `addConc ↔ add` via `toAbstract`; proved using `listGet_set_eq`, `extractRing_append_last`, `ring_positions_ne` |
+| `inflightsConc_freeTo_correct` | ✅ **proved** | `freeToConc ↔ freeTo` via `toAbstract`; proved using `extractRing_dropLeq_eq`, `freeCount_le` |
+
+Key helper lemmas proved in this run:
+- `listGet_set_eq` / `listGet_set_ne`: get-set axioms for `List.set`
+- `extractRing_succ` / `extractRing_mod_start` / `extractRing_append_last`: structural properties of `extractRing`
+- `ring_positions_ne`: ring-buffer position distinctness (positions `(start+i)%cap` for `i ≤ count < cap` are all distinct)
+- `extractRing_set_indep`: modifying a position not accessed by extractRing leaves it unchanged
+- `freeCount_le`: `freeCount ≤ count`
+- `extractRing_dropLeq_eq`: `dropLeq to (extractRing buf cap count start) = extractRing buf cap (count-freed) ((start+freed)%cap)`
 
 The two `sorry`'d theorems are sound in intent — their statements are correct — but the proofs require:
 - `listGet (List.set l i v) j = listGet l j` for `j ≠ i` (get-set axiom)
