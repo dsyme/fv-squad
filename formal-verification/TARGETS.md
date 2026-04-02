@@ -15,9 +15,9 @@ Prioritised target list. Phases: 1=Research, 2=Informal Spec, 3=Lean Spec, 4=Lea
 | 7 | `joint_vote_result` | `src/quorum/joint.rs` | `JointConfig::vote_result` | 5 ✅ | 14 theorems proved (0 sorry). `FVSquad/JointVote.lean`. Builds on `MajorityVote`. |
 | 8 | `joint_committed_index` | `src/quorum/joint.rs` | `JointConfig::committed_index` | 5 ✅ | 10 theorems proved (0 sorry). `FVSquad/JointCommittedIndex.lean`. Builds on `CommittedIndex`. |
 | 9 | `inflights` | `src/tracker/inflights.rs` | ring buffer ops | 5 ✅ | 49 theorems proved (0 sorry). Abstract (`Inflights`) + concrete (`InflightsConc`) ring-buffer model. All correspondence theorems proved. `FVSquad/Inflights.lean`. |
-| 10 | `progress` | `src/tracker/progress.rs` | state machine | 1 | Progress state machine transitions. |
+| 10 | `progress` | `src/tracker/progress.rs` | state machine | 5 ✅ | 31 theorems proved (0 sorry). State machine transitions, `wf` invariant (`matched+1≤next_idx`), `maybeUpdate`, `isPaused`, `maybeDecrTo`. `FVSquad/Progress.lean`. |
 
 ## Next Steps
 
-1. **Task 2** (Informal Spec for `progress`) — state machine transitions in `src/tracker/progress.rs`.
-2. **Task 8** (Aeneas extraction) — blocked on OCaml/opam in no-new-privileges containers.
+1. **Task 8** (Aeneas extraction) — blocked on OCaml/opam in no-new-privileges containers.
+2. **New target**: `src/tracker/progress_set.rs` — quorum tracking over the progress map.
