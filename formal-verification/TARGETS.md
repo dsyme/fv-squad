@@ -23,8 +23,13 @@ Prioritised target list. Phases: 1=Research, 2=Informal Spec, 3=Lean Spec, 4=Lea
 | 15 | `has_quorum` | `src/tracker.rs` | `ProgressTracker::has_quorum` | 5 ✅ | 22 theorems proved (0 sorry). Quorum intersection / Raft safety property (HQ14, HQ20). `FVSquad/HasQuorum.lean`. |
 | 16 | `quorum_recently_active` | `src/tracker.rs` | `ProgressTracker::quorum_recently_active` | 5 ✅ | 15 theorems proved (0 sorry). Leader always active (QRA4), monotonicity, nil-entries/nil-voters edge cases, singleton-self quorum. `FVSquad/QuorumRecentlyActive.lean`. |
 | 17 | `safety_composition` | cross-module | `committedIndex` × `hasQuorum` × `quorumRecentlyActive` | 5 ✅ | 9 theorems proved (0 sorry). Raft log safety (SC4), biconditional quorum↔committedIndex (SC6), leader election safety (SC9). `FVSquad/SafetyComposition.lean`. |
+| 18 | `joint_tally` | `src/tracker.rs` | `ProgressTracker::tally_votes` (joint) | 5 ✅ | 14 theorems proved (0 sorry). Joint-quorum extension of tally_votes: Won/Lost/Pending iff, non-joint degeneration (JT5), symmetry of Won (JT13). `FVSquad/JointTally.lean`. |
+| 19 | `joint_safety_composition` | cross-module | `jointCommittedIndex` × `hasQuorum` × `SafetyComposition` | 5 ✅ | 10 theorems proved (0 sorry). Joint Raft log-safety certificate (JSC7): witnesses in both incoming and outgoing halves. Extends SC4 to joint-config. `FVSquad/JointSafetyComposition.lean`. |
+| 20 | `progress_set` | `src/tracker/progress_set.rs` | quorum tracking over progress map | 1 | Next: formalise `ProgressSet::quorum_active` and quorum detection across the voter progress map. |
+| 21 | `raft_log_append` | `src/raft_log.rs` | `RaftLog::append` | 1 | Candidate: append correctness and slice invariants for the stable log. |
 
 ## Next Steps
 
-1. **Task 8** (Aeneas extraction) — blocked on OCaml/opam in no-new-privileges containers.
-2. **More composition** — extend safety proofs to joint quorums using `JointVote` + `JointCommittedIndex`.
+1. **Target 20** (`progress_set`) — formalise quorum tracking over the `ProgressSet` map: `quorum_active`, voter iteration, and its connection to `hasQuorum`.
+2. **Target 21** (`raft_log_append`) — formalise `RaftLog::append` correctness: log monotonicity, prefix preservation, conflict resolution.
+3. **Task 8** (Aeneas extraction) — blocked on OCaml/opam in no-new-privileges containers.
