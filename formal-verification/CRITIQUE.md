@@ -3,27 +3,37 @@
 > 🔬 *Lean Squad — automated formal verification for `dsyme/fv-squad`.*
 
 ## Last Updated
-- **Date**: 2026-04-03 16:08 UTC
-- **Commit**: `6af5080` (safety_composition added; 17 targets at phase 5, 346 public theorems)
+- **Date**: 2026-04-03 21:32 UTC
+- **Commit**: `39d3425` (RaftSafety + CrossModuleComposition added; 21 FV targets, 395 theorems)
 
 ---
 
 ## Overall Assessment
 
-Formal verification coverage has advanced to **346 public theorems/lemmas across 17 Lean
-files, 17 FV targets all at phase 5, with 0 `sorry` remaining**.  The entire quorum
-subsystem is proved: single-config and joint `vote_result`, single-config and joint
-`committed_index`, `tally_votes`, `has_quorum` (including the quorum-intersection safety
-property HQ14/HQ20), `quorum_recently_active` (15 theorems including leader-always-active
-and quorum monotonicity), and now **`safety_composition`** (9 cross-module theorems:
-SC4 — the Raft log-safety principal theorem; SC6 — biconditional quorum ↔ committed index;
-SC9 — leader-election safety via active-quorum ∩ commit-quorum intersection).  Log-layer
-coverage is comprehensive: `find_conflict` (12 theorems), `maybe_append` (18 theorems),
-`is_up_to_date` (17 theorems), and `log_unstable` (37 theorems).  The flow-control layer is
-fully proved: `Inflights` (49 theorems), `Progress` (31 theorems, `wf` invariant), and
-`tally_votes` (28 theorems).  The main remaining gap is the state-machine level: no
-end-to-end Raft safety theorem exists yet for the full protocol, and joint-config analogues
-of SafetyComposition have not been attempted.
+Formal verification coverage has advanced to **395 theorems/lemmas across 21 Lean files,
+21 FV targets all at phase 5, with 5 `sorry` remaining** (all sorry-guarded theorems
+require a message-passing protocol model not yet formalised).  The entire quorum subsystem
+is proved: single-config and joint `vote_result`, single-config and joint `committed_index`,
+`tally_votes`, `has_quorum` (quorum-intersection safety property HQ14/HQ20),
+`quorum_recently_active` (15 theorems), **`safety_composition`** (SC4 — Raft log-safety;
+SC6 — committed-index biconditional; SC9 — leader-election safety), and
+**`joint_safety_composition`** (JSC7 — joint Raft log-safety with witnesses in both halves).
+This run adds two new files:
+
+- **`RaftSafety.lean`** (12 theorems, 3 sorry): the first **state-machine-level** Raft
+  safety theorems.  **RSS1** (`raft_state_machine_safety`) proves that two quorum-committed
+  log *entries* at the same index must be identical — directly from quorum intersection.
+  **RSS6** (`raft_cluster_safety`) and **RSS7** (`raft_joint_cluster_safety`) are
+  **end-to-end cluster safety theorems** (conditional on the quorum-certification invariant
+  `hcert`), fully proved for single- and joint-config clusters respectively.
+- **`CrossModuleComposition.lean`** (7 theorems, 2 sorry): bridges the log-operation layer
+  to the quorum layer.  **CMC3** proves that `maybe_append` never advances the commit index
+  beyond what the quorum has certified; **CMC7** invokes state-machine safety in the context
+  of `maybe_append`-committed entries.
+
+The main remaining gap is **RSS8** (`raft_end_to_end_safety_full`): the unconditional
+end-to-end safety theorem requiring a temporal Raft protocol model (AppendEntries, election,
+log-matching invariant as a temporal induction).
 
 ---
 
@@ -539,60 +549,143 @@ is the glue that lets `HasQuorum`-based arguments (using `overlapCount`) communi
 typecheck.
 
 **Limitation**: All nine theorems cover single-config Raft only.  The joint-config
-extension (combining `JointCommittedIndex` with `HasQuorum` and `QuorumRecentlyActive`)
-has not been attempted and would be the natural next target.
+extension (`JointSafetyComposition.lean`) has now been added: JSC1–JSC10 extend the
+single-config results to joint-quorum configurations (see below).
 
 ---
 
-## Gaps and Recommendations
+### `JointSafetyComposition.lean` — 10 theorems *(phase 5 — complete)*
+
+| Theorem | Level | Bug-catching potential | Notes |
+|---------|-------|----------------------|-------|
+| `JSC1_jointCI_le_iff` | Low (helper) | Low | Arithmetic: k ≤ jointCI ↔ k ≤ ci_in ∧ k ≤ ci_out |
+| `JSC2_jointCI_iff_both_quorums` | Mid | Medium | Quorum biconditional for joint config |
+| `JSC3_jointCI_incoming_witness` | Mid | **High** | ∃ voter in incoming witnessed jointCI |
+| `JSC4_jointCI_outgoing_witness` | Mid | **High** | ∃ voter in outgoing witnessed jointCI |
+| `JSC5_joint_raft_log_safety_incoming` | High | **High** | Two jointCIs share a witness in incoming |
+| `JSC6_joint_raft_log_safety_outgoing` | High | **High** | Two jointCIs share a witness in outgoing |
+| `JSC7_joint_raft_log_safety` | **High** | **High** | **Main**: witnesses in BOTH halves |
+| `JSC8_jointCI_maximality` | High | **High** | k > jointCI → at least one half fails quorum |
+| `JSC9_jointCI_singleton` | Low | Low | Singleton jointCI = min(acked vi, acked vo) |
+| `JSC10_joint_no_rollback` | Mid | Medium | jointCI is monotone in acked values |
+
+---
+
+### `RaftSafety.lean` — 12 theorems (9 proved, 3 sorry) *(phase 5 — partial)*
+
+| Theorem | Level | Bug-catching | Status | Notes |
+|---------|-------|-------------|--------|-------|
+| `raft_state_machine_safety` (RSS1) | **High** | **High** | ✅ | Two quorum-committed entries at same index must be equal |
+| `raft_safety_contra` (RSS1b) | **High** | **High** | ✅ | Contrapositive: distinct entries cannot both be committed |
+| `raft_joint_state_machine_safety` (RSS2) | **High** | **High** | ✅ | Joint-config: same, via incoming quorum |
+| `raft_joint_state_machine_safety_sym` (RSS2b) | **High** | **High** | ✅ | Joint-config: same, via outgoing quorum |
+| `log_matching_property` (RSS3) | **High** | **High** | 🔄 sorry | Requires message-passing model |
+| `raft_committed_no_rollback` (RSS4) | **High** | **High** | 🔄 sorry | Requires temporal model |
+| `raft_leader_completeness_via_witness` (RSS5) | **High** | **High** | ✅ | Proved given explicit witness voter |
+| `raft_cluster_safety` (RSS6) | **High** | **High** | ✅ | **End-to-end**: cluster safe given `hcert` |
+| `raft_joint_cluster_safety` (RSS7) | **High** | **High** | ✅ | **End-to-end**: joint-config cluster safe given `hcert` |
+| `raft_end_to_end_safety_full` (RSS8) | **High** | **High** | 🔄 sorry | Requires `hcert` derivation from protocol model |
+
+RSS1 and RSS2 directly formalise the Raft "no two committed entries can differ" property
+at the log-entry level — the clearest expression of Raft's safety guarantee in the FV
+portfolio.  RSS6/RSS7 are the first **end-to-end cluster safety theorems**, conditional
+on the quorum-certification invariant.
+
+---
+
+### `CrossModuleComposition.lean` — 7 theorems (5 proved, 2 sorry) *(phase 5 — partial)*
+
+| Theorem | Level | Bug-catching | Status | Notes |
+|---------|-------|-------------|--------|-------|
+| `CMC1_replication_advances_commit` | Mid | Medium | ✅ | Quorum acked ≥ k → committedIndex ≥ k |
+| `CMC2_maybeAppend_replication_commit` | Mid | Medium | ✅ | Quorum acked ≥ lastNew → committedIndex ≥ lastNew |
+| `CMC3_maybeAppend_committed_bounded` | **High** | **High** | ✅ | maybe_append never commits beyond quorum certification |
+| `CMC4_findConflict_safe_commit_prefix` | Mid | Medium | 🔄 sorry | Needs matchTerm-to-entry bridge |
+| `CMC5_progress_committed_le_ci` | Mid | Low | ✅ | committedIndex grows with acked values |
+| `CMC6_committed_index_entry_bridge` | **High** | **High** | 🔄 sorry | Needs acked→log-entry bridge |
+| `CMC7_maybeAppend_safety_composition` | **High** | **High** | ✅ | maybe_append entries are unique (invokes RSS1) |
+
+CMC3 is the key result: it establishes that `maybe_append` is **safe** — it never commits
+more than the quorum has acknowledged, directly connecting the log-operation and quorum
+layers.
+
+---
 
 Prioritised by impact:
 
-### 1. Joint-config safety composition — **Highest priority** *(new)*
+### 1. Full end-to-end safety theorem — **Highest priority** *(new, active)*
 
-`SafetyComposition` covers only single-config Raft.  The natural extension is a
-joint-config safety composition file that:
-1. Bridges `JointCommittedIndex` to `HasQuorum` (both config groups must form quorums);
-2. Proves a joint analogue of SC4: two joint committed indices share a witness in *each*
-   config group;
-3. Proves a joint leader-election safety theorem analogous to SC9.
+`RSS6`/`RSS7` prove cluster safety *conditional* on the quorum-certification invariant
+`hcert` (every applied entry was certified by a majority quorum).  Proving `hcert` from
+scratch requires formalising the Raft protocol transitions:
 
-The building blocks exist: `JointCommittedIndex` (10 theorems), `JointVote` (14 theorems),
-`HasQuorum` (22 theorems).
+1. **`RaftTransition` type** — AppendEntries, RequestVote, LeaderElection messages.
+2. **Log Matching Property (RSS3)** — same-index-same-term implies identical prefixes.
+3. **Leader Completeness (RSS5-full)** — elected leaders have all committed entries.
+4. **Inductive invariant** — every reachable state satisfies `hcert`.
 
-### 2. Cross-module log-append composition — **High priority**
+Steps 2 and 3 exist as sorry-guarded stubs in `RaftSafety.lean`.  The full proof
+requires a state-transition model connecting message handling to log state, which is a
+substantial but well-scoped proof engineering task.
 
-A theorem connecting `maybe_append` to `committed_index`: "if `maybe_append(log, entries)`
-returns `Some(ci, _)`, then `ci ≤ committedIndex(voters, acked_post)`".  This would join
-the log-operation layer (LogUnstable, FindConflict, MaybeAppend) to the quorum layer
-(CommittedIndex, SafetyComposition) for the first time.
+**Status after this run**: RSS1, RSS2, RSS5 (via witness), RSS6, RSS7 are fully proved.
+RSS3, RSS4, RSS8 remain sorry-guarded.
 
-### 3. Joint tally composition — **High priority**
+### 2. Temporal state-machine model — **High priority**
 
-Extend `TallyVotes` to `JointConfig` using `combineVotes` from `JointVote.lean`.  This
-would close the gap between `tally_votes` (single config) and the full joint-config election
-logic already modelled in `JointVote`.
+The current model is purely functional / instantaneous.  A temporal model would allow:
+- Stating "reachable" in `RSS8` concretely.
+- Proving the inductive invariants that `hcert` relies on.
+- Connecting `raft_committed_no_rollback` (RSS4) to actual state transitions.
+
+A minimal temporal model: `structure RaftHistory E where steps : List (ClusterState E)`
+with a `validStep : ClusterState E → ClusterState E → Prop` transition relation.
+
+### 3. `acked_fn` → log-entry bridge (CMC6) — **High priority**
+
+`CMC6` is sorry-guarded: it requires an `acked v ≥ k → ∃ e, log v k = some e` bridge.
+This is the key connection between the acknowledgment-index model (`AckedFn`) and the
+log-entry content model (`VoterLogs`).  Formalising this bridge would allow CMC6 to be
+proved and would strengthen the cross-module composition results.
 
 ### 4. Bridging theorem for `jointCommittedIndex` empty divergence — **Medium priority**
 
 JCI9–JCI10 document that the Lean model returns `0` for empty configs where Rust returns
-`u64::MAX`.  A bridging theorem showing `jointCommittedIndex incoming [] acked = committedIndex
-incoming acked` does *not* hold in the current model.  Either the model should special-case
-the empty-outgoing path, or an `outgoing ≠ []` precondition should be added to joint
-safety/maximality theorems.
+`u64::MAX`.  An `outgoing ≠ []` precondition should be added to joint safety/maximality
+theorems, or the model should special-case the empty-outgoing path.
 
-### 5. Voter-list `Nodup` precondition — **Low priority (hardening)**
+### 5. `truncateAndAppend` wf guarantee — **Medium priority**
+
+CORRESPONDENCE.md documents that Case 2 of `truncateAndAppend` (when `after ≤ offset`)
+can violate the `wf` invariant if a snapshot is pending.  A Lean theorem formalising the
+caller precondition would document this contract mechanically.
+
+### 6. Voter-list `Nodup` precondition — **Low priority (hardening)**
 
 Add a `voters.Nodup` hypothesis to the `_iff` theorems in `MajorityVote.lean`,
 `CommittedIndex.lean`, and `TallyVotes.lean`.  Currently theorems hold for duplicate voter
 lists but with wrong semantics (one physical voter could count multiple times).
 
-### 6. `truncateAndAppend` wf guarantee — **Medium priority**
+---
 
-CORRESPONDENCE.md documents that Case 2 of `truncateAndAppend` (when `after ≤ offset`)
-can violate the `wf` invariant if a snapshot is pending.  Callers are expected to guarantee
-safety by contract, but this is not enforced by Rust's type system.  A Lean theorem
-formalising the caller precondition would document this contract mechanically.
+## Trajectory to Completion
+
+The FV portfolio has reached a strong milestone: **quorum safety is fully proved**, the
+**cross-module composition layer exists**, and **conditional end-to-end cluster safety is
+proved** (RSS6/RSS7).  The path to an unconditional end-to-end theorem is clear:
+
+| Step | Task | File | Status |
+|------|------|------|--------|
+| 1 | Define `RaftTransition` type (AppendEntries + RequestVote) | `RaftProtocol.lean` | Not started |
+| 2 | Prove `log_matching_property` (RSS3) from protocol invariant | `RaftSafety.lean` | Sorry |
+| 3 | Prove `raft_leader_completeness` (RSS5-full) using `isUpToDate` | `RaftSafety.lean` | Sorry |
+| 4 | Define `reachable` and prove `hcert` as inductive invariant | `RaftProtocol.lean` | Not started |
+| 5 | Close `raft_end_to_end_safety_full` (RSS8) using steps 1–4 | `RaftSafety.lean` | Sorry |
+| 6 | Close `CMC6` acked-to-entry bridge | `CrossModuleComposition.lean` | Sorry |
+
+Each step is independently valuable.  Step 1 (defining `RaftTransition`) is the most
+impactful next move: it unblocks steps 2, 3, and 4, and would represent the first
+message-level Raft model in the FVSquad portfolio.
 
 ---
 
@@ -717,4 +810,23 @@ intersect across the joint configuration.
 
 ---
 
-> 🔬 Updated by [Lean Squad](https://github.com/dsyme/fv-squad/actions/runs/23952831373) automated formal verification.
+16. **`raft_state_machine_safety` (RSS1)** is the first log-entry-level safety theorem in
+    the portfolio.  It directly formalises the Raft invariant "no two different entries can
+    be simultaneously committed at the same index" by lifting quorum intersection (HQ20)
+    from the voter level to the log-entry level.  The proof is remarkably concise: obtain
+    a shared witness from `quorum_intersection_mem`, observe that the witness's log is a
+    function (unique output), derive contradiction.
+
+17. **`raft_cluster_safety` (RSS6)** and **`raft_joint_cluster_safety` (RSS7)** are the first
+    **end-to-end cluster safety theorems** in the portfolio.  They prove that entire
+    clusters — modelled as abstract `ClusterState` snapshots — are safe (no two nodes ever
+    apply different entries at the same index), conditional on the quorum-certification
+    invariant `hcert`.  These are fully machine-checked with 0 sorry.
+
+18. **`CMC3_maybeAppend_committed_bounded`** is the first **cross-module composition theorem
+    connecting log operations to the quorum layer**.  It proves that `maybe_append` never
+    advances the commit index beyond what the quorum has certified: a direct safety guarantee
+    for the replication protocol.  The proof chains `maybeAppend_committed_eq` (MaybeAppend),
+    `SC5` (SafetyComposition), and linear arithmetic — bridging three modules for the first time.
+
+> 🔬 Updated by [Lean Squad](https://github.com/dsyme/fv-squad/actions/runs/23962948702) automated formal verification.
