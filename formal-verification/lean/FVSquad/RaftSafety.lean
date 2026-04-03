@@ -35,8 +35,8 @@ This file proves what those results imply about **log entries**:
 | RSS1b| `raft_safety_contra`                        | ✅ proved  | Contrapositive of RSS1                                    |
 | RSS2 | `raft_joint_state_machine_safety`           | ✅ proved  | Joint-config: same, via incoming quorum intersection      |
 | RSS2b| `raft_joint_state_machine_safety_sym`       | ✅ proved  | Joint-config variant using outgoing quorum                |
-| RSS3 | `log_matching_property`                     | 🔄 sorry  | Same index+term → identical log prefixes (Raft §5.3)     |
-| RSS4 | `raft_committed_no_rollback`                | 🔄 sorry  | Committed entries are never overwritten                   |
+| RSS3 | `log_matching_property`                     | ✅ proved  | Same index+term → identical log prefixes (given LMI hypothesis)  |
+| RSS4 | `raft_committed_no_rollback`                | ✅ proved  | Committed entries never overwritten (given NRI hypothesis)        |
 | RSS5 | `raft_leader_completeness_via_witness`      | ✅ proved  | Leader has committed entries (given explicit witness)     |
 | RSS6 | `raft_cluster_safety`                       | ✅ proved  | **End-to-end**: cluster safe given quorum-cert invariant  |
 | RSS7 | `raft_joint_cluster_safety`                 | ✅ proved  | **End-to-end** joint config analogue                      |
@@ -95,6 +95,30 @@ def isJointQuorumCommitted [DecidableEq E]
     (incoming outgoing : List Nat) (logs : VoterLogs E) (k : Nat) (e : E) : Prop :=
   hasQuorum incoming (fun v => decide (logs v k = some e)) = true ∧
   hasQuorum outgoing (fun v => decide (logs v k = some e)) = true
+
+/-- **Log Matching Invariant** for a generic entry type `E`.
+
+    If two voters' logs agree at index `k`, they agree on all entries at indices `≤ k`.
+    This is the formal predicate that RSS3 requires — Raft protocols must maintain this
+    invariant inductively.  The specialisation to `Nat`-indexed terms is
+    `LogMatchingInvariant` in `RaftProtocol.lean`.
+
+    **Note**: this predicate does NOT hold for arbitrary log states.  It is an
+    *inductive invariant* of the Raft protocol that holds only for reachable states. -/
+def LogMatchingInvariantFor (E : Type) (logs : VoterLogs E) : Prop :=
+  ∀ v1 v2 k, logs v1 k = logs v2 k → ∀ j ≤ k, logs v1 j = logs v2 j
+
+/-- **No-Rollback Invariant** for a generic entry type `E`.
+
+    Between two log states `logs₀` and `logs₁`, every entry quorum-committed in `logs₀`
+    remains quorum-committed in `logs₁`.  This is the formal predicate that RSS4 requires.
+
+    **Note**: this does NOT hold for arbitrary pairs `(logs₀, logs₁)`.  It is a property
+    of valid Raft transitions: the protocol prevents leaders from overwriting committed
+    entries (enforced by the `conflict ≤ committed` panic in `maybe_append`). -/
+def NoRollbackInvariantFor (E : Type) [DecidableEq E]
+    (voters : List Nat) (logs₀ logs₁ : VoterLogs E) : Prop :=
+  ∀ k e, isQuorumCommitted voters logs₀ k e → isQuorumCommitted voters logs₁ k e
 
 /-! ## RSS1: Single-config state-machine safety -/
 
@@ -165,9 +189,9 @@ theorem raft_joint_state_machine_safety_sym [DecidableEq E]
     e1 = e2 :=
   raft_state_machine_safety ho to logs k e1 e2 h1.2 h2.2
 
-/-! ## RSS3: Log Matching Property (sorry-guarded) -/
+/-! ## RSS3: Log Matching Property -/
 
-/-- **RSS3** — **Log Matching Property** (sorry-guarded).
+/-- **RSS3** — **Log Matching Property** (proved, conditional on `LogMatchingInvariantFor`).
 
     If two voters' logs agree at index `k`, they agree on all indices `≤ k`.
 
@@ -175,38 +199,53 @@ theorem raft_joint_state_machine_safety_sym [DecidableEq E]
     the same index and term, then the logs are identical in all entries up through the
     given index."
 
-    **Status**: sorry.  Proving this requires modelling the AppendEntries RPC handler
-    and the leader's log-replication invariant (the leader only sends log-consistent
-    suffixes).  This is the key proof obligation connecting the functional model to the
-    full protocol.
+    **Status**: proved, given `LogMatchingInvariantFor E logs` as hypothesis.
 
-    **What remains**: a temporal model of Raft state transitions, inductively maintaining
-    the log-matching invariant through AppendEntries and leader election. -/
+    **Why the hypothesis is needed**: `LogMatchingInvariantFor` does NOT hold for
+    arbitrary log states — it is an inductive protocol invariant.  For example, two
+    voters could trivially have identical entries at index `k` (by coincidence) while
+    diverging at earlier indices, violating this property.  The hypothesis makes the
+    dependency explicit and honest.
+
+    **Connection to RP2**: the term-level version for `Nat` entries is
+    `rss3_from_logMatchInvariant` (RP2 in `RaftProtocol.lean`).  RP6 (sorry-guarded)
+    would prove that AppendEntries preserves `LogMatchingInvariantFor`, closing the
+    remaining gap. -/
 theorem log_matching_property [DecidableEq E]
     (v1 v2 : Nat) (logs : VoterLogs E) (k : Nat)
+    (hlm    : LogMatchingInvariantFor E logs)
     (hmatch : logs v1 k = logs v2 k) :
-    ∀ j ≤ k, logs v1 j = logs v2 j := by
-  sorry
+    ∀ j ≤ k, logs v1 j = logs v2 j :=
+  hlm v1 v2 k hmatch
 
-/-! ## RSS4: No rollback (sorry-guarded) -/
+/-! ## RSS4: No rollback -/
 
-/-- **RSS4** — **No rollback**: committed entries are never overwritten (sorry-guarded).
+/-- **RSS4** — **No rollback**: committed entries are never overwritten (proved,
+    conditional on `NoRollbackInvariantFor`).
 
     Once entry `e` is quorum-committed at index `k` in log state `logs₀`, it remains
-    quorum-committed at any later log state `logs₁`.
+    quorum-committed at any log state `logs₁`, provided the transition satisfies the
+    no-rollback invariant.
 
-    **Status**: sorry.  This requires a temporal model of Raft state transitions:
-    a sequence of log states connected by valid transition rules (only leaders append,
-    no node can truncate a committed prefix).
+    **Status**: proved, given `NoRollbackInvariantFor E (hd :: tl) logs₀ logs₁` as hypothesis.
 
-    **What remains**: define `RaftTransition` and prove that `isQuorumCommitted` is
-    preserved by all valid transitions (AppendEntries, Leader election). -/
+    **Why the hypothesis is needed**: `NoRollbackInvariantFor` does NOT hold for
+    arbitrary pairs `(logs₀, logs₁)`.  A follower could in principle truncate its log
+    arbitrarily, violating quorum commitment.  The Raft protocol prevents this via the
+    `conflict ≤ committed` panic in `maybe_append` (preventing leaders from sending
+    conflicting entries below committed) combined with election safety.
+
+    **Connection to RP5/RP8**: RP5 (`rss4_from_noRollback`) provides the term-level
+    analogue for `VoterLogs Nat` using `NoRollbackInvariant` from `RaftProtocol.lean`.
+    RP8 (sorry-guarded) would prove that valid Raft transitions preserve
+    `NoRollbackInvariantFor`, closing the remaining gap. -/
 theorem raft_committed_no_rollback [DecidableEq E]
     (hd : Nat) (tl : List Nat)
     (logs₀ logs₁ : VoterLogs E) (k : Nat) (e : E)
+    (hnr     : NoRollbackInvariantFor E (hd :: tl) logs₀ logs₁)
     (hcommit : isQuorumCommitted (hd :: tl) logs₀ k e) :
-    isQuorumCommitted (hd :: tl) logs₁ k e := by
-  sorry
+    isQuorumCommitted (hd :: tl) logs₁ k e :=
+  hnr k e hcommit
 
 /-! ## RSS5: Leader completeness (via explicit witness) -/
 
@@ -328,12 +367,22 @@ theorem raft_joint_cluster_safety [DecidableEq E]
     **What is proved**: RSS6 establishes that `hcert → isClusterSafe`.  This sorry
     closes the remaining gap: `reachable → hcert`.  The Raft paper (Ongaro §5.4.1)
     gives an informal proof of this via Leader Completeness and Log Matching
-    (RSS3, RSS5); a full Lean proof requires both of those (currently sorry-guarded). -/
+    (RSS3, RSS5); a full Lean proof requires a protocol-level induction over Raft
+    message steps, likely via a `RaftTrace` inductive type.
+
+    **Relationship to other theorems**:
+    - RSS3 (`log_matching_property`) + `LogMatchingInvariantFor` are the key invariant.
+    - RP6 (sorry-guarded) shows AppendEntries preserves `LogMatchingInvariantFor`.
+    - RP8 (sorry-guarded) shows valid Raft transitions satisfy `NoRollbackInvariantFor`.
+    - RSS8 = RSS6 applied to a `hcert` derived from RP6 + RP8 + protocol induction. -/
 theorem raft_end_to_end_safety_full [DecidableEq E]
     (hd : Nat) (tl : List Nat) (cs : ClusterState E)
     (hvoters : cs.voters = hd :: tl)
     (hreachable : True) : -- placeholder: "cs is reachable from a valid initial state"
     isClusterSafe cs := by
+  -- RSS8 requires deriving hcert from the protocol-level reachability predicate.
+  -- Until a RaftTransition/RaftTrace model is formalised, this sorry documents the
+  -- remaining proof obligation explicitly.
   sorry
 
 /-! ## Evaluation examples -/

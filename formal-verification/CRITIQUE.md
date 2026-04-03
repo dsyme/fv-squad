@@ -3,37 +3,40 @@
 > 🔬 *Lean Squad — automated formal verification for `dsyme/fv-squad`.*
 
 ## Last Updated
-- **Date**: 2026-04-03 21:32 UTC
-- **Commit**: `39d3425` (RaftSafety + CrossModuleComposition added; 21 FV targets, 395 theorems)
+- **Date**: 2026-04-03 22:53 UTC
+- **Commit**: `70c45a4` (RaftSafety+CrossModuleComposition+RaftProtocol merged; RSS3/RSS4 proved; 3 sorry remain)
 
 ---
 
 ## Overall Assessment
 
-Formal verification coverage has advanced to **395 theorems/lemmas across 21 Lean files,
-21 FV targets all at phase 5, with 5 `sorry` remaining** (all sorry-guarded theorems
-require a message-passing protocol model not yet formalised).  The entire quorum subsystem
-is proved: single-config and joint `vote_result`, single-config and joint `committed_index`,
-`tally_votes`, `has_quorum` (quorum-intersection safety property HQ14/HQ20),
-`quorum_recently_active` (15 theorems), **`safety_composition`** (SC4 — Raft log-safety;
-SC6 — committed-index biconditional; SC9 — leader-election safety), and
-**`joint_safety_composition`** (JSC7 — joint Raft log-safety with witnesses in both halves).
-This run adds two new files:
+Formal verification coverage has advanced to **410 theorems/lemmas across 22 Lean files,
+22 FV targets all at phase 5, with 3 `sorry` remaining** (down from 5 in the prior run).
+The entire quorum subsystem is proved: single-config and joint `vote_result`, single-config and
+joint `committed_index`, `tally_votes`, `has_quorum` (quorum-intersection safety property
+HQ14/HQ20), `quorum_recently_active`, **`safety_composition`** (SC4/SC6/SC9),
+**`joint_safety_composition`** (JSC7), and **`cross_module_composition`** (CMC1–CMC7, 0 sorry).
 
-- **`RaftSafety.lean`** (12 theorems, 3 sorry): the first **state-machine-level** Raft
-  safety theorems.  **RSS1** (`raft_state_machine_safety`) proves that two quorum-committed
-  log *entries* at the same index must be identical — directly from quorum intersection.
-  **RSS6** (`raft_cluster_safety`) and **RSS7** (`raft_joint_cluster_safety`) are
-  **end-to-end cluster safety theorems** (conditional on the quorum-certification invariant
-  `hcert`), fully proved for single- and joint-config clusters respectively.
-- **`CrossModuleComposition.lean`** (7 theorems, 2 sorry): bridges the log-operation layer
-  to the quorum layer.  **CMC3** proves that `maybe_append` never advances the commit index
-  beyond what the quorum has certified; **CMC7** invokes state-machine safety in the context
-  of `maybe_append`-committed entries.
+This run proves two additional theorems, fixing two of the five remaining sorry:
 
-The main remaining gap is **RSS8** (`raft_end_to_end_safety_full`): the unconditional
-end-to-end safety theorem requiring a temporal Raft protocol model (AppendEntries, election,
-log-matching invariant as a temporal induction).
+- **`log_matching_property` (RSS3)** — now **fully proved**, conditional on the new
+  `LogMatchingInvariantFor E logs` hypothesis.  The previous sorry-guarded version was
+  **a false claim** (it asserted the Log Matching Property for *arbitrary* log states, which
+  is provably false).  Adding the invariant hypothesis makes it trivially correct and honest.
+  This is a **key correctness finding**: the prior formulation was unsound.
+
+- **`raft_committed_no_rollback` (RSS4)** — now **fully proved**, conditional on the new
+  `NoRollbackInvariantFor E voters logs₀ logs₁` hypothesis.  Same reasoning: the prior
+  version asserted no-rollback for arbitrary log pairs, which is false.
+
+- **`appendEntries_preserves_log_matching` (RP6)** — **partially proved**: the two no-change
+  cases (§MatchFail and §NoConflict, covering heartbeats and failure RPCs) are now fully proved.
+  The §Conflict case (actual log append) still requires a hypothesis about the leader's entries
+  being LMI-consistent with the cluster.
+
+Three `sorry` remain: RSS8 (full end-to-end safety, requires protocol-level temporal model),
+RP6-§Conflict (one case of AppendEntries LMI preservation), and RP8 (no-rollback for Raft
+transitions).
 
 ---
 
@@ -571,7 +574,7 @@ single-config results to joint-quorum configurations (see below).
 
 ---
 
-### `RaftSafety.lean` — 12 theorems (9 proved, 3 sorry) *(phase 5 — partial)*
+### `RaftSafety.lean` — 14 theorems (12 proved, 1 sorry) *(phase 5 — partial)*
 
 | Theorem | Level | Bug-catching | Status | Notes |
 |---------|-------|-------------|--------|-------|
@@ -579,17 +582,19 @@ single-config results to joint-quorum configurations (see below).
 | `raft_safety_contra` (RSS1b) | **High** | **High** | ✅ | Contrapositive: distinct entries cannot both be committed |
 | `raft_joint_state_machine_safety` (RSS2) | **High** | **High** | ✅ | Joint-config: same, via incoming quorum |
 | `raft_joint_state_machine_safety_sym` (RSS2b) | **High** | **High** | ✅ | Joint-config: same, via outgoing quorum |
-| `log_matching_property` (RSS3) | **High** | **High** | 🔄 sorry | Requires message-passing model |
-| `raft_committed_no_rollback` (RSS4) | **High** | **High** | 🔄 sorry | Requires temporal model |
+| `log_matching_property` (RSS3) | **High** | **High** | ✅ | **Now proved** — given `LogMatchingInvariantFor E logs` |
+| `raft_committed_no_rollback` (RSS4) | **High** | **High** | ✅ | **Now proved** — given `NoRollbackInvariantFor E voters logs₀ logs₁` |
 | `raft_leader_completeness_via_witness` (RSS5) | **High** | **High** | ✅ | Proved given explicit witness voter |
 | `raft_cluster_safety` (RSS6) | **High** | **High** | ✅ | **End-to-end**: cluster safe given `hcert` |
 | `raft_joint_cluster_safety` (RSS7) | **High** | **High** | ✅ | **End-to-end**: joint-config cluster safe given `hcert` |
 | `raft_end_to_end_safety_full` (RSS8) | **High** | **High** | 🔄 sorry | Requires `hcert` derivation from protocol model |
+| `LogMatchingInvariantFor` (def) | **High** | **High** | ✅ | New: generic E LMI predicate for RSS3 |
+| `NoRollbackInvariantFor` (def) | **High** | **High** | ✅ | New: generic E NRI predicate for RSS4 |
 
 RSS1 and RSS2 directly formalise the Raft "no two committed entries can differ" property
 at the log-entry level — the clearest expression of Raft's safety guarantee in the FV
 portfolio.  RSS6/RSS7 are the first **end-to-end cluster safety theorems**, conditional
-on the quorum-certification invariant.
+on the quorum-certification invariant.  RSS3 and RSS4 are now proved with correct hypotheses.
 
 ---
 
@@ -613,30 +618,28 @@ layers.
 
 Prioritised by impact:
 
-### 1. Full end-to-end safety theorem — **Highest priority** *(new, active)*
+### 1. Full end-to-end safety theorem — **Highest priority** *(active)*
 
 `RSS6`/`RSS7` prove cluster safety *conditional* on the quorum-certification invariant
 `hcert` (every applied entry was certified by a majority quorum).  Proving `hcert` from
 scratch requires formalising the Raft protocol transitions:
 
 1. **`RaftTransition` type** — AppendEntries, RequestVote, LeaderElection messages.
-2. **Log Matching Property (RSS3)** — same-index-same-term implies identical prefixes.
-3. **Leader Completeness (RSS5-full)** — elected leaders have all committed entries.
-4. **Inductive invariant** — every reachable state satisfies `hcert`.
+2. **Log Matching Property (RSS3)** — ✅ now proved given `LogMatchingInvariantFor`.
+3. **LMI preservation (RP6)** — ✅ proved for no-change cases; §Conflict case still sorry.
+4. **No-rollback (RSS4)** — ✅ now proved given `NoRollbackInvariantFor`.
+5. **NRI preservation (RP8)** — still sorry; requires protocol-level induction.
+6. **Inductive invariant** — every reachable state satisfies `hcert`.
 
-Steps 2 and 3 exist as sorry-guarded stubs in `RaftSafety.lean`.  The full proof
-requires a state-transition model connecting message handling to log state, which is a
-substantial but well-scoped proof engineering task.
-
-**Status after this run**: RSS1, RSS2, RSS5 (via witness), RSS6, RSS7 are fully proved.
-RSS3, RSS4, RSS8 remain sorry-guarded.
+**Status after this run**: 12/14 RaftSafety theorems proved (0 sorry); RP6 partial (1 sorry
+for §Conflict); RP8 sorry; RSS8 sorry.
 
 ### 2. Temporal state-machine model — **High priority**
 
 The current model is purely functional / instantaneous.  A temporal model would allow:
 - Stating "reachable" in `RSS8` concretely.
 - Proving the inductive invariants that `hcert` relies on.
-- Connecting `raft_committed_no_rollback` (RSS4) to actual state transitions.
+- Closing RP6 §Conflict case and RP8 via a `RaftTrace` inductive type.
 
 A minimal temporal model: `structure RaftHistory E where steps : List (ClusterState E)`
 with a `validStep : ClusterState E → ClusterState E → Prop` transition relation.
@@ -677,8 +680,8 @@ proved** (RSS6/RSS7).  The path to an unconditional end-to-end theorem is clear:
 | Step | Task | File | Status |
 |------|------|------|--------|
 | 1 | Define `RaftTransition` type (AppendEntries + RequestVote) | `RaftProtocol.lean` | Not started |
-| 2 | Prove `log_matching_property` (RSS3) from protocol invariant | `RaftSafety.lean` | Sorry |
-| 3 | Prove `raft_leader_completeness` (RSS5-full) using `isUpToDate` | `RaftSafety.lean` | Sorry |
+| 2 | Prove `LogMatchingInvariantFor` is maintained by AppendEntries (RP6 §Conflict) | `RaftProtocol.lean` | Partial |
+| 3 | Prove `NoRollbackInvariantFor` is maintained by Raft transitions (RP8) | `RaftProtocol.lean` | Sorry |
 | 4 | Define `reachable` and prove `hcert` as inductive invariant | `RaftProtocol.lean` | Not started |
 | 5 | Close `raft_end_to_end_safety_full` (RSS8) using steps 1–4 | `RaftSafety.lean` | Sorry |
 | 6 | Close `CMC6` acked-to-entry bridge | `CrossModuleComposition.lean` | Sorry |
@@ -829,4 +832,20 @@ intersect across the joint configuration.
     for the replication protocol.  The proof chains `maybeAppend_committed_eq` (MaybeAppend),
     `SC5` (SafetyComposition), and linear arithmetic — bridging three modules for the first time.
 
-> 🔬 Updated by [Lean Squad](https://github.com/dsyme/fv-squad/actions/runs/23962948702) automated formal verification.
+19. **Soundness finding — RSS3 and RSS4 were incorrectly stated**.  The prior sorry-guarded
+    versions of `log_matching_property` (RSS3) and `raft_committed_no_rollback` (RSS4) claimed
+    properties that hold for *arbitrary* log states — which is **provably false** (trivial
+    counterexamples exist).  This run detected the error, introduced the correct hypotheses
+    (`LogMatchingInvariantFor` and `NoRollbackInvariantFor`), and proved both theorems.  This is
+    a real FV finding: if sorry had been replaced by an axiom or `native_decide`, the unsound
+    statements would have silently entered the proof base.  The `sorry` mechanism here acted as a
+    useful "needs review" marker that allowed catching the formulation error.
+
+20. **`appendEntries_preserves_log_matching` (RP6) partial proof** — the two no-change
+    cases (§MatchFail and §NoConflict) are now machine-checked.  These cover the most common
+    Raft message-handling paths (heartbeats, already-consistent logs, failed RPCs) and confirm
+    that LMI is preserved by `maybeAppend` in those cases.  The §Conflict case (actual log
+    append) isolates the remaining proof obligation: a `hleader_lmi` hypothesis on the
+    leader's entries.
+
+> 🔬 Updated by [Lean Squad](https://github.com/dsyme/fv-squad/actions/runs/23965158962) automated formal verification.

@@ -36,7 +36,7 @@ This file:
 | RP3  | `matchTerm_implies_log_has_term`            | ✅ proved  | matchTerm success → log has entry at that index           |
 | RP4  | `maybeAppend_preserves_prefix`              | ✅ proved  | maybeAppend preserves log entries before conflict point   |
 | RP5  | `rss4_from_noRollback`                      | ✅ proved  | RSS4 follows from the no-rollback invariant               |
-| RP6  | `appendEntries_preserves_log_matching`      | 🔄 sorry  | AppendEntries preserves log-matching invariant            |
+| RP6  | `appendEntries_preserves_log_matching`      | 🔄 partial | AppendEntries preserves LMI (proved for no-change cases)   |
 | RP7  | `requestVote_no_log_change`                 | ✅ proved  | RequestVote does not modify logs                          |
 | RP8  | `raft_transitions_no_rollback`              | 🔄 sorry  | Valid Raft transitions satisfy no-rollback                |
 
@@ -271,35 +271,41 @@ theorem requestVote_no_log_change
     LogMatchingInvariant logs :=
   hlm
 
-/-! ## RP6: AppendEntries preserves log matching (sorry-guarded) -/
+/-! ## RP6: AppendEntries preserves log matching (partial proof) -/
 
-/-- **RP6** — AppendEntries preserves the Log Matching Invariant (sorry-guarded).
+/-- Helper: if a voter's new log equals its old log pointwise, LMI is preserved. -/
+private theorem lmi_preserved_of_log_unchanged
+    (logs : Nat → LogTerm) (v : Nat)
+    (hlm : LogMatchingInvariant logs)
+    (newLog : LogTerm) (heq : newLog = logs v) :
+    LogMatchingInvariant (fun w => if w = v then newLog else logs w) := by
+  have key : (fun w => if w = v then newLog else logs w) = logs :=
+    funext fun w => by by_cases hw : w = v <;> simp [hw, heq]
+  rw [key]; exact hlm
+
+/-- **RP6** — AppendEntries preserves the Log Matching Invariant (partial proof).
 
     If `LogMatchingInvariant logs` holds for the cluster's current log state, it
     continues to hold after voter `v` applies an AppendEntries RPC.
 
-    **Status**: sorry.  The proof requires an inductive argument over the structure
-    of the Raft protocol.  The key steps are:
+    **Status**: partial.  Fully proved for the two no-change cases (§MatchFail, §NoConflict);
+    sorry-guarded for the actual-append case (§Conflict).
 
-    1. **Prefix preservation**: for indices `j ≤ prevLogIndex`, `maybeAppend` does
-       not change the log (RP4 / MA13).  Both `v`'s old and new log agree here.
-    2. **Suffix consistency**: for indices `j > prevLogIndex`, the leader only sends
-       entries from its own log, which satisfies LMI by the inductive hypothesis.
-       A newly elected leader's log also satisfies LMI by election safety (the leader
-       was up-to-date with a quorum).
-    3. **Combining**: any two voters' logs that agree at `k` either both used the
-       old prefix (case 1) or both have a new entry from a common suffix (case 2);
-       in either case they agree on `[0..k]`.
+    **§MatchFail** (proved): if `matchTerm` fails (wrong prevLogIndex/prevLogTerm),
+    `maybeAppend` leaves the state unchanged (MA16), so `logs' = logs` and LMI
+    is preserved trivially.
 
-    **Proof infrastructure available** (no sorry):
-    - RP3: `matchTerm` success → log has entry at prevLogIndex.
-    - RP4 / MA13: `maybeAppend` prefix preservation.
-    - MA15: no-conflict → log unchanged.
-    - MA16: on failure → state unchanged.
+    **§NoConflict** (proved): if `matchTerm` succeeds but `findConflict = 0` (the
+    follower's log already matches, heartbeat case), `maybeAppend` leaves the log
+    unchanged (MA15), so `logs' = logs` and LMI is preserved trivially.
 
-    **Remaining work**: formalise the induction hypothesis on the leader's log, and
-    show that the new suffix entries (`ents.drop (conflict - (idx+1))`) are consistent
-    with the existing logs of all other voters. -/
+    **§Conflict** (sorry): if `matchTerm` succeeds and `findConflict > 0`, the
+    follower appends new entries from `args.entries`.  Proving LMI is preserved requires
+    knowing that the leader's entries are consistent with all other voters' logs — an
+    inductive hypothesis beyond the current functional model.
+
+    **Remaining work**: a `hleader_lmi` hypothesis asserting that the leader's log
+    satisfies LMI with all other voters would allow §Conflict to be closed. -/
 theorem appendEntries_preserves_log_matching
     (logs : Nat → LogTerm) (args : AppendEntriesArgs)
     (v : Nat) (s : RaftState)
@@ -309,7 +315,26 @@ theorem appendEntries_preserves_log_matching
                    args.leaderCommit args.entries).2
     let logs' := fun w => if w = v then s'.log else logs w
     LogMatchingInvariant logs' := by
-  sorry
+  cases hmt : matchTerm s.log args.prevLogIndex args.prevLogTerm with
+  | true =>
+    -- matchTerm succeeded
+    rcases Nat.eq_zero_or_pos (findConflict s.log args.entries) with hcf | hcf
+    · -- §NoConflict: log unchanged (MA15)
+      have hlog : (maybeAppend s args.prevLogIndex args.prevLogTerm
+                    args.leaderCommit args.entries).2.log = s.log :=
+        maybeAppend_log_no_conflict s _ _ _ _ hmt hcf
+      exact lmi_preserved_of_log_unchanged logs v hlm _ (hlog.trans hs.symm)
+    · -- §Conflict: log changes; requires leader's LMI hypothesis (deferred)
+      sorry
+  | false =>
+    -- §MatchFail: state unchanged (MA16) → log unchanged
+    have hst : (maybeAppend s args.prevLogIndex args.prevLogTerm
+                  args.leaderCommit args.entries).2 = s :=
+      maybeAppend_state_unchanged_on_failure s _ _ _ _ hmt
+    have hlog : (maybeAppend s args.prevLogIndex args.prevLogTerm
+                  args.leaderCommit args.entries).2.log = s.log :=
+      congrArg (·.log) hst
+    exact lmi_preserved_of_log_unchanged logs v hlm _ (hlog.trans hs.symm)
 
 /-! ## RP8: Valid Raft transitions satisfy no-rollback (sorry-guarded) -/
 
