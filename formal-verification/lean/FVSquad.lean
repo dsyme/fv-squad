@@ -13,3 +13,4 @@ import FVSquad.Progress
 import FVSquad.IsUpToDate
 import FVSquad.LogUnstable
 import FVSquad.HasQuorum
+import FVSquad.QuorumRecentlyActive

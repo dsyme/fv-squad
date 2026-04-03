@@ -20,8 +20,10 @@ Prioritised target list. Phases: 1=Research, 2=Informal Spec, 3=Lean Spec, 4=Lea
 | 12 | `is_up_to_date` | `src/raft_log.rs` | log freshness comparison | 5 ✅ | 18 theorems proved (0 sorry). Reflexivity, totality, transitivity, antisymmetry of log order. `FVSquad/IsUpToDate.lean`. |
 | 13 | `log_unstable` | `src/log_unstable.rs` | unstable log segment ops | 5 ✅ | 37 theorems proved (0 sorry). All query ops, state transitions, wf invariant, truncate_and_append 3-case analysis. `FVSquad/LogUnstable.lean`. |
 | 14 | `tally_votes` | `src/tracker.rs` | `ProgressTracker::tally_votes` | 5 ✅ | 18 theorems proved (0 sorry). Granted/rejected counting, partition identity, rejection-closes-election safety property, all/none voting lemmas. `FVSquad/TallyVotes.lean`. |
+| 15 | `has_quorum` | `src/tracker.rs` | `ProgressTracker::has_quorum` | 5 ✅ | 22 theorems proved (0 sorry). Quorum intersection / Raft safety property (HQ14, HQ20). `FVSquad/HasQuorum.lean`. PR open #131. |
+| 16 | `quorum_recently_active` | `src/tracker.rs` | `ProgressTracker::quorum_recently_active` | 5 ✅ | 15 theorems proved (0 sorry). Leader always active (QRA4), monotonicity, nil-entries/nil-voters edge cases, singleton-self quorum. `FVSquad/QuorumRecentlyActive.lean`. |
 
 ## Next Steps
 
-1. **Task 5** (Proof for joint tally_votes) — extend `TallyVotes` to `JointConfig` using `JointVote` composition.
+1. **Task 5** (Cross-module composition) — connect `has_quorum` + `quorum_recently_active` + `committed_index` in one safety theorem.
 2. **Task 8** (Aeneas extraction) — blocked on OCaml/opam in no-new-privileges containers.
