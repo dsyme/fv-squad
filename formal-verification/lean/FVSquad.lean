@@ -20,3 +20,4 @@ import FVSquad.JointTally
 import FVSquad.JointSafetyComposition
 import FVSquad.RaftSafety
 import FVSquad.CrossModuleComposition
+import FVSquad.RaftProtocol

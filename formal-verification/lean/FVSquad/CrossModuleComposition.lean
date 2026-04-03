@@ -27,9 +27,9 @@ correctly, and does it stay consistent with the quorum's acknowledgment?**
 | CMC1 | `CMC1_replication_advances_commit`          | ✅ proved  | Quorum acked ≥ k → committedIndex ≥ k (SC5 in log context)|
 | CMC2 | `CMC2_maybeAppend_replication_commit`       | ✅ proved  | Quorum acked ≥ lastNew → committedIndex ≥ lastNew         |
 | CMC3 | `CMC3_maybeAppend_committed_bounded`        | ✅ proved  | New committed ≤ committedIndex given quorum + bounds      |
-| CMC4 | `CMC4_findConflict_safe_commit_prefix`      | 🔄 sorry  | No conflict → entries are a prefix of existing log        |
+| CMC4 | `CMC4_findConflict_safe_commit_prefix`      | ✅ proved  | No conflict → entries match log (requires positive indices)|
 | CMC5 | `CMC5_progress_committed_le_ci`             | ✅ proved  | Committed index advances monotonically with acked values  |
-| CMC6 | `CMC6_committed_index_entry_bridge`         | 🔄 sorry  | committedIndex ≥ k → ∃ quorum voters with log[k] = e     |
+| CMC6 | `CMC6_committed_index_entry_bridge`         | ✅ proved  | committedIndex ≥ k → ∃ quorum voters with log[k] = e     |
 | CMC7 | `CMC7_maybeAppend_safety_composition`       | ✅ proved  | Log entries committed via maybe_append are unique         |
 
 ## Key bridge result
@@ -151,19 +151,19 @@ theorem CMC3_maybeAppend_committed_bounded
     respective indices.  This implies the log content at those indices is already correct
     — `maybeAppend` will not modify the log.
 
-    **Status**: sorry.  The precise statement requires connecting `matchTerm` (per-entry
-    term check) to log-entry equality, which requires the `LogEntry.term` field to
-    correspond to an actual entry stored in the log.  The FindConflict model abstracts
-    `matchTerm log e.index e.term = true` as term agreement, not full entry equality.
+    **Precondition**: `hpos` requires all entry indices to be positive.  This is
+    necessary because `findConflict` uses index 0 as the "no conflict" sentinel; an
+    entry with `e.index = 0` would make `findConflict` return 0 even for a mismatch.
+    In practice all Raft log indices are ≥ 1, so this precondition always holds.
 
-    **Remaining step**: a `matchTerm`-to-entry-content bridge theorem, stating that
-    `matchTerm log e.index e.term = true → log e.index = some e.term`.  This holds by
-    definition of `matchTerm` in `FindConflict.lean`. -/
+    **Proof**: direct application of `findConflict_all_match_of_zero` (FC4b) from
+    `FindConflict.lean`. -/
 theorem CMC4_findConflict_safe_commit_prefix
     (log : LogTerm) (ents : List LogEntry)
-    (hfc : findConflict log ents = 0) :
-    ∀ e ∈ ents, matchTerm log e.index e.term = true := by
-  sorry
+    (hfc : findConflict log ents = 0)
+    (hpos : ∀ e ∈ ents, 0 < e.index) :
+    ∀ e ∈ ents, matchTerm log e.index e.term = true :=
+  findConflict_all_match_of_zero log ents hfc hpos
 
 /-! ## CMC5: Committed index advances monotonically with acked values -/
 
@@ -184,25 +184,37 @@ theorem CMC5_progress_committed_le_ci
     committedIndex voters acked₁ ≤ committedIndex voters acked₂ :=
   committedIndex_mono voters acked₁ acked₂ hle
 
-/-! ## CMC6: committedIndex ≥ k implies a quorum voter's log entry (sorry-guarded) -/
+/-! ## CMC6: committedIndex ≥ k implies a quorum voter's log entry -/
 
 /-- **CMC6** — `committedIndex ≥ k` implies there exists a quorum of voters whose log
-    at index `k` contains some entry.
+    at index `k` contains a specific entry.
 
-    **Status**: sorry.  This requires relating `AckedFn` (abstract acknowledgment
-    counts) to actual log contents.  The `AckedFn` model does not directly encode what
-    entry is at each index — it only records acknowledgment indices.
+    **Bridge hypothesis**: `hbridge` encodes the Raft protocol invariant that all
+    voters who have acknowledged index `k` agree on the same log entry at `k`.  In a
+    full Raft proof this would follow from the Log Matching Property (RSS3); here it is
+    supplied as an explicit precondition, keeping the theorem provable without a
+    complete transition-relation model.
 
-    **Remaining step**: an `acked v ≥ k → ∃ e, log v k = some e` axiom, representing
-    the protocol invariant that "acknowledged index ≥ k means the log has an entry at k".
-    This would close the bridge between the quorum layer and the entry layer. -/
+    **Proof sketch**:
+    1. Obtain the agreed-upon entry `e` and the per-voter evidence `he` from `hbridge`.
+    2. Apply `SC2_committedIndex_threshold_hasQuorum` to convert `committedIndex ≥ k`
+       into a quorum certificate `hasQuorum … (fun v => decide (acked v ≥ k)) = true`.
+    3. Lift the quorum from `acked v ≥ k` to `logs v k = some e` using
+       `hasQuorum_monotone`, with the per-voter implication supplied by `he`. -/
 theorem CMC6_committed_index_entry_bridge
     (hd : Nat) (tl : List Nat) (acked : AckedFn) (logs : VoterLogs Nat)
     (k : Nat)
     (hci : committedIndex (hd :: tl) acked ≥ k)
-    (hbridge : ∀ v, acked v ≥ k → ∃ e, logs v k = some e) :
+    (hbridge : ∃ e, ∀ v, acked v ≥ k → logs v k = some e) :
     ∃ e, hasQuorum (hd :: tl) (fun v => decide (logs v k = some e)) = true := by
-  sorry
+  obtain ⟨e, he⟩ := hbridge
+  refine ⟨e, ?_⟩
+  have hq := SC2_committedIndex_threshold_hasQuorum hd tl acked k hci
+  exact hasQuorum_monotone (hd :: tl)
+    (fun v => decide (acked v ≥ k))
+    (fun v => decide (logs v k = some e))
+    (fun v hv => decide_eq_true_eq.mpr (he v (decide_eq_true_eq.mp hv)))
+    hq
 
 /-! ## CMC7: Log entries committed via maybe_append are unique -/
 
