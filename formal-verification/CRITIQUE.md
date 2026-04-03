@@ -3,24 +3,27 @@
 > 🔬 *Lean Squad — automated formal verification for `dsyme/fv-squad`.*
 
 ## Last Updated
-- **Date**: 2026-04-03 00:13 UTC
-- **Commit**: `3cc92d4` (has_quorum added; 15 targets at phase 5, 320+ public theorems)
+- **Date**: 2026-04-03 16:08 UTC
+- **Commit**: `6af5080` (safety_composition added; 17 targets at phase 5, 346 public theorems)
 
 ---
 
 ## Overall Assessment
 
-Formal verification coverage has advanced to **320+ public theorems/lemmas across 14 Lean
-files, 15 FV targets all at phase 5, with 0 `sorry` remaining**.  The entire quorum
+Formal verification coverage has advanced to **346 public theorems/lemmas across 17 Lean
+files, 17 FV targets all at phase 5, with 0 `sorry` remaining**.  The entire quorum
 subsystem is proved: single-config and joint `vote_result`, single-config and joint
-`committed_index`, `tally_votes`, and now **`has_quorum`** (22 theorems including the
-quorum intersection / Raft safety property HQ14 and its concrete witness HQ20).  Log-layer
+`committed_index`, `tally_votes`, `has_quorum` (including the quorum-intersection safety
+property HQ14/HQ20), `quorum_recently_active` (15 theorems including leader-always-active
+and quorum monotonicity), and now **`safety_composition`** (9 cross-module theorems:
+SC4 — the Raft log-safety principal theorem; SC6 — biconditional quorum ↔ committed index;
+SC9 — leader-election safety via active-quorum ∩ commit-quorum intersection).  Log-layer
 coverage is comprehensive: `find_conflict` (12 theorems), `maybe_append` (18 theorems),
 `is_up_to_date` (17 theorems), and `log_unstable` (37 theorems).  The flow-control layer is
 fully proved: `Inflights` (49 theorems), `Progress` (31 theorems, `wf` invariant), and
-`tally_votes` (28 theorems).  The main remaining gap is that no end-to-end Raft safety
-theorem exists yet — the state-machine level is untouched — and cross-module composition
-theorems connecting the proved modules have not been attempted.
+`tally_votes` (28 theorems).  The main remaining gap is the state-machine level: no
+end-to-end Raft safety theorem exists yet for the full protocol, and joint-config analogues
+of SafetyComposition have not been attempted.
 
 ---
 
@@ -463,52 +466,128 @@ expected but worth documenting as a model boundary.
 
 ---
 
+### `QuorumRecentlyActive.lean` — 15 theorems *(phase 5 — complete)*
+
+| Theorem | Level | Bug-catching potential | Notes |
+|---------|-------|----------------------|-------|
+| QRA1 `isActive_nil` | Low | Low | Empty entries → no active node |
+| QRA2 `isActive_cons` | Low | Low | Unfold `isActive` on list cons |
+| QRA3 `isActive_true_iff` | Mid | **High** | Biconditional characterisation: active ↔ ∃ matching entry |
+| QRA4 `isActive_self` | **High** | **High** | Leader is always active — core design invariant |
+| QRA5 `isActive_recentActive` | Mid | **High** | `recent_active=true` → always counted as active |
+| QRA6 `isActive_false_absent` | Mid | Medium | Absent node is never active |
+| QRA7 `isActive_append` | Low | Low | `isActive` distributes over append |
+| QRA8 `overlapCount_active_nil` | Low | Low | No entries → overlap = 0 |
+| QRA9 `isActive_monotone_overlap` | Mid | **High** | Superset of active entries ≥ overlap count |
+| QRA10 `quorumRecentlyActive_def` | Low | Low | Definitional unfolding to `hasQuorum` |
+| QRA11 `quorumRecentlyActive_nil_voters` | Low | Low | Empty voters → vacuously quorate |
+| QRA12 `quorumRecentlyActive_nil_entries` | Mid | Medium | Empty entries → quorum iff no voters |
+| QRA13 `quorumRecentlyActive_singleton_self` | **High** | **High** | Single voter = leader → always quorate |
+| QRA14 `quorumRecentlyActive_all_active` | Mid | **High** | All voters active → quorum satisfied |
+| QRA15 `quorumRecentlyActive_monotone` | Mid | **High** | More active entries preserves quorum |
+
+**Assessment**: QRA4 (`isActive_self`) is the most important result: it formally proves
+the Rust design invariant that *the leader always counts itself as active*.  This is the
+non-obvious rule that prevents a leader from demoting itself when `recent_active` is false.
+QRA15 (monotonicity) connects back to HQ9 and closes the compositional chain: if the
+active set grows, the quorum can only improve.  QRA13 (singleton-self) is a clean edge-case
+sanity check — a single-node cluster is always healthy from its own perspective.
+
+**Modelling note**: The Lean model abstracts away the **write side-effects** of the Rust
+function — specifically, setting `recent_active := false` for other nodes and
+`recent_active := true` for the leader.  These side-effects affect subsequent calls but not
+the current return value.  All 15 theorems reason only about the quorum-check semantics.
+
+---
+
+### `SafetyComposition.lean` — 9 theorems *(phase 5 — complete)*
+
+| Theorem | Level | Bug-catching potential | Notes |
+|---------|-------|----------------------|-------|
+| SC1 `SC1_overlapCount_eq_countGe` | Low | Medium | Bridge: `overlapCount` = `countGe` for threshold predicate |
+| SC2 `SC2_committedIndex_threshold_hasQuorum` | Mid | **High** | Threshold ≤ committedIndex → threshold set is a quorum |
+| SC3 `SC3_committedIndex_implies_hasQuorum` | Mid | **High** | Committed index yields quorum certificate |
+| SC4 `SC4_raft_log_safety` | **High** | **Very High** | **Main theorem**: two committed indices share a witness voter |
+| SC5 `SC5_hasQuorum_implies_committedIndex_ge` | Mid | **High** | Converse: quorum at threshold k → committedIndex ≥ k |
+| SC6 `SC6_committedIndex_quorum_iff` | **High** | **Very High** | Biconditional: committedIndex ≥ k ↔ threshold quorum |
+| SC7 `SC7_committedIndex_witness` | **High** | **High** | Concrete voter acknowledged committedIndex |
+| SC8 `SC8_quorumActive_committed_witness` | **High** | **Very High** | ∃ voter that is both recently-active AND acknowledged ≥ k |
+| SC9 `SC9_quorumActive_and_commit_share_voter` | **High** | **Very High** | Recently-active quorum ∩ commit quorum ≠ ∅ |
+
+**Assessment**: `SafetyComposition` is the highest-value file in the portfolio.  It
+introduces the first **cross-module theorems** that compose three independently proved
+modules (`CommittedIndex`, `HasQuorum`, `QuorumRecentlyActive`) into joint guarantees.
+
+**SC4** is the Raft log-safety certificate: for any two acknowledgment functions over the
+same voter configuration, there is always a common witness voter.  This is the formal
+counterpart of §5.4 of the Ongaro/Ousterhout Raft paper — the argument that prevents two
+conflicting log prefixes from being simultaneously committed.  Its proof is clean and
+elegant: `SC3` (twice) → `quorum_intersection_mem` → witness extraction.
+
+**SC6** (biconditional) establishes `committedIndex` as the *largest* `k` for which the
+threshold set forms a quorum — a complete characterisation that replaces two one-directional
+theorems (SC2 + SC5) with a single `↔` .
+
+**SC9** (leader-election safety) is the practical Raft invariant: any newly elected leader
+whose supporters form a recently-active quorum must include a voter who witnessed the
+committed index.  Combined with SC4, this closes the argument for log-prefix preservation
+across elections.
+
+**SC1** (bridge lemma between `overlapCount` and `countGe`) is low-level but critical: it
+is the glue that lets `HasQuorum`-based arguments (using `overlapCount`) communicate with
+`CommittedIndex`-based arguments (using `countGe`).  Without SC1, SC2–SC9 would not
+typecheck.
+
+**Limitation**: All nine theorems cover single-config Raft only.  The joint-config
+extension (combining `JointCommittedIndex` with `HasQuorum` and `QuorumRecentlyActive`)
+has not been attempted and would be the natural next target.
+
+---
+
+## Gaps and Recommendations
+
 Prioritised by impact:
 
-### 1. Composition / end-to-end safety property — **Highest priority**
+### 1. Joint-config safety composition — **Highest priority** *(new)*
 
-No end-to-end Raft safety theorem exists yet (e.g., "two entries committed at the same
-index by the same term are identical").  The building blocks now exist across 13 Lean files:
-quorum-safety (CI-Safety + JCI4–JCI5), log-conflict detection (FC7+FC11), log-append
-semantics (MA5+MA13+MA14), election restriction (IU17), and progress wf invariants.
-The next intermediate goals are:
+`SafetyComposition` covers only single-config Raft.  The natural extension is a
+joint-config safety composition file that:
+1. Bridges `JointCommittedIndex` to `HasQuorum` (both config groups must form quorums);
+2. Proves a joint analogue of SC4: two joint committed indices share a witness in *each*
+   config group;
+3. Proves a joint leader-election safety theorem analogous to SC9.
 
-1. A **cross-module theorem** connecting `maybe_append` to `committed_index`: "if
-   `maybe_append` returns `Some(ci, _)`, then `ci ≤ committedIndex(voters, acked_post)`".
-   This would be the first theorem that reasons about two verified modules together.
-2. A **joint tally composition** theorem: extend `TallyVotes` to `JointConfig` using
-   `combineVotes` from `JointVote.lean`.  This would close the gap between `tally_votes`
-   (single config) and the full joint-config election logic.
+The building blocks exist: `JointCommittedIndex` (10 theorems), `JointVote` (14 theorems),
+`HasQuorum` (22 theorems).
 
-### 2. Composition / cross-module theorems — **High priority** *(new)*
+### 2. Cross-module log-append composition — **High priority**
 
-Now that `has_quorum` is proved, the natural next step is a cross-module theorem linking
-`has_quorum` to `committed_index`:  "the committed index returned by
-`committedIndex(voters, acked)` is `>= i` iff `has_quorum voters {j : acked[j] >= i}`".
-This would connect the two most important quorum properties in the FV portfolio.
+A theorem connecting `maybe_append` to `committed_index`: "if `maybe_append(log, entries)`
+returns `Some(ci, _)`, then `ci ≤ committedIndex(voters, acked_post)`".  This would join
+the log-operation layer (LogUnstable, FindConflict, MaybeAppend) to the quorum layer
+(CommittedIndex, SafetyComposition) for the first time.
 
-### 3. `quorum_recently_active` safety theorem — **High priority**
+### 3. Joint tally composition — **High priority**
 
-`quorum_recently_active` adds the leader itself to the active set then calls `has_quorum`.
-A theorem "if leader is in voters and quorum_recently_active(leader, progress) = true, then
-has_quorum(voters, active_set) = true" would prove leader-step safety.  With HQ9
-(monotonicity) and the `has_quorum` model now proved, this is within reach.
+Extend `TallyVotes` to `JointConfig` using `combineVotes` from `JointVote.lean`.  This
+would close the gap between `tally_votes` (single config) and the full joint-config election
+logic already modelled in `JointVote`.
 
 ### 4. Bridging theorem for `jointCommittedIndex` empty divergence — **Medium priority**
 
 JCI9–JCI10 document that the Lean model returns `0` for empty configs where Rust returns
 `u64::MAX`.  A bridging theorem showing `jointCommittedIndex incoming [] acked = committedIndex
 incoming acked` does *not* hold in the current model.  Either the model should special-case
-the empty-outgoing path, or a `outgoing ≠ []` precondition should be added to joint
+the empty-outgoing path, or an `outgoing ≠ []` precondition should be added to joint
 safety/maximality theorems.
 
-### 4. Voter-list `Nodup` precondition — **Low priority (hardening)**
+### 5. Voter-list `Nodup` precondition — **Low priority (hardening)**
 
 Add a `voters.Nodup` hypothesis to the `_iff` theorems in `MajorityVote.lean`,
 `CommittedIndex.lean`, and `TallyVotes.lean`.  Currently theorems hold for duplicate voter
 lists but with wrong semantics (one physical voter could count multiple times).
 
-### 5. `truncateAndAppend` wf guarantee — **Medium priority**
+### 6. `truncateAndAppend` wf guarantee — **Medium priority**
 
 CORRESPONDENCE.md documents that Case 2 of `truncateAndAppend` (when `after ≤ offset`)
 can violate the `wf` invariant if a snapshot is pending.  Callers are expected to guarantee
@@ -546,6 +625,14 @@ unreachable, but the gap is worth noting.
 As noted above (JCI9–JCI10), the Lean model diverges from Rust when either config group
 is empty.  The joint safety and maximality theorems (JCI4–JCI6) are sound for non-empty
 configs but may give misleading results for configurations in transition.
+
+### Concern 5: SafetyComposition covers single-config only
+
+SC4 and SC9 are proved for single-config Raft only.  The `JointVote` model already
+captures the two-quorum semantics, and `JointCommittedIndex` captures joint committed
+indices, but no joint-config safety composition theorem has been stated or proved.
+Proofs of SC4-analogues for joint config would require showing that both quorum groups
+intersect across the joint configuration.
 
 ---
 
@@ -604,6 +691,30 @@ configs but may give misleading results for configurations in transition.
     that the Raft quorum logic, log operations, config validation, flow control, and election
     counting as implemented are correct for the modelled paths.
 
+12. **`SC4_raft_log_safety`** is the first **cross-module composition theorem** in the
+    portfolio.  It composes three independently proved modules (`CommittedIndex`,
+    `HasQuorum`, `QuorumRecentlyActive`) to derive a result that none of them could state
+    alone.  The theorem directly formalises §5.4 of the Raft paper: the quorum-intersection
+    argument that prevents two different log prefixes from being simultaneously committed.
+    Its proof is elegant — `SC3` (twice) + `quorum_intersection_mem` — demonstrating that
+    the modular design paid off.
+
+13. **`SC6_committedIndex_quorum_iff`** is a biconditional that completely characterises
+    `committedIndex` in quorum terms: `committedIndex ≥ k ↔ threshold-quorum(k)`.  This
+    bridges the two main abstractions in the Raft model and makes the committed index
+    *definitionally* the largest threshold with a quorum certificate — a result no single
+    module could express.
+
+14. **`SC9_quorumActive_and_commit_share_voter`** is the first formally proved leader-election
+    safety invariant in the portfolio: any newly elected leader's supporting quorum must
+    contain a voter that witnessed the committed index.  Combined with SC4, this prevents a
+    new leader from committing entries that diverge from the existing log.
+
+15. **No bugs found** in any of the 17 verified targets.  This is evidence (not proof) that
+    the Raft quorum logic, log operations, config validation, flow control, election counting,
+    quorum liveness check, and single-config safety composition are correct for the modelled
+    paths.
+
 ---
 
-> 🔬 Updated by [Lean Squad](https://github.com/dsyme/fv-squad/actions/runs/23927847369) automated formal verification.
+> 🔬 Updated by [Lean Squad](https://github.com/dsyme/fv-squad/actions/runs/23952831373) automated formal verification.
