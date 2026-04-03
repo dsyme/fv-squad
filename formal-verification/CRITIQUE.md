@@ -3,26 +3,24 @@
 > 🔬 *Lean Squad — automated formal verification for `dsyme/fv-squad`.*
 
 ## Last Updated
-- **Date**: 2026-04-02 17:16 UTC
-- **Commit**: `da6bc87` (tally_votes merged; 14 targets at phase 5, 300+ public theorems)
+- **Date**: 2026-04-03 00:13 UTC
+- **Commit**: `3cc92d4` (has_quorum added; 15 targets at phase 5, 320+ public theorems)
 
 ---
 
 ## Overall Assessment
 
-Formal verification coverage has advanced to **300+ public theorems/lemmas across 13 Lean
-files, 14 FV targets all at phase 5, with 0 `sorry` remaining**.  The entire quorum
+Formal verification coverage has advanced to **320+ public theorems/lemmas across 14 Lean
+files, 15 FV targets all at phase 5, with 0 `sorry` remaining**.  The entire quorum
 subsystem is proved: single-config and joint `vote_result`, single-config and joint
-`committed_index`, plus safety (majority acked), maximality (optimal choice), and
-monotonicity (non-decreasing as acks arrive).  Log-layer coverage is comprehensive:
-`find_conflict` (12 theorems), `maybe_append` (18 theorems), `is_up_to_date` (17 theorems),
-and the unstable log segment `log_unstable` (37 theorems including all three
-truncate-and-append cases).  The flow-control layer is fully proved: `Inflights` (49
-theorems including ring-buffer/abstract correspondence), `Progress` state machine (31
-theorems, `wf` invariant, all state transitions), and `tally_votes` (28 theorems, partition
-identity, rejection-closes-election safety).  The main remaining gap is that no end-to-end
-Raft safety theorem exists yet — the state-machine level is untouched — and cross-module
-composition theorems connecting the proved modules have not been attempted.
+`committed_index`, `tally_votes`, and now **`has_quorum`** (22 theorems including the
+quorum intersection / Raft safety property HQ14 and its concrete witness HQ20).  Log-layer
+coverage is comprehensive: `find_conflict` (12 theorems), `maybe_append` (18 theorems),
+`is_up_to_date` (17 theorems), and `log_unstable` (37 theorems).  The flow-control layer is
+fully proved: `Inflights` (49 theorems), `Progress` (31 theorems, `wf` invariant), and
+`tally_votes` (28 theorems).  The main remaining gap is that no end-to-end Raft safety
+theorem exists yet — the state-machine level is untouched — and cross-module composition
+theorems connecting the proved modules have not been attempted.
 
 ---
 
@@ -415,7 +413,55 @@ TV12, and TV18; without it, these proofs would require substantially more case a
 
 ---
 
-## Gaps and Recommendations
+### `HasQuorum.lean` — 22 theorems *(phase 5 — complete)*
+
+| Theorem | Level | Bug-catching potential | Notes |
+|---------|-------|----------------------|-------|
+| HQ1 `hasQuorum_nil` | Low | Low | Empty voters always quorum — degenerate invariant |
+| HQ2 `overlapCount_le_length` | Low | Low | Overlap bounded by voter set size |
+| HQ3 `hasQuorum_iff_overlap` | **High** | **High** | Core equivalence: `hasQuorum ↔ overlap ≥ majority` |
+| HQ4 `overlapCount_all_in` | Low | Medium | Helper: all-in-set → overlap = length |
+| HQ5 `hasQuorum_true_of_all_in` | Mid | **High** | Full voter set forms quorum — sanity check |
+| HQ6 `overlapCount_none_in` | Low | Medium | Helper: none-in-set → overlap = 0 |
+| HQ7 `hasQuorum_false_of_none_in` | Mid | **High** | Empty set never forms quorum for non-empty voters |
+| HQ8 `overlapCount_monotone` | Mid | **High** | Superset has ≥ overlap — enables monotonicity |
+| HQ9 `hasQuorum_monotone` | **High** | **High** | Superset of quorum-forming set is also quorum |
+| HQ10 `two_majority_gt_length` | Low | Medium | `2×majority(n) > n` — key arithmetic for safety |
+| HQ11 `overlapCount_incl_excl` | Low | Medium | Inclusion-exclusion identity |
+| HQ12 `overlapUnion_le_length` | Low | Low | Union overlap ≤ voter count |
+| HQ13 `overlapIntersect_lb` | Mid | **High** | Intersection ≥ 1 given two quorums |
+| HQ14 `quorum_intersection` | **High** | **Very High** | **Safety**: two non-empty quorums share ≥ 1 voter |
+| HQ15 `hasQuorum_singleton_self` | Mid | Medium | Singleton voter in set → quorum |
+| HQ16 `hasQuorum_singleton_absent` | Mid | Medium | Singleton voter absent → not quorum |
+| HQ17 `hasQuorum_all_voters` | Mid | Medium | All voters form quorum (non-empty case) |
+| HQ18 `overlapCount_append` | Low | Low | Overlap distributes over append |
+| HQ19 `overlapCount_pos_mem` | Mid | **High** | Positive overlap → concrete member exists |
+| HQ20 `quorum_intersection_mem` | **High** | **Very High** | **Safety (witness)**: produces explicit shared voter |
+| Helper lemmas (2) | Low | Low | `overlapCount_cons`, `hasQuorum_cons_def` |
+
+**Assessment**: HQ14 and HQ20 are the most significant results in this file — and arguably
+among the most important theorems in the entire FV portfolio.  They formally prove the
+**majority quorum intersection property**: any two sets that both form a majority quorum
+of the same voter configuration must share at least one member.  This is the mathematical
+foundation of Raft consensus safety: it is precisely the property that guarantees two
+different leaders can never be elected in the same term, because any vote-winning set for
+one leader must overlap with any vote-winning set for another.
+
+HQ14 proves this at the count level (`intersectCount ≥ 1`), while HQ20 provides a
+concrete `∃ w, w ∈ voters ∧ a w = true ∧ b w = true` witness.  The proof relies on the
+inclusion-exclusion identity (HQ11), the two-majority arithmetic lemma (HQ10), and
+the overlap bound (HQ12) — a clean 5-lemma chain.
+
+HQ9 (monotonicity) is also notable: it proves that adding more nodes to a quorum-forming
+set cannot break the quorum guarantee.  This property is critical for the correctness of
+the `quorum_recently_active` algorithm (which adds the leader itself to the active set).
+
+**Limitation**: HQ14 and HQ20 assume `voters ≠ []` (non-empty voter list).  The
+empty-voter degenerate case is handled by HQ1 (`hasQuorum_nil` always returns `true`),
+but intersection is vacuously empty for empty voter lists.  This is mathematically
+expected but worth documenting as a model boundary.
+
+---
 
 Prioritised by impact:
 
@@ -434,14 +480,21 @@ The next intermediate goals are:
    `combineVotes` from `JointVote.lean`.  This would close the gap between `tally_votes`
    (single config) and the full joint-config election logic.
 
-### 2. `ProgressTracker` / `progress_set` — **High priority** *(unstarted)*
+### 2. Composition / cross-module theorems — **High priority** *(new)*
 
-`src/tracker/progress_set.rs` manages quorum tracking over the peer progress map.
-Key targets: `has_quorum` (does a quorum have acked ≥ committed?), `quorum_recently_active`
-(leader check).  These use `committedIndex` and `Progress` directly — both are now proved —
-making this the natural next target.
+Now that `has_quorum` is proved, the natural next step is a cross-module theorem linking
+`has_quorum` to `committed_index`:  "the committed index returned by
+`committedIndex(voters, acked)` is `>= i` iff `has_quorum voters {j : acked[j] >= i}`".
+This would connect the two most important quorum properties in the FV portfolio.
 
-### 3. Bridging theorem for `jointCommittedIndex` empty divergence — **Medium priority**
+### 3. `quorum_recently_active` safety theorem — **High priority**
+
+`quorum_recently_active` adds the leader itself to the active set then calls `has_quorum`.
+A theorem "if leader is in voters and quorum_recently_active(leader, progress) = true, then
+has_quorum(voters, active_set) = true" would prove leader-step safety.  With HQ9
+(monotonicity) and the `has_quorum` model now proved, this is within reach.
+
+### 4. Bridging theorem for `jointCommittedIndex` empty divergence — **Medium priority**
 
 JCI9–JCI10 document that the Lean model returns `0` for empty configs where Rust returns
 `u64::MAX`.  A bridging theorem showing `jointCommittedIndex incoming [] acked = committedIndex
@@ -538,10 +591,19 @@ configs but may give misleading results for configurations in transition.
    invariant: if ≥ majority voters reject a candidate, the remaining voters cannot form a
    quorum even if all vote yes.  This is a key Raft safety guarantee.
 
-10. **No bugs found** in any of the 14 verified functions.  This is evidence (not proof)
+10. **`quorum_intersection`** (HQ14) and **`quorum_intersection_mem`** (HQ20) formally prove
+    the **majority quorum intersection property** — the mathematical cornerstone of Raft
+    consensus safety.  For any non-empty voter list and any two predicates `a`, `b` that
+    both form a majority quorum, there must exist at least one voter in both sets.  HQ20
+    provides a concrete `∃ w ∈ voters, a w = true ∧ b w = true` witness.  This is the
+    property that prevents two different leaders from being elected in the same term.  The
+    proof chains through: inclusion-exclusion (HQ11) → union-bound (HQ12) → arithmetic
+    `2×majority(n) > n` (HQ10) → intersection-lb (HQ13) → witness extraction (HQ19).
+
+11. **No bugs found** in any of the 15 verified functions.  This is evidence (not proof)
     that the Raft quorum logic, log operations, config validation, flow control, and election
     counting as implemented are correct for the modelled paths.
 
 ---
 
-> 🔬 Updated by [Lean Squad](https://github.com/dsyme/fv-squad/actions/runs/23912617612) automated formal verification.
+> 🔬 Updated by [Lean Squad](https://github.com/dsyme/fv-squad/actions/runs/23927847369) automated formal verification.
