@@ -7,8 +7,8 @@ correspondence level, known divergences, and the impact on any proofs that rely 
 definition.
 
 ## Last Updated
-- **Date**: 2026-04-02 17:16 UTC
-- **Commit**: `da6bc87` (tally_votes merged; 14 targets at phase 5, 300+ public theorems)
+- **Date**: 2026-04-04 13:35 UTC
+- **Commit**: `870d496` — FV project complete (0 sorry; 443+ theorems; 23 Lean files)
 
 ---
 
@@ -703,3 +703,243 @@ deliberate, documented abstractions that do not invalidate any proved theorem.
 See each file section above for the full divergence lists.
 
 > 🔬 Updated by Lean Squad run [23912617612](https://github.com/dsyme/fv-squad/actions/runs/23912617612).
+
+---
+
+## `FVSquad/SafetyComposition.lean` ↔ `src/quorum/majority.rs` + `src/tracker.rs`
+
+**Lean file**: `formal-verification/lean/FVSquad/SafetyComposition.lean`
+**Rust sources**: [`src/quorum/majority.rs`](src/quorum/majority.rs), [`src/tracker.rs`](src/tracker.rs)
+**Phase**: 5 ✅ (9 theorems, 0 sorry)
+
+This file contains no Lean models of Rust functions — it is a **pure composition layer**
+that connects independently proved modules (`CommittedIndex`, `HasQuorum`,
+`QuorumRecentlyActive`).  There is no direct Rust function corresponding to any single
+theorem here; instead, the theorems formalise properties that emerge from the interaction
+of Rust subsystems.
+
+### Correspondence notes
+
+| Lean concept | Rust concept | Correspondence | Notes |
+|---|---|---|---|
+| `SC4_raft_log_safety` | §5.3 safety argument in Raft paper | Abstraction | Formalises the quorum-intersection argument; no single Rust function |
+| `SC6_committedIndex_quorum_iff` | `AckedIndexer` + `Configuration::committed` | Abstraction | Biconditional characterising `committed_index` via quorum predicate |
+| `SC9_quorumActive_and_commit_share_voter` | Leader election + commit quorum | Abstraction | Models leader-election safety; no single Rust function |
+
+### Known divergences
+
+1. **AckedFn = Nat → Nat**: The Rust uses `AckedIndexer` trait (with `HashMap` backing). Modelled as pure function.
+2. **Voter list vs HashSet**: `List Nat` vs `HashSet<u64>`. `Nodup` not enforced.
+3. **No mutation**: All theorems are about functional models.
+
+### Proved theorems summary
+
+All 9 theorems proved (0 sorry). SC4 is the key cross-module result: two committed indices
+share a witness voter. SC6 is the biconditional bridge. SC9 proves leader election safety.
+
+---
+
+## `FVSquad/JointSafetyComposition.lean` ↔ `src/quorum/joint.rs` + `src/quorum/majority.rs`
+
+**Lean file**: `formal-verification/lean/FVSquad/JointSafetyComposition.lean`
+**Rust sources**: [`src/quorum/joint.rs`](src/quorum/joint.rs), [`src/quorum/majority.rs`](src/quorum/majority.rs)
+**Phase**: 5 ✅ (10 theorems, 0 sorry)
+
+Like `SafetyComposition`, this file is a pure composition layer. It extends SC4 to
+joint-quorum configurations (Rust: `JointConfig { incoming, outgoing }`).
+
+### Correspondence notes
+
+| Lean concept | Rust concept | Correspondence | Notes |
+|---|---|---|---|
+| `JSC7_joint_raft_log_safety` | `JointConfig` safety argument | Abstraction | Requires witnesses in both quorum halves |
+| `JSC1_jointCI_le_iff` | `JointConfig::committed` logic | Abstraction | `min(ci_in, ci_out)` iff both quorums certify |
+
+### Known divergences
+
+1. **Empty outgoing**: `committedIndex [] _ = 0` in Lean, `u64::MAX` in Rust. Theorems JSC3–JSC7 require non-empty lists.
+2. **Joint config as `(List Nat) × (List Nat)`**: Rust `JointConfig` has richer metadata.
+3. **Voter list vs HashSet**: Same as SafetyComposition.
+
+### Proved theorems summary
+
+All 10 theorems proved (0 sorry). JSC7 is the main result; JSC8–JSC10 prove monotonicity
+and edge cases for the joint committed index.
+
+---
+
+## `FVSquad/CrossModuleComposition.lean` ↔ `src/raft_log.rs` + `src/quorum/majority.rs`
+
+**Lean file**: `formal-verification/lean/FVSquad/CrossModuleComposition.lean`
+**Rust sources**: [`src/raft_log.rs`](src/raft_log.rs), [`src/quorum/majority.rs`](src/quorum/majority.rs)
+**Phase**: 5 ✅ (7 theorems, 0 sorry)
+
+This file bridges the log-operation layer (`MaybeAppend`, `FindConflict`) to the quorum
+layer (`CommittedIndex`, `SafetyComposition`). No individual Lean function models a
+specific Rust function; the theorems express cross-layer invariants.
+
+### Correspondence notes
+
+| Lean theorem | Rust invariant | Correspondence | Notes |
+|---|---|---|---|
+| `CMC3_maybeAppend_committed_bounded` | Commit-index bounded by quorum | Abstraction | `maybe_append` never commits beyond what a majority has acknowledged |
+| `CMC6_committed_index_entry_bridge` | `committed_index ≥ k → ∃ quorum entry` | Abstraction | Bridge from index to log-entry existence |
+| `CMC7_maybeAppend_safety_composition` | Log-entry uniqueness after replication | Abstraction | Composes RSS1 + CMC6 |
+
+### Known divergences
+
+1. **AckedFn vs `RaftLog::acked_applied_index`**: Rust uses `RaftLog`; modelled as `Nat → Nat`.
+2. **Commit value as nat**: Rust `committed_to` is `u64` with sentinel `0`. Modelled as `Nat`.
+
+### Proved theorems summary
+
+All 7 theorems proved (0 sorry). CMC3 is the central result: `maybe_append` is safe
+(never commits beyond the quorum certificate).
+
+---
+
+## `FVSquad/RaftSafety.lean` — Abstract Raft Safety Layer
+
+**Lean file**: `formal-verification/lean/FVSquad/RaftSafety.lean`
+**Rust sources**: no single Rust file; models the **protocol-level safety guarantees**
+of the Raft consensus algorithm as implemented across `src/`
+**Phase**: 5 ✅ (14 theorems + 2 key definitions, 0 sorry)
+
+This file lifts quorum-level results to log-entry-level safety theorems. It defines:
+- `VoterLogs E`: `Nat → Nat → Option E` — per-voter log as a function
+- `ClusterState E`: structure with `voters : List Nat` and `logs : VoterLogs E`
+- `isQuorumCommitted`: a majority of voters have the same entry at a given index
+- `CommitCertInvariant`: every applied entry was certified by a quorum
+- `nodeHasApplied`: `logs v k = some e` (voter `v` has committed entry `e` at index `k`)
+
+### Type/definition mapping
+
+| Lean type/def | Rust concept | Correspondence | Notes |
+|---|---|---|---|
+| `VoterLogs E` | `RaftLog::entries` per peer | Abstraction | Only term×entry, no storage, unstable, commit metadata |
+| `ClusterState E` | Raft cluster snapshot | Abstraction | Static snapshot; no network, timing, or leadership |
+| `isQuorumCommitted` | Raft commit rule | Abstraction | Encodes the majority-quorum commit criterion |
+| `CommitCertInvariant` | Protocol safety invariant | Abstraction | The key invariant whose preservation implies Raft safety |
+| `nodeHasApplied` | `RaftLog::applied` | Abstraction | `logs v k = some e`; ignores actual apply semantics |
+
+### Known divergences
+
+1. **Static snapshot model**: `ClusterState` is a snapshot, not a transition system. Protocol dynamics (terms, leader election, timeouts) are not modelled at this layer.
+2. **CommitCertInvariant as hypothesis**: RSS6/RSS7 take CCI as a hypothesis; RSS8 delegates to `RaftTrace.lean` for the inductive proof.
+3. **Nat vs u64**: All indices and terms are `Nat`.
+4. **No network**: Message passing, retransmission, and partitions are omitted.
+5. **LogMatchingInvariantFor / NoRollbackInvariantFor**: These are Lean predicates expressing temporal protocol invariants; the correspondence to the Rust protocol is the subject of `RaftProtocol.lean`.
+
+### Proved theorems summary
+
+All 14 theorems proved (0 sorry). RSS1/RSS2 are the core log-entry-level safety theorems.
+RSS6/RSS7 are the conditional end-to-end cluster safety theorems. RSS8 is the unconditional
+end-to-end theorem, proved via `CommitCertInvariant` from `RaftTrace.lean`.
+
+---
+
+## `FVSquad/RaftProtocol.lean` — Protocol Transition Invariants
+
+**Lean file**: `formal-verification/lean/FVSquad/RaftProtocol.lean`
+**Rust sources**: [`src/raft_log.rs`](src/raft_log.rs), [`src/raw_node.rs`](src/raw_node.rs)
+**Phase**: 5 ✅ (10 theorems, 0 sorry)
+
+This file models Raft protocol transitions and proves that `LogMatchingInvariant` (LMI)
+and `NoRollbackInvariant` (NRI) are preserved by AppendEntries and RequestVote steps.
+
+### Type/function mapping
+
+| Lean type/def | Rust concept | Correspondence | Notes |
+|---|---|---|---|
+| `RaftTransition` | AppendEntries / RequestVote RPCs | Abstraction | Two-constructor inductive type; omits term management, heartbeats |
+| `AppendEntriesArgs` | `AppendEntries` RPC | Abstraction | `idx, term, entries, committed`: core fields only |
+| `LogMatchingInvariantFor E logs` | Raft log-matching invariant (§5.3) | Abstraction | Predicate on `VoterLogs E`; no time or network |
+| `NoRollbackInvariantFor E voters logs₀ logs₁` | Raft no-rollback guarantee (§5.4.2) | Abstraction | Between two log snapshots; captures `hno_truncate` condition |
+
+### Key divergences
+
+1. **Abstract transitions**: `RaftTransition` does not include term tracking, leader
+   validation, log consistency checks performed by Raft — only the structural effects on
+   log state. The proof obligations (`hleader_lmi`, `hno_truncate`) must be established
+   by callers from more concrete models.
+2. **Single voter step**: RP8 models a single AppendEntries to a single voter. Multi-step
+   proofs follow by induction via `RaftTrace.lean`.
+3. **Leader LMI as hypothesis**: `appendEntries_preserves_log_matching` (RP6) takes
+   `hleader_lmi` (the leader's post-append log is LMI-compatible with the cluster) as a
+   hypothesis. This captures the Raft election-safety invariant informally.
+4. **hno_truncate as hypothesis**: RP8 requires `conflict > committed`; this corresponds
+   to the Rust `maybe_append` panic assertion. The panic path is not modelled — it is
+   excluded by precondition.
+
+### Proved theorems summary
+
+All 10 theorems proved (0 sorry). RP6 (three cases) and RP8 are the primary results.
+RP6 is the Log Matching Property preservation theorem; RP8 is the no-rollback theorem.
+
+---
+
+## `FVSquad/RaftTrace.lean` — Reachability and Top-Level Safety
+
+**Lean file**: `formal-verification/lean/FVSquad/RaftTrace.lean`
+**Rust sources**: Protocol semantics of `src/` (Raft consensus algorithm)
+**Phase**: 5 ✅ (3 theorems + `RaftReachable` inductive type, 0 sorry)
+
+This is the **capstone file**. It defines an inductive reachability predicate
+`RaftReachable` and proves unconditional end-to-end safety.
+
+### Type/definition mapping
+
+| Lean type/def | Concept | Correspondence | Notes |
+|---|---|---|---|
+| `RaftReachable cs` | "cs is a reachable Raft cluster state" | Abstraction | Inductive predicate; `step` constructor bundles invariant-preservation conditions |
+| `initialCluster voters` | Empty initial cluster | Exact | `logs = fun _ _ => none`, `committed = fun _ => 0` |
+| `RaftReachable.init` | Fresh cluster startup | Abstraction | Initial state satisfies CCI vacuously |
+| `RaftReachable.step` | One Raft protocol step | Abstraction | Five named hypotheses capture invariant conditions abstractly |
+
+### RaftReachable.step hypotheses vs Rust guarantees
+
+| Hypothesis | What it expresses | Rust correspondence |
+|---|---|---|
+| `hlogs'` | Only one voter's log changes | Single-voter `AppendEntries` application |
+| `hno_overwrite` | Committed entries not overwritten | `maybe_append` panic-guard (`conflict > committed`) |
+| `hqc_preserved` | Quorum-certified entries preserved in all logs | Leader Completeness Property (Raft §5.4.1) |
+| `hcommitted_mono` | Committed indices only advance | `committed_to` monotone in `maybe_append` |
+| `hnew_cert` | New committed entries are quorum-certified | Commit rule: advance only after quorum ACK |
+
+### Known divergences
+
+1. **Abstract step hypotheses**: `RaftReachable.step` does not model concrete Raft
+   transitions (no term tracking, no leader election, no vote counting). The step
+   hypotheses are proof-engineering artefacts that precisely capture what's needed to
+   preserve `CommitCertInvariant`, but their correspondence to real Raft transitions is
+   informal. This is the honest residual gap in the FV portfolio.
+2. **Single-step model**: Each `step` applies to one voter changing one log. Concurrent
+   steps or batched AppendEntries are not modelled.
+3. **No liveness**: `RaftReachable` does not model leader election progress or liveness
+   guarantees — only safety.
+
+### Proved theorems summary
+
+All 3 theorems proved (0 sorry).
+
+| Theorem | What it proves |
+|---|---|
+| `initialCluster_cci` (RT0) | Initial cluster satisfies `CommitCertInvariant` (vacuous: no entries committed) |
+| `raftReachable_cci` (RT1) | Every reachable state satisfies `CommitCertInvariant` (induction on `RaftReachable`) |
+| `raftReachable_safe` (RT2) | Every reachable cluster state is safe (RT1 + RSS8) |
+
+RT2 is the **top-level safety theorem** for the FVSquad portfolio. It asserts: for any
+cluster state reachable via valid Raft transitions, no two voters ever apply different
+entries at the same log index.
+
+---
+
+## Known Mismatches
+
+No known mismatches as of this final update. All Lean models are at *abstraction* or
+*exact* level. The honest residual gap is that `RaftReachable.step` hypotheses are
+abstract — they precisely capture what preserves the safety invariant but do not yet
+correspond to concrete Raft protocol transitions. This is a documented modelling choice,
+not a semantic error.
+
+> 🔬 Updated by [Lean Squad](https://github.com/dsyme/fv-squad/actions/runs/23979949696) automated formal verification. Final update: project complete, 0 sorry, 443+ theorems, 23 Lean files.
