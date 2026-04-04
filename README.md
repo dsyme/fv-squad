@@ -1,3 +1,7 @@
+# Applying Lean Formal Verification to the Raft Repo
+
+See [the report](formal-verification/REPORT.md).
+
 # Raft
 
 [![CI](https://github.com/tikv/raft-rs/actions/workflows/ci.yml/badge.svg?branch=master)](https://github.com/tikv/raft-rs/actions/workflows/ci.yml)
