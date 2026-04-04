@@ -1,9 +1,9 @@
 {
-  "last_run": "r130",
-  "run_id": "23965158962",
+  "last_run": "r131",
+  "run_id": "23970219663",
   "fv_tool": "Lean4 (stdlib only, no Mathlib)",
   "lean_version": "4.28.0",
-  "lean_build_note": "lake build PASSED. 3 sorry (RP6-Conflict, RP8, RSS8). 410+ theorems across 22 files.",
+  "lean_build_note": "lake build PASSED. 1 sorry (RSS8 only). 412+ theorems across 22 files.",
   "targets": [
     {"id": "limit_size", "phase": 5, "notes": "17 proved. Merged."},
     {"id": "config_validate", "phase": 5, "notes": "10 proved. Merged."},
@@ -23,13 +23,13 @@
     {"id": "safety_composition", "phase": 5, "notes": "9 proved (SC4/SC6/SC9). Merged."},
     {"id": "joint_tally", "phase": 5, "notes": "14 proved. Merged."},
     {"id": "joint_safety_composition", "phase": 5, "notes": "10 proved (JSC7). Merged."},
-    {"id": "raft_safety", "phase": 5, "lean_file": "FVSquad/RaftSafety.lean", "notes": "12 proved (RSS1-7 all proved), 1 sorry (RSS8). Merged r128. RSS3/RSS4 proved r130."},
-    {"id": "cross_module_composition", "phase": 5, "lean_file": "FVSquad/CrossModuleComposition.lean", "notes": "ALL 7 proved (0 sorry). CMC4 (hpos added), CMC6 (existential hbridge). Merged r129."},
-    {"id": "raft_protocol", "phase": 5, "lean_file": "FVSquad/RaftProtocol.lean", "notes": "r130: RP1-RP5,RP7 proved + lmi_preserved_of_log_unchanged helper. RP6 partial (matched/no-conflict proved, conflict sorry). RP8 sorry. PR open r130."}
+    {"id": "raft_safety", "phase": 5, "lean_file": "FVSquad/RaftSafety.lean", "notes": "13 proved, 1 sorry (RSS8). Merged r128+r130."},
+    {"id": "cross_module_composition", "phase": 5, "lean_file": "FVSquad/CrossModuleComposition.lean", "notes": "ALL 7 proved (0 sorry). Merged r129."},
+    {"id": "raft_protocol", "phase": 5, "lean_file": "FVSquad/RaftProtocol.lean", "notes": "r131: ALL 8 proved (0 sorry). RP6 fully proved (hleader_lmi helper). RP8 proved (hno_truncate). PR open r131."}
   ],
-  "total_theorems_proved": 410,
-  "total_sorry": 3,
-  "open_prs": ["lean-squad/proofs-r130-23965158962: RSS3+RSS4 proved; RP6 partial; CRITIQUE.md"],
+  "total_theorems_proved": 412,
+  "total_sorry": 1,
+  "open_prs": ["lean-squad/proofs-r131-23970219663: RP6 fully proved; RP8 proved; CRITIQUE.md; sorry 3→1"],
   "aeneas_status": "BLOCKED - no-new-privileges container. Confirmed all runs.",
   "ci_workflow": ".github/workflows/lean-ci.yml",
   "ci_status": "Healthy. Lean 4.28.0. No lake update needed (stdlib only).",
@@ -42,29 +42,26 @@
     "no_le_rfl": "le_rfl does not exist. Use Nat.le_refl _.",
     "no_list_get?": "List.get? does NOT exist in Lean 4.29! Use l[i]? (List.getElem?).",
     "beq_iff_eq": "beq_iff_eq : a == b ↔ a = b — stdlib for LawfulBEq.",
-    "matchTerm_proof": "matchTerm → log entry: cases log idx; | some t => simp [beq_iff_eq] at h; exact congrArg some h.",
+    "let_in_return_type": "let bindings in return type (let x := ...; T) are NOT accessible as local definitions in the tactic block. Use private theorem helpers instead of let-bound lambdas for complex case splits.",
+    "lmi_preserved_helper": "Use lmi_preserved_of_leader_lmi private helper to prove LMI preservation when new log is LMI-compatible with other voters. Takes hleader : ∀ w ≠ v, ∀ k, newLog k = logs w k → ∀ j ≤ k, newLog j = logs w j.",
+    "nri_proof_pattern": "NoRollbackInvariant proof: show ∀ w, logs₁ w k = logs₀ w k using congrFun chain, then funext to convert quorum predicate.",
     "CMC6_bridge_form": "CMC6 hbridge must be ∃ e, ∀ v, acked v ≥ k → logs v k = some e (existential first).",
     "CMC4_hpos_required": "CMC4 requires hpos (positive indices) since 0 is no-conflict sentinel.",
-    "SC2_for_CMC6": "SC2_committedIndex_threshold_hasQuorum: committedIndex ≥ k → hasQuorum (acked v ≥ k).",
-    "hasQuorum_monotone": "hasQuorum_monotone voters s t (∀ v, s v = true → t v = true) hq : hasQuorum voters t = true.",
     "decide_eq_true_eq": "decide_eq_true_eq : decide p = true ↔ p. Use .mp / .mpr.",
-    "open_namespaces": "HasQuorum, JointVote, TallyVotes: no namespace. Root namespace only.",
     "voter_logs_type": "VoterLogs E := Nat → Nat → Option E. In FVSquad.RaftSafety namespace.",
     "strong_induction": "induction n using Nat.strongRecOn with | ind n ih => ..."
   },
   "findings": [
     "SOUNDNESS: Prior RSS3/RSS4 were false as stated (no hypotheses = arbitrary logs). Fixed r130 with LogMatchingInvariantFor/NoRollbackInvariantFor.",
-    "No bugs found in implementation code yet (as of r130)."
+    "No bugs found in implementation code yet (as of r131)."
   ],
   "next_targets": [
-    "raft_protocol: Prove RP6 §Conflict via leader LMI hypothesis (hleader_lmi)",
-    "raft_protocol: Prove RP8 via RaftTrace inductive type",
-    "raft_safety: RSS8 after RP6+RP8 proved",
-    "cross_module: CMC4 and CMC6 bridges"
+    "RSS8: Define RaftTrace (reachable states), prove hcert as inductive invariant, close RSS8.",
+    "Multi-step RP8: Prove NRI for finite trace by induction on steps (each step uses RP8)."
   ],
   "trajectory": {
-    "step1": "RP6 §Conflict: add hleader_lmi : LogMatchingInvariant (fun w => if w = leader then leaderLog else logs w) hypothesis.",
-    "step2": "RP8: Define RaftTrace inductive type; prove NRI by induction on trace length.",
-    "step3": "RSS8 closes via RSS6 + hcert derived from RP6+RP8 induction."
+    "step1": "Define RaftTrace inductive type: init + step constructor with valid AppendEntries transitions.",
+    "step2": "Prove hcert holds for all reachable states by induction on RaftTrace.",
+    "step3": "Apply RSS6 with the derived hcert to close RSS8."
   }
 }
