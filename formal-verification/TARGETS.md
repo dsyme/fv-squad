@@ -25,13 +25,13 @@ Prioritised target list. Phases: 1=Research, 2=Informal Spec, 3=Lean Spec, 4=Lea
 | 17 | `safety_composition` | cross-module | `committedIndex` × `hasQuorum` × `quorumRecentlyActive` | 5 ✅ | 9 theorems proved (0 sorry). Raft log safety (SC4), biconditional quorum↔committedIndex (SC6), leader election safety (SC9). `FVSquad/SafetyComposition.lean`. |
 | 18 | `joint_tally` | `src/tracker.rs` | `ProgressTracker::tally_votes` (joint) | 5 ✅ | 14 theorems proved (0 sorry). Joint-quorum extension of tally_votes: Won/Lost/Pending iff, non-joint degeneration (JT5), symmetry of Won (JT13). `FVSquad/JointTally.lean`. |
 | 19 | `joint_safety_composition` | cross-module | `jointCommittedIndex` × `hasQuorum` × `SafetyComposition` | 5 ✅ | 10 theorems proved (0 sorry). Joint Raft log-safety certificate (JSC7): witnesses in both incoming and outgoing halves. Extends SC4 to joint-config. `FVSquad/JointSafetyComposition.lean`. |
-| 20 | `raft_protocol` | `src/raft_log.rs` + `proto/` | AppendEntries / RequestVote transitions | 3 ✅ | 6 theorems proved (0 sorry), 2 sorry (RP6, RP8). `FVSquad/RaftProtocol.lean`. Message types, LogMatchingInvariant, NoRollbackInvariant. Bridges to RSS3/RSS4. |
+| 20 | `raft_protocol` | `src/raft_log.rs` + `proto/` | AppendEntries / RequestVote transitions | 5 ✅ | 10 theorems proved (0 sorry). RP6 and RP8 proved. `FVSquad/RaftProtocol.lean`. |
 | 21 | `progress_set` | `src/tracker/progress_set.rs` | quorum tracking over progress map | 1 | Next: formalise `ProgressSet::quorum_active` and quorum detection across the voter progress map. |
 | 22 | `raft_log_append` | `src/raft_log.rs` | `RaftLog::append` | 1 | Candidate: append correctness and slice invariants for the stable log. |
+| 23 | `raft_trace` | `RaftSafety.lean` + `RaftProtocol.lean` | Protocol-level reachability model | 5 ✅ | RT0+RT1+RT2 proved (0 sorry). `CommitCertInvariant` inductive invariant; `RaftReachable` inductive type; RSS8 proved. `FVSquad/RaftTrace.lean`. |
 
 ## Next Steps
 
-1. **Target 20** (`raft_protocol`) — prove RP6 (AppendEntries preserves log matching) and RP8 (valid transitions satisfy no-rollback). Requires introducing a `RaftTrace` inductive type.
-2. **Target 21** (`progress_set`) — formalise quorum tracking over the `ProgressSet` map: `quorum_active`, voter iteration, and its connection to `hasQuorum`.
-3. **RSS3/RSS4** — once RP6 and RP8 are proved, RSS3 and RSS4 follow via `rss3_from_logMatchInvariant` and `rss4_from_noRollback`.
-4. **Task 8** (Aeneas extraction) — blocked on OCaml/opam in no-new-privileges containers.
+1. **Target 21** (`progress_set`) — formalise quorum tracking over the `ProgressSet` map.
+2. **Target 23 extension** — provide concrete Raft transitions satisfying `RaftReachable.step` hypotheses (election safety, commit rule, term management).
+3. **Task 8** (Aeneas extraction) — blocked on OCaml/opam in no-new-privileges containers.

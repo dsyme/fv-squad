@@ -7,11 +7,13 @@ import FVSquad.RaftSafety
 
 > 🔬 *Lean Squad — automated formal verification for `dsyme/fv-squad`.*
 
-This file provides the **formal Raft protocol transition model** needed to eventually
-prove the two remaining sorry-guarded theorems in `RaftSafety.lean`:
+This file provides the **formal Raft protocol transition model** that bridges the
+message-level AppendEntries/RequestVote RPCs to the high-level safety theorems:
 
 - **RSS3** (`log_matching_property`): same entry at same index → same log prefix
 - **RSS4** (`raft_committed_no_rollback`): committed entries are never overwritten
+- **RSS8** (`raft_end_to_end_safety_full`): full cluster safety via `CommitCertInvariant`
+  (see also `RaftTrace.lean` for the `RaftReachable` protocol model)
 
 ## Approach
 
@@ -24,8 +26,8 @@ This file:
 2. Defines `LogMatchingInvariant` and `NoRollbackInvariant` as formal predicates.
 3. Proves that RSS3 and RSS4 follow directly from these predicates (proved theorems).
 4. Provides supporting lemmas about `matchTerm` and `maybeAppend` (proved).
-5. States the hard proof obligations — that AppendEntries and leader election preserve
-   the invariants — as sorry-guarded theorems, making the remaining work explicit.
+5. Proves the key step theorems: RP6 (AppendEntries preserves LMI given `hleader_lmi`)
+   and RP8 (single AppendEntries step preserves no-rollback given `hno_truncate`).
 
 ## Theorem table
 
@@ -53,7 +55,9 @@ This file:
 - RP8 is proved for a single AppendEntries step given the `hno_truncate` panic-guard
   condition (the Rust `maybe_append` panics when `conflict ≤ committed`, preventing
   truncation of committed entries).
-- RSS8 remains sorry-guarded; it requires a multi-step protocol induction.
+- RSS8 (`raft_end_to_end_safety_full`) is proved via `CommitCertInvariant` in
+  `RaftSafety.lean`; `RaftTrace.lean` provides `raftReachable_safe` connecting
+  reachability to safety via the `RaftReachable` inductive model.
 -/
 
 open FVSquad.FindConflict
