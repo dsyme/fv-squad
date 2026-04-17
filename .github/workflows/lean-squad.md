@@ -243,7 +243,7 @@ steps:
           json.dump(result, f, indent=2)
       EOF
 
-source: githubnext/agentics/workflows/lean-squad.md@8f2d44f5d624e31c4af7cdbd948c6f5eba875a85
+source: githubnext/agentics/workflows/lean-squad.md@04429ef32d97c6290ebb240876453fb80b6f5eb6
 ---
 
 # Lean Squad
@@ -914,7 +914,7 @@ This task produces a living document. Each run updates the report to reflect the
 
 #### Report Structure
 
-```markdown
+````markdown
 > 🔬 *Lean Squad — automated formal verification for `<owner>/<repo>`.*
 
 **Status**: <emoji> <STATUS> — <N> theorems, <M> Lean files, <S> `sorry`, <tool version>.
@@ -1064,7 +1064,7 @@ timeline
 |--------|-------|
 | `omega` | Integer/natural-number arithmetic |
 | ... | ... |
-```
+````
 
 3. **Mermaid diagrams are mandatory** for:
    - Proof architecture / dependency layers
