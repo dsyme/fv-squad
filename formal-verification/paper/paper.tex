@@ -8,6 +8,10 @@
 \usepackage{microtype}
 \usepackage{balance}
 
+%% Tolerate slightly loose lines to avoid overfull \texttt identifiers
+\tolerance=1500
+\emergencystretch=1em
+
 %% Lean 4 listing style
 \lstdefinelanguage{Lean4}{
   keywords={theorem, def, lemma, private, inductive, structure, where, namespace, end,
@@ -22,7 +26,7 @@
 }
 \lstset{
   language=Lean4,
-  basicstyle=\ttfamily\footnotesize,
+  basicstyle=\ttfamily\scriptsize,
   keywordstyle=\bfseries\color{blue!70!black},
   commentstyle=\itshape\color{gray!80},
   stringstyle=\color{green!50!black},
@@ -45,39 +49,74 @@
   morestring=[b]",
 }
 
-\title{Formally Verifying a Raft Consensus Implementation with Lean~4:\\
-       443 Machine-Checked Theorems, Zero Sorry}
+\begin{document}
 
-\author{Lean Squad}
-\affiliation{\institution{Automated Formal Verification Agent}\country{}}
+\title{Truly Automated Formal Specification and Verification with Near-Zero Human Labour}
+
+\author{Don Syme}
+\affiliation{\institution{GitHub Next}\country{United Kingdom}}
+\email{dsyme@github.com}
+
+\author{LeanSquad}
+\affiliation{\institution{AI Automation Workflow (GitHub Agentic Workflows)}\country{}}
 \email{lean-squad@automated}
 
+\author{Copilot CLI}
+\affiliation{\institution{AI Coding Agent (GitHub)}\country{}}
+
+\author{Claude Opus 4.6}
+\affiliation{\institution{AI Model (Anthropic)}\country{}}
+\email{}
+
 \begin{abstract}
-We present a machine-checked formal verification of core safety properties of
-\texttt{raft-rs}, a production Rust implementation of the Raft distributed
-consensus protocol.  Using Lean~4 (stdlib only, no external proof libraries),
-we prove \textbf{443 theorems across 23 files with zero \texttt{sorry}},
-culminating in the end-to-end theorem \texttt{raftReachable\_safe}: for any
-cluster state reachable via valid Raft transitions from an empty initial
-state, no two nodes ever apply different log entries at the same committed
-index.
+Formal verification has historically demanded deep expertise in proof
+assistants and months of dedicated human effort, limiting its adoption to
+a handful of well-funded teams.  We show an example of how LLM-driven automated agentic
+workflows can shift this cost nearly entirely to compute.  Using \emph{Lean
+Squad}, an open-source workflow that runs as a scheduled GitHub Actions
+job, we produce a machine-checked formal specification and verification of core safety
+properties of \texttt{raft-rs}---a production Rust implementation of the
+Raft distributed consensus protocol---with near-zero human labour.  The
+human author required no expertise in Lean, formal methods, or proof
+engineering; his role was limited to designing the reusable workflow,
+merging pull requests, and writing two short comments across 34
+autonomous agent runs.
 
-The work proceeds in six layers—data structures, quorum arithmetic, protocol
-operations, cross-module composition, Raft safety, and reachability—each
-mechanically verified before the next layer depends on it.  We introduce an
-abstract protocol model (\emph{RaftReachable}) whose step hypotheses precisely
-identify the residual conditions that would be discharged by a fully concrete
-Raft message-level model.  One formulation bug in early proof attempts was
-caught by the \texttt{sorry} discipline; no implementation bugs were found,
-providing machine-checked evidence of correctness on the verified paths.
+The agent autonomously researched the codebase, selected 22 verification
+targets, designed a six-layer proof architecture (data structures, quorum arithmetic,
+protocol operations, cross-module composition, Raft safety, and
+reachability), wrote all specifications, and completed all proofs:
+443~theorems across 23~Lean~4 files (stdlib only, no Mathlib),
+culminating in the end-to-end theorem \texttt{raftReachable\_safe}---for
+any cluster state reachable via valid Raft transitions from an empty
+initial state, no two nodes ever apply different log entries at the same
+committed index---with zero \texttt{sorry}.  One formulation bug was
+caught by the \texttt{sorry} discipline; no implementation bugs were
+found, providing machine-checked evidence of correctness on the verified
+paths.
 
-The project was conducted by an LLM-driven automated FV agent (\emph{Lean
-Squad}) across 34 incremental runs, demonstrating that such agents can make
-meaningful, cumulative progress on real-world proof obligations without
-human proof engineering.
+The total LLM token cost was approximately \$240 (34~runs at
+$\sim$\$7 each using Claude Opus~4.6 pricing at time of publication).
+The Lean Squad workflow is open-source, installs on any GitHub repository
+with two commands, and requires only an LLM API token.  The proof
+artefacts and full run history are available at
+\texttt{dsyme/raft-lean-squad}.
 \end{abstract}
 
 \maketitle
+
+\noindent\textbf{Note on authorship and voice.}  Throughout this paper, ``we''
+generally reflects the perspective of \emph{LeanSquad}, an autonomous AI
+automation workflow implemented using GitHub Agentic Workflows, with
+\emph{Copilot CLI} (GitHub) as the underlying AI coding agent using the \emph{Claude Opus~4.6} (Anthropic) LLM.  The human
+author (Don Syme) took a deliberately \emph{hands-off} approach: he
+designed the automated Lean Squad workflow itself (\S\ref{sec:workflow}) and
+merged pull requests, but was not involved in target selection,
+the six-layer proof architecture, specification writing, or any actual
+proof engineering.  His total intervention over the project's 34~runs
+amounted to two short GitHub comments (\S\ref{sec:interventions}).
+\medskip
+
 
 %% ============================================================
 \section{Introduction}
@@ -91,20 +130,24 @@ implementations add further complexity: joint membership changes, in-flight
 message tracking, flow control, and optimised quorum computation.
 
 Formal verification of distributed systems is well-established but
-typically expensive.  IronFleet~\cite{ironfleet} and Verdi~\cite{verdi}
-verified distributed systems from scratch in Dafny and Coq respectively,
-requiring large human proof-engineering efforts.
-Woos~et~al.~\cite{vard} verified a simplified Raft in Coq.  Our contribution
-is different in three ways:
+typically expensive: IronFleet~\cite{ironfleet} required person-years of
+Dafny proof engineering; Woos~et~al.~\cite{vard} verified a simplified
+Raft in $\sim$50,000 lines of Coq.  The expertise barrier---fluency in a
+proof assistant, invariant discovery, and multi-month proof campaigns---has
+limited adoption to a handful of well-funded teams.  Our contribution
+addresses this barrier directly, and is different in three ways:
 
 \begin{enumerate}
 \item We target a \emph{production} Raft implementation (\texttt{raft-rs},
   used in TiKV~\cite{raftrs}), not a pedagogical model.
 \item We use Lean~4 \emph{stdlib only}---no Mathlib---providing a lightweight,
   self-contained verification artefact.
-\item The entire effort is \emph{automated}: every proof, specification, and
-  refinement was produced by an LLM-driven FV agent across 34 independent runs,
-  each run building on prior merged work.
+\item The entire effort is \emph{automated}: every target selection,
+  specification, proof architecture decision, and proof was produced by an
+  LLM-driven FV agent across 34 independent runs, with only two brief
+  human interventions (\S\ref{sec:interventions}).  The human author
+  required no Lean expertise, no formal-methods background, and invested
+  near-zero hours of proof-engineering labour.
 \end{enumerate}
 
 The top-level theorem (\S\ref{sec:results}) is:
@@ -145,21 +188,213 @@ language.  Proofs are written in a tactic language with automation including
 We use Lean~4.28.0, stdlib only.  All proofs are machine-checked by
 the Lean kernel; the \texttt{sorry} keyword marks unproved obligations.
 
-\subsection{Related Work}
+%% ============================================================
+\section{The Lean Squad Workflow}
+\label{sec:workflow}
+%% ============================================================
 
-IronFleet~\cite{ironfleet} verified Paxos-based protocols using Dafny with
-TLA-style temporal reasoning.  Verdi~\cite{verdi} verified an erasure-coded
-distributed storage system in Coq.  Woos~et~al.~\cite{vard} verified Raft
-leader election and log safety in Coq on a simplified model.
-Fiat-Crypto~\cite{fiat-crypto} demonstrated automatic synthesis of
-verified cryptographic arithmetic.  CompCert~\cite{compcert} remains the
-gold standard for compiler verification.  The Aeneas
-toolchain~\cite{aeneas,charon} enables mechanical Lean extraction from safe
-Rust; we note its applicability but do not use it in this work.
+The Lean Squad workflow~\cite{leansquad} is a GitHub Agentic
+Workflow---a declarative specification that orchestrates an LLM coding
+agent (e.g.\ Copilot CLI or Codex CLI) as a scheduled GitHub Actions job.  It was designed
+by the human author and open-sourced as a reusable workflow template; it
+is not specific to Raft or to this repository.  Once installed, the
+workflow runs autonomously on a schedule (every 8 hours in our
+deployment), with no human in the loop for any individual run.
 
-Our contribution is the first machine-checked safety proof for a
-\emph{production} Raft implementation, using a modern proof assistant without
-external libraries, and generated by an automated agent.
+\subsection{Design Principles}
+
+Four design principles underpin the workflow:
+
+\paragraph{Zero human involvement necessary.}
+The agent handles the entire FV effort: research, target selection,
+proof architecture design, specification writing, and proof engineering.
+The human need only merge PRs and occasionally nudge the process.
+This shifts the cost of formal verification from scarce human proof-engineering
+expertise to LLM compute, dramatically lowering the barrier to entry
+and making FV a practical option for any codebase---not just those
+with dedicated verification teams.
+
+\paragraph{Optimistic.} The agent does not wait for perfect conditions.
+It starts where the code is and finds what can be verified, even if
+that means working with approximations or partial proofs.
+
+\paragraph{Incremental.} Each run contributes one small piece.  A spec
+with \texttt{sorry} today becomes a proof next week.  A research note
+today drives a formal spec next month.  Persistent memory ensures each
+run builds on the last.
+
+\paragraph{Findings-first.} A counterexample is a success, not a failure.
+Finding a bug through formal verification is exactly the point.
+
+\paragraph{Transparent.} Every PR, issue, and comment includes an AI
+disclosure.  Specs document their approximations.
+Proofs document what is still open. THe history of every run is public, and the
+full history of the specifications and proofs is available in the repository for the
+humand and the agent to examing as needed.
+
+\subsection{Phase-Weighted Task Selection}
+\label{sec:tasksel}
+
+Each run begins with a deterministic pre-step that inspects the
+repository's FV artefacts (Lean files, spec documents, open issues and
+PRs) and computes a phase-weighted probability distribution over
+ten tasks.  Two tasks are drawn and communicated to the agent;
+the agent confirms them against its persistent memory and executes
+them.  A mandatory final task (status-issue update) always runs.
+
+The ten tasks, in order of the typical progression, are:
+
+\begin{enumerate}\setlength\itemsep{0pt}
+\item \textbf{Research \& Target Identification.}
+  Survey the codebase to identify FV-amenable functions, data structures,
+  and algorithms.  Document expected benefit, spec size, proof
+  tractability, and recommended approach.  Produces \texttt{RESEARCH.md}
+  and \texttt{TARGETS.md}.  If a critique document exists, incorporate
+  its feedback to adjust priorities.
+\item \textbf{Informal Spec Extraction.}
+  For the highest-priority unstarted target, extract a precise informal
+  specification by reading the code and inferring the design intention---preconditions, postconditions, invariants, edge cases, concrete examples,
+  and inferred intent not explicit in the code.  Flags ambiguities for
+  maintainer review.
+\item \textbf{Formal Spec Writing (Lean~4).}
+  Write Lean~4 type definitions, function stubs, and key \texttt{theorem}
+  declarations with \texttt{sorry} as proof bodies.  Must pass
+  \texttt{lake build} before opening a PR.
+\item \textbf{Implementation Extraction.}
+  Translate the relevant Rust implementation into Lean~4 functional
+  definitions so propositions can be formally connected to actual code.
+  For imperative code, create a pure functional model and document the
+  abstraction.
+\item \textbf{Proof Assistance.}
+  Attempt to prove stated propositions using Lean~4 tactics.  When a
+  proof obligation cannot be closed, investigate whether the spec or the
+  implementation is wrong.  If a counterexample is found, file a bug
+  issue.
+\item \textbf{Correspondence Review.}
+  Review how faithfully each Lean model corresponds to the Rust source.
+  Assess correspondence level (exact, abstraction, approximation, or
+  mismatch) and document all divergences.
+\item \textbf{Proof Utility Critique.}
+  Honestly assess whether the FV work is useful---are the proved
+  properties meaningful, at the right level of abstraction, and likely
+  to catch real bugs?  Identify highest-value gaps.
+\item \textbf{CI Automation.}
+  Set up and maintain \texttt{lean-ci.yml} to automatically verify
+  Lean proofs on every PR and push.
+\item \textbf{Project Report.}
+  Create and maintain \texttt{REPORT.md}---a comprehensive report with
+  mermaid diagrams summarising the entire FV effort.
+\item \textbf{Conference Paper.}
+  Write and maintain a LaTeX paper under
+  \texttt{formal-verification/paper/}, compile to PDF, and commit to
+  the repository.
+\end{enumerate}
+
+The weighting scheme adapts automatically to the current state of
+the repository.  When no FV work exists, Task~1 (Research) dominates.
+Once research is done, Task~2 rises.  As informal specs accumulate,
+Task~3 gains weight, and so on up through proofs and beyond to
+reflective tasks (critique, correspondence review, paper writing).
+Table~\ref{tab:weights} illustrates the weight progression.
+
+\begin{table}[h]
+\centering\small
+\begin{tabular}{clcc}
+\toprule
+Task & Name & Weight (early) & Weight (late) \\
+\midrule
+1 & Research         & 10.0 & 2.0 \\
+2 & Informal Spec    &  8.0 & 2.0 \\
+3 & Formal Spec      &  8.0 & 2.0 \\
+4 & Implementation   &  6.0 & 3.0 \\
+5 & Proof Assistance &  6.0 & 5.0 \\
+6 & Correspondence   & 10.0 & 5.0 \\
+7 & Critique         & 10.0 & 5.0 \\
+8 & CI               & 12.0 & 1.0 \\
+9 & Report          &  8.0 & 3.0 \\
+10 & Paper           &  8.0 & 3.0 \\
+\bottomrule
+\end{tabular}
+\caption{Phase-weighted task selection.  ``Early'' weights apply when the
+  task's prerequisites are met but the task has not yet been completed;
+  ``late'' weights apply once the artefact exists and is being maintained.}
+\label{tab:weights}
+\end{table}
+
+\subsection{Persistent Memory and Cumulative Progress}
+
+A critical design element is persistent repo-memory.  At the start of
+every run, the agent reads its memory to recover the identified FV
+targets, their current phases (1--5), key choices, open questions, bugs
+found, and ideas to try.  At the end of every run, the agent updates
+memory with new discoveries, proved theorems, and remaining obligations.
+
+Memory may be stale (referencing merged PRs or closed issues), so the
+agent is instructed to verify references against the current repository
+state.  This mechanism enables cumulative progress across independent
+runs: the six-layer architecture, the choice of targets, and the
+proof strategy all emerged organically from the agent's interaction
+with its own memory and the growing codebase, not from human direction.
+
+\subsection{Hard Requirements}
+
+The workflow enforces several hard requirements to maintain integrity:
+
+\begin{itemize}\setlength\itemsep{0pt}
+\item The Lean toolchain \textbf{must} be successfully installed before
+  any \texttt{.lean} files are written or submitted.  If installation
+  fails, Tasks~3--5 are skipped entirely for that run.
+\item Every PR that includes \texttt{.lean} files must include a
+  verification status block: either ``\texttt{lake build} passed'' or
+  an explicit disclosure that proofs are unverified.
+\item The agent must never claim proofs are verified unless
+  \texttt{lake build} actually passed.
+\item All PRs, issues, and comments must include an AI transparency
+  disclosure.
+\end{itemize}
+
+\subsection{Artefacts Produced}
+
+The workflow produces a rich set of artefacts beyond Lean proofs:
+\texttt{RESEARCH.md} (FV survey and rationale),
+\texttt{TARGETS.md} (prioritised target list with phase status),
+per-target informal specs,
+\texttt{CORRESPONDENCE.md} (Lean-to-Rust mapping),
+\texttt{CRITIQUE.md} (proof utility assessment),
+\texttt{REPORT.md} (comprehensive project report),
+and the conference paper itself.  A continuously-updated GitHub
+issue serves as a rolling dashboard showing the status of every
+target.
+
+\subsection{Installation and Usage}
+\label{sec:install}
+
+The Lean Squad workflow is open-source and can be installed on any
+GitHub repository with two commands.  A token for an LLM coding agent
+is required; at the time of writing, Copilot CLI (GitHub),
+Codex CLI (OpenAI), and Claude Code (Anthropic) are supported as
+underlying agents.
+
+\begin{lstlisting}[language={},basicstyle=\ttfamily\scriptsize,
+  keywordstyle={},frame=single,xleftmargin=4pt,xrightmargin=4pt]
+# Install the GitHub Agentic Workflows CLI extension
+gh extension install github/gh-aw
+
+# Add Lean Squad to the current repository
+gh aw add-wizard githubnext/agentics/lean-squad
+\end{lstlisting}
+
+The \texttt{add-wizard} command walks the user through configuration:
+selecting the schedule (default: every 8 hours), choosing the agent
+provider, and storing the API token as a GitHub Actions secret.
+Once committed, the workflow runs autonomously on the configured
+schedule with no further setup.
+
+With just these two commands, any repository can start an automated formal verification
+effort with zero human specification or proof-engineering expertise required.
+Whether that is useful or not depends on the codebase and the agent's
+performance, but the barrier to entry is minimal. Getting started with
+formal verification of real software has never been easier.
 
 %% ============================================================
 \section{Methodology}
@@ -168,13 +403,36 @@ external libraries, and generated by an automated agent.
 \subsection{Target Selection}
 \label{sec:targets}
 
-We surveyed the \texttt{raft-rs} codebase for FV-amenable targets:
-pure functions with clear preconditions and postconditions, data-structure
-invariants, and protocol-level safety properties.  Criteria included
-proof tractability, bug-catching potential, and cumulative progress toward
-end-to-end safety.
+In its very first run (PR~\#93), the agent surveyed the
+\texttt{raft-rs} codebase via Task~1 (Research) and identified an
+initial set of \textbf{10~FV targets}, prioritised by tractability:
+\texttt{limit\_size}, \texttt{Config::validate}, \texttt{vote\_result},
+\texttt{committed\_index}, \texttt{find\_conflict},
+\texttt{maybe\_append}, joint-config variants, \texttt{inflights}, and
+\texttt{progress}.  That same run also produced the first informal
+specification (\texttt{limit\_size}).  The criteria were: pure
+functions with clear pre/postconditions, data-structure invariants,
+and proof tractability.  No human input was involved in selecting or
+prioritising targets.
 
-We identified 22 targets organised in six layers (Table~\ref{tab:layers}).
+Notably, the first run's research plan proposed Lean~4 + Mathlib and
+flagged the Aeneas extraction toolchain as a possible route; both
+choices were later revised by the agent itself---switching to
+stdlib-only and dropping Aeneas---as it gained experience with the
+proof artefacts across subsequent runs.
+
+Over later iterations the agent expanded the target list to
+\textbf{22~targets} and organised them into six layers
+(Table~\ref{tab:layers}).  Twelve additional targets were added as
+the agent discovered cross-module composition opportunities
+(\texttt{SafetyComposition}, \texttt{CrossModuleComposition}),
+protocol-level properties (\texttt{RaftSafety}, \texttt{RaftProtocol}),
+the reachability model (\texttt{RaftTrace}), and further quorum
+lemmas (\texttt{HasQuorum}, \texttt{TallyVotes},
+\texttt{QuorumRecentlyActive}, \texttt{IsUpToDate},
+\texttt{LogUnstable}).  This layered architecture emerged from the
+agent's own analysis of module dependencies---it was not prescribed by
+the human author.
 Layers build on each other: Layer~2 (Quorum Arithmetic) uses types from
 Layer~1; Layer~4 (Composition) spans Layer~2 and Layer~3; Layers~5--6
 depend on all preceding layers.
@@ -269,11 +527,12 @@ no \texttt{sorry} in the final proof state.
 \paragraph{Layer~1: Data Structures.}
 Five files prove correctness of individual Raft data structures in isolation.
 
-\texttt{LimitSize.lean} (17 theorems) formalises \texttt{util::limit\_size},
-which truncates a vector of protobuf messages to stay within a byte budget.
-Key results include \emph{prefix correctness} (result is a prefix of input),
-\emph{non-emptiness} (always preserves $\geq 1$ entry), and
-\emph{maximality} (result is the longest prefix within budget).
+\texttt{LimitSize.lean} (17~theorems) formalises the Rust function
+\texttt{util::limit\_size}, which truncates a vector of protobuf
+messages to stay within a byte budget.
+Key results: \emph{prefix correctness} (the result is a prefix of
+the input), \emph{non-emptiness} ($\geq 1$ entry always preserved), and
+\emph{maximality} (the longest prefix within budget).
 
 \texttt{Inflights.lean} (49 theorems) is the largest single file.  It
 formalises the ring-buffer-based in-flight message tracker (\texttt{inflights.rs}),
@@ -291,11 +550,11 @@ The cornerstone is \texttt{quorum\_intersection\_mem} (HQ20,
 
 \begin{lstlisting}[language=Lean4]
 theorem quorum_intersection_mem
-    (voters : List Nat) (hne : voters ≠ [])
-    (a b : Nat → Bool)
-    (ha : hasQuorum voters a = true)
-    (hb : hasQuorum voters b = true) :
-    ∃ v, v ∈ voters ∧ a v = true ∧ b v = true
+  (voters : List Nat) (hne : voters ≠ [])
+  (a b : Nat → Bool)
+  (ha : hasQuorum voters a = true)
+  (hb : hasQuorum voters b = true) :
+  ∃ v, v ∈ voters ∧ a v = true ∧ b v = true
 \end{lstlisting}
 
 This states: any two majority quorums over the same voter list share at
@@ -337,13 +596,14 @@ certified.
 the log-entry level.  The central theorem is RSS1:
 
 \begin{lstlisting}[language=Lean4]
-theorem raft_state_machine_safety [DecidableEq E]
-    (voters : List Nat) (hne : voters ≠ [])
-    (logs : VoterLogs E) (k : Nat)
-    (e₁ e₂ : E)
-    (h1 : isQuorumCommitted voters logs k e₁)
-    (h2 : isQuorumCommitted voters logs k e₂) :
-    e₁ = e₂
+theorem raft_state_machine_safety
+  [DecidableEq E]
+  (voters : List Nat) (hne : voters ≠ [])
+  (logs : VoterLogs E) (k : Nat)
+  (e₁ e₂ : E)
+  (h1 : isQuorumCommitted voters logs k e₁)
+  (h2 : isQuorumCommitted voters logs k e₂)
+  : e₁ = e₂
 \end{lstlisting}
 
 If two entries are simultaneously quorum-committed at the same index,
@@ -351,39 +611,46 @@ they must be identical.  The proof uses \texttt{quorum\_intersection\_mem}
 (HQ20) to obtain a shared witness voter and conclude that both entries
 equal the witness's log entry.
 
-RSS8 (\texttt{raft\_end\_to\_end\_safety\_full}) provides the conditional
-end-to-end result: given the \texttt{CommitCertInvariant}---every applied
+RSS8 (\texttt{raft\_end\_to\_end\allowbreak\_safety\_full}) provides the
+conditional end-to-end result: given the
+\texttt{CommitCertInvariant}---every applied
 entry is quorum-certified---the cluster is safe.
 
-\texttt{RaftProtocol.lean} (10 theorems) proves that \texttt{AppendEntries}
-preserves the Log Matching Invariant (RP6) and the No-Rollback property
-(RP8), formalising the Raft protocol transition rules at the log level.
+\texttt{RaftProtocol.lean} (10~theorems) proves that
+\texttt{Append\-Entries} preserves the Log Matching Invariant (RP6) and
+the No-Rollback property (RP8), formalising the Raft protocol transition
+rules at the log level.
 
 \paragraph{Layer~6: Reachability.}
 
 \begin{figure}[h]
 \begin{lstlisting}[language=Lean4]
 inductive RaftReachable [DecidableEq E] :
-    ClusterState E → Prop where
-  | init (voters : List Nat) :
-      RaftReachable (initialCluster voters)
-  | step {cs cs' : ClusterState E}
-      (hreach : RaftReachable cs)
-      (hvoters : cs.voters = cs'.voters)
-      (v : Nat)
-      (hlogs' : ∀ w, w ≠ v → cs'.logs w = cs.logs w)
-      (hno_overwrite : ∀ k, cs.committed v ≥ k →
-          cs'.logs v k = cs.logs v k)
-      (hqc_preserved : ∀ k e,
-          isQuorumCommitted cs.voters cs.logs k e →
-          ∀ w, cs'.logs w k = cs.logs w k)
-      (hcommitted_mono : ∀ w,
-          cs'.committed w ≥ cs.committed w)
-      (hnew_cert : ∀ w k e,
-          cs'.committed w ≥ k → cs.committed w < k →
-          cs'.logs w k = some e →
-          isQuorumCommitted cs'.voters cs'.logs k e) :
-      RaftReachable cs'
+  ClusterState E → Prop where
+| init (voters : List Nat) :
+    RaftReachable (initialCluster voters)
+| step {cs cs' : ClusterState E}
+    (hreach : RaftReachable cs)
+    (hvoters : cs.voters = cs'.voters)
+    (v : Nat)
+    (hlogs' : ∀ w, w ≠ v →
+      cs'.logs w = cs.logs w)
+    (hno_overwrite : ∀ k,
+      cs.committed v ≥ k →
+      cs'.logs v k = cs.logs v k)
+    (hqc_preserved : ∀ k e,
+      isQuorumCommitted
+        cs.voters cs.logs k e →
+      ∀ w, cs'.logs w k = cs.logs w k)
+    (hcommitted_mono : ∀ w,
+      cs'.committed w ≥ cs.committed w)
+    (hnew_cert : ∀ w k e,
+      cs'.committed w ≥ k →
+      cs.committed w < k →
+      cs'.logs w k = some e →
+      isQuorumCommitted
+        cs'.voters cs'.logs k e) :
+    RaftReachable cs'
 \end{lstlisting}
 \caption{The \texttt{RaftReachable} inductive protocol model.}
 \label{fig:rr}
@@ -459,8 +726,8 @@ config validation, flow control, and state-machine invariants are all
 consistent with their formal specifications on the verified paths.
 
 \paragraph{Formulation bug caught and corrected.}
-Early versions of \texttt{log\_matching\_property} (RSS3) and
-\texttt{raft\_committed\_no\_rollback} (RSS4) claimed properties for
+Early versions of \texttt{log\_matching\allowbreak\_property} (RSS3) and
+\texttt{raft\_committed\allowbreak\_no\_rollback} (RSS4) claimed properties for
 \emph{arbitrary} log states---with no hypotheses about how the logs were
 constructed.  These statements are provably false (a log with random
 contents satisfies no log-matching property).  The \texttt{sorry} mechanism
@@ -468,9 +735,10 @@ acted as a ``needs review'' marker: since \texttt{sorry} was required but
 no proof could be found, the error was caught before it entered the proof
 base.
 
-The corrected versions carry explicit hypotheses
-(\texttt{LogMatchingInvariantFor}, \texttt{NoRollbackInvariantFor}), which
-are exactly the invariants preserved by valid Raft transitions.
+The corrected versions carry explicit hypotheses:
+\texttt{LogMatching\-InvariantFor} and
+\texttt{NoRollback\-InvariantFor},
+which are exactly the invariants preserved by valid Raft transitions.
 Both were subsequently proved (run r130).
 
 %% ============================================================
@@ -495,9 +763,11 @@ quorum acknowledgement), and (c)~term monotonicity.  This is standard Raft
 proof-engineering and would be a natural extension of the current work.
 
 Concretely, \texttt{hno\_overwrite} corresponds to the Rust panic guard:
-\begin{lstlisting}[language=Lean4,language=Rust2]
-if conflict != 0 && conflict <= self.committed {
-    panic!("entry {} conflict with committed log", conflict);
+\begin{lstlisting}[language=Rust2]
+if conflict != 0
+   && conflict <= self.committed {
+  panic!("entry {} conflict
+    with committed log", conflict);
 }
 \end{lstlisting}
 This panic is proved to be unreachable in a correct Raft execution by
@@ -530,14 +800,60 @@ terms, leader election, and message routing are not included.
 RaftReachable model}; fully unconditional safety with respect to the
 Rust implementation would require the extensions in \S\ref{sec:reachability}.
 
-\subsection{Automation and Effort}
+\subsection{Automation and Human Intervention}
+\label{sec:interventions}
 
 The entire FV effort was conducted by the \emph{Lean Squad} automated
-agent, an LLM-driven agent that runs as a GitHub Actions workflow.
-Each run: reads persistent memory, selects one or two tasks from a
-weighted schedule, installs the Lean toolchain, writes or modifies
-Lean files, runs \texttt{lake build}, and creates a pull request with
-verified code.
+agent, an LLM-driven agent that runs as a GitHub Actions workflow
+(\S\ref{sec:workflow}).
+Each run: reads persistent memory, draws two tasks from a phase-weighted
+schedule, installs the Lean toolchain, executes the tasks (writing or
+modifying Lean files, specs, or documentation), runs \texttt{lake build},
+and creates a pull request with verified code.  A final status-issue
+update always runs.
+
+The human author's role was deliberately hands-off: he designed the
+Lean Squad workflow itself (\S\ref{sec:workflow}), installed it on the
+repository, and reviewed merged PRs.  Over the entire 34-run project,
+his total intervention consisted of exactly two GitHub comments:
+
+\paragraph{Intervention 1 (Issue \#59, run~$\approx$20).}
+After 18 targets were fully proved at the data-structure and
+log-operation level, the human wrote:
+\begin{quote}\small
+\texttt{/repo-assist continue on this work, add more planning
+as an issue here or do more work via PRs or both}
+\end{quote}
+This triggered a companion agent (\emph{Repo Assist}) to create a
+planning epic (Issue~\#59) that surveyed the state of progress and
+recommended next steps---including the Tier~2 safety invariants
+(term monotonicity, vote commitment, election safety) that would
+later inform Layers~5--6.
+
+\paragraph{Intervention 2 (Issue \#94, run~$\approx$28).}
+After the agent had proved 370 theorems but had not yet attempted
+state-machine-level safety, the human wrote:
+\begin{quote}\small
+\texttt{/lean-squad Address these concerns from critique.md,
+plan out rest of work, write theorems even if unproven,
+get the project on Trajectory to completion}
+\end{quote}
+with a one-line note: ``The main remaining gap is the state-machine
+level: no end-to-end Raft safety theorem exists yet.''
+This triggered the agent to create \texttt{RaftSafety.lean} and
+\texttt{CrossModuleComposition.lean} (run~r128), adding 25 new
+theorems including the first end-to-end cluster safety results.
+Subsequent runs (r129--r134) completed the remaining sorry-guarded
+theorems and produced the final \texttt{raftReachable\_safe}.
+
+\paragraph{What is remarkable} is not that two interventions occurred,
+but what did \emph{not} require human intervention: the choice of all
+22 FV targets, the six-layer proof architecture, all 22 informal
+specifications, all Lean formalisations, all 443+ proofs, the
+correspondence review, the proof utility critique, the project report,
+and even an initial draft of this paper were produced autonomously.
+The human never selected a target, wrote a specification, suggested a
+proof strategy, or debugged a failing proof.
 
 Across 34 runs spanning $\approx$6 weeks, the agent produced:
 \begin{itemize}\setlength\itemsep{0pt}
@@ -548,10 +864,11 @@ Across 34 runs spanning $\approx$6 weeks, the agent produced:
   \item 0 implementation bugs
 \end{itemize}
 
-The key insight enabling automation is the six-layer architecture:
-each layer has a well-defined interface (a set of theorems the next
-layer depends on), making incremental progress tractable for an LLM
-agent without global context.
+The key insight enabling this level of autonomy is the workflow's
+phase-weighted task selection (\S\ref{sec:tasksel}): the agent always
+has a well-defined next action, and persistent memory ensures each run
+builds on a growing base of named lemmas and established
+infrastructure.
 
 \subsection{Lean Stdlib vs.\ Mathlib}
 
@@ -570,10 +887,19 @@ not existing (use \texttt{Nat.le\_refl \_}).
 
 \subsection{Lessons Learned}
 
-\paragraph{Layering enables automation.}
-An LLM agent can prove theorems in a new module if all dependencies are
-already available as named lemmas.  The six-layer structure ensures the
-agent always has a well-defined frontier to advance.
+\paragraph{Phase-weighted task selection enables autonomy.}
+The workflow's ten-task structure with adaptive weights means the
+agent always has a well-defined next action.  The agent does not need
+a human to tell it what to do next---the weight computation, combined
+with persistent memory, provides sufficient direction.  The six-layer
+proof architecture emerged organically from this process rather than
+being prescribed.
+
+\paragraph{Persistent memory is essential for cumulative progress.}
+An LLM agent can prove theorems in a new module if all dependencies
+are already available as named lemmas.  Persistent memory ensures
+the agent knows which lemmas exist, which targets are complete, and
+what strategies have worked or failed in prior runs.
 
 \paragraph{The \texttt{sorry} discipline catches formulation bugs.}
 Proving with \texttt{sorry} as a placeholder and then trying to remove it
@@ -596,32 +922,369 @@ Finding no implementation bugs in 443 theorem-checks is itself evidence
 of implementation quality.  The absence of counterexamples in the
 verified paths raises confidence, even without a fully concrete model.
 
+\subsection{Cost}
+\label{sec:cost}
+
+Each of the 34 Lean Squad runs consumed approximately \$7 of LLM
+token cost at Claude Opus~4.6 pricing (at time of publication), for a total of
+approximately~\$240.  This covers the full pipeline: reading
+persistent memory, researching the codebase, selecting tasks,
+installing the Lean toolchain, writing or modifying Lean files,
+running \texttt{lake build}, and creating pull requests.  The
+GitHub Actions compute time (Linux runners) is negligible relative
+to token cost.
+
+For comparison, IronFleet~\cite{ironfleet} required person-years of
+expert proof engineering in Dafny; Woos~et~al.~\cite{vard} reported
+$\sim$50{,}000 lines of Coq proof.  Even valuing human proof-engineer
+time conservatively, the dollar cost of comparable manual efforts
+exceeds the LLM cost by orders of magnitude.  The trade-off is clear:
+LLM-driven FV substitutes cheap, parallelisable compute for scarce,
+expensive human expertise.  As model prices continue to fall, the
+economics will only improve.
+
+\subsection{Training Data Overlap}
+\label{sec:training}
+
+It is virtually certain that Claude Opus~4.6 was trained on published
+papers, source code, and proof artefacts related to the formal
+verification of Raft---including Ongaro's dissertation~\cite{ongaro2014dissertation},
+the Verdi/VRaft Coq development~\cite{vard}, TLA+ specifications, and
+the \texttt{raft-rs} source code itself.  The degree to which this
+prior exposure influenced the agent's target selection, proof
+architecture, and tactic choices cannot easily be measured.
+
+We note two mitigating factors.  First, the proofs are machine-checked
+by Lean's kernel: regardless of how the agent arrived at a proof term,
+its correctness is independently verified.  Training-data influence
+cannot produce a false positive.  Second, several architectural
+decisions---stdlib-only (no Mathlib), the six-layer decomposition, the
+\texttt{RaftReachable} abstract model---have no direct precedent in the
+prior Raft verification literature, suggesting that the agent did more
+than reproduce memorised material.  Nevertheless, this overlap should
+be borne in mind when assessing the generalisability of our results to
+domains with less existing formal-verification literature.
+
+%% ============================================================
+\section{Related Work}
+\label{sec:related}
+%% ============================================================
+
+We situate our contribution with respect to six threads of prior work.
+
+\subsection{Formal Verification of Raft}
+
+The closest predecessor is Woos~et~al.~\cite{vard}, who gave the first
+machine-checked proof of state-machine safety for Raft in Coq using the
+Verdi framework~\cite{verdi}.  Their proof discovered 90 system invariants
+and extracted a runnable OCaml implementation.  A key methodological
+contribution was \emph{planning for change}: factoring proofs so that
+strengthening one invariant does not cascade failures throughout the
+development.  Our work differs in three respects: (i)~we target a
+\emph{production} Rust implementation (\texttt{raft-rs}) rather than an
+extracted model; (ii)~we use Lean~4 with stdlib only; and (iii)~the
+entire effort is LLM-automated.  Our layered architecture echoes
+their information-hiding methodology, but arises from the need to give
+the LLM agent a well-defined proof frontier rather than from human
+proof-maintenance concerns.
+
+Subsequent Raft verification efforts have used diverse formalisms.
+Evrard~\cite{evrard2020raft} modelled Raft in LNT for model-checking
+with CADP.  Bao~et~al.~\cite{bao2022raft} and
+Ishibashi~and~Ogata~\cite{ishibashi2023raft} model-checked Raft leader
+election in NuSMV and Maude respectively.
+Sanabria~et~al.~\cite{sanabria2024raft} verified Raft leader election
+safety using the Athena proof system.
+Bora~et~al.~\cite{bora2024raft} modelled Raft in mCRL2, enabling
+behavioural equivalence checking.
+Xiong~et~al.~\cite{xiong2025recraft} formalised split, merge, and
+membership changes for Raft (ReCraft), complementing our focus on
+log safety.  None of these target a production implementation or
+produce end-to-end safety proofs at the level of
+\texttt{raftReachable\_safe}.
+
+Ongaro's TLA+ specification~\cite{ongaro2014dissertation} provides
+a complementary model-checking approach.  TLA+
+can exhaustively check finite instances but does not produce
+machine-checked proofs over unbounded state spaces.  Our Lean proofs
+hold for arbitrary cluster sizes and unbounded execution traces,
+within the \texttt{RaftReachable} model.
+
+\subsection{Verified Distributed Systems}
+
+IronFleet~\cite{ironfleet} verified Paxos-based replication and a
+distributed key-value store in Dafny with TLA-style temporal
+reasoning.  The Disel framework~\cite{sergey2018disel} introduced
+dependent separation protocols for modular distributed-system
+verification in Coq.  Sprenger~et~al.~\cite{sprenger2020igloo}
+proposed Igloo, combining compositional refinement with separation
+logic for distributed-system verification.
+P\^irlea~and~Sergey~\cite{pirlea2018blockchain} mechanised blockchain
+consensus in Coq, demonstrating that protocol-level safety proofs
+are tractable in proof assistants.
+
+More recently, Honor\'e~et~al.\ developed a series of verified
+distributed-object frameworks: Adore~\cite{honore2022adore} for
+certified reconfiguration, ADO~\cite{honore2021ado} for
+fault-aware compositional verification, and
+AdoB~\cite{honore2024adob} for bridging benign and Byzantine
+consensus.  Qiu~et~al.\ verified linearisable Byzantine distributed
+objects (LiDO~\cite{qiu2024lido}) and extended this to DAG-based
+consensus (LiDO-DAG~\cite{qiu2025lidodag}).
+Kim~et~al.~\cite{kim2025verirt} presented VeriRT, an end-to-end
+verification framework for real-time distributed systems.
+Lewchenko~et~al.~\cite{lewchenko2025bolton} verified bolt-on strong
+consistency specifications.
+Zhao~et~al.~\cite{zhao2024byzantine} developed compositional
+verification of composite Byzantine protocols.
+Zhang~et~al.~\cite{zhang2024invariants} studied inductive invariants
+for distributed protocols with a focus on proof ergonomics.
+
+Two recent systems-level efforts are particularly relevant.
+AutoMan~\cite{zhang2025automan} combines automatic code generation
+with manual optimisations for verified distributed-system development,
+achieving strong guarantees on production-grade systems.
+Veil~\cite{pirlea2025veil} provides a framework for automated and
+interactive verification of transition systems, offering an
+alternative path to the reachability-style reasoning in our Layer~6.
+
+Blockchain consensus verification has also grown rapidly:
+Thomsen~and~Spitters~\cite{thomsen2021nakamoto} formalised
+Nakamoto-style proof of stake in Coq;
+Rashid~et~al.~\cite{rashid2025beacon} verified safety properties of
+Ethereum~2.0 Beacon Chain epoch processing;
+Schultz~et~al.~\cite{schultz2022reconfig} verified a distributed
+dynamic reconfiguration protocol.
+
+\subsection{Formal Verification of Rust}
+
+Verifying Rust programs is an active area with several complementary
+approaches.  RustBelt~\cite{jung2018rustbelt} established the
+semantic foundations of Rust's type system safety guarantees in Coq
+using Iris separation logic.
+Prusti~\cite{astrauskas2022prusti} provides automated deductive
+verification for Rust via Viper, targeting ownership and memory
+safety.
+Creusot~\cite{denis2022creusot} translates Rust to WhyML for
+verification with Why3, handling borrows and ownership.
+Verus~\cite{lattuada2023verus} embeds verification conditions
+directly in Rust using linear ghost types and SMT solving.
+
+Our approach is orthogonal: rather than verifying the Rust code
+directly, we build a pure functional Lean model of the relevant
+algorithms and verify properties of that model, documenting the
+correspondence to Rust in \texttt{CORRESPONDENCE.md}.  This is
+a deliberate trade-off: we lose mechanical connection to the Rust
+source (which Aeneas~\cite{aeneas} could provide) but gain the full
+power of Lean's dependent types and tactic framework for
+protocol-level reasoning that SMT-based tools struggle with.
+
+B\'il\'y~et~al.~\cite{bily2025rust} proposed a refinement methodology
+for distributed Rust programs that could, in principle, bridge our
+abstract Lean models with the concrete \texttt{raft-rs} code.
+Combining their refinement approach with our verified safety
+properties is a promising direction for future work.
+
+\subsection{LLM-Based Theorem Proving}
+
+Recent years have seen rapid progress in applying LLMs to formal
+theorem proving.  LeanDojo~\cite{yang2024leandojo} introduced a
+benchmark and retrieval-augmented approach for Lean proving, where
+an LLM retrieves relevant premises from Mathlib before generating
+tactic steps.  LEGO-Prover~\cite{wang2024legoprover} grows a
+reusable library of verified lemmas across proof attempts,
+conceptually similar to our persistent memory mechanism.
+Baldur~\cite{first2023baldur} demonstrated whole-proof generation
+and repair with LLMs for Isabelle/HOL.
+Draft-Sketch-Prove~\cite{jiang2023dsp} uses informal proofs as
+sketches that guide formal proof search.
+Copra~\cite{thakur2024copra} employs an LLM agent with
+backtracking for Lean theorem proving.
+Polu~and~Sutskever~\cite{polu2022formal} showed that curriculum
+learning over formal mathematics enables LLMs to solve increasingly
+difficult problems.
+Song~et~al.~\cite{song2024towards} explored LLMs as interactive
+copilots for Lean users.
+
+Bayaz\i t~et~al.~\cite{bayazit2025llm} conducted a case study on
+the effectiveness of LLMs for verification with proof assistants,
+finding that LLMs can discharge simple lemmas but struggle with
+multi-step proofs requiring creative insight.  Our experience
+\emph{diverges}: the Lean Squad agent completed all 443+ theorems
+including multi-step compositional proofs (Layers~4--6) that require
+chaining lemmas across modules.  We attribute this difference to
+four factors: (i)~the workflow's phase-weighted task selection
+(\S\ref{sec:workflow}) decomposes the problem into tractable
+increments, each with a well-defined interface to the next;
+(ii)~persistent memory across runs enables cumulative progress
+where each run builds on a growing base of named lemmas and
+established infrastructure;
+(iii)~the remarkable improvement in raw LLM reasoning power in the
+intervening period---frontier models in 2025--2026 are substantially
+more capable at multi-step logical reasoning than those available
+during the Bayaz\i t~et~al.\ study; and
+(iv)~the planning and tool-use capabilities of modern coding agents
+(Copilot CLI, Codex CLI), which provide structured
+multi-step reasoning, file navigation, and iterative error correction
+that go well beyond single-prompt LLM interactions.
+
+These systems differ from our approach in a fundamental way:
+they target \emph{benchmark-style} theorem proving, where the goal
+is to close a given lemma statement in an existing formalisation.
+The human provides the theorem statement and the library context;
+the LLM provides the proof.  In contrast, \emph{Lean Squad operates
+at the project level}: it selects what to verify, writes the
+specifications, builds the library from scratch, and proves the
+theorems---all within a production codebase that has no prior
+formalisation.
+
+The closest analogue to our persistent-memory mechanism is
+LEGO-Prover's growing library~\cite{wang2024legoprover}, but
+LEGO-Prover operates within a single proof session, whereas Lean
+Squad accumulates knowledge across 34 independent GitHub Actions runs
+spanning weeks.  AlphaProof~\cite{trinh2024alphaproof} demonstrated
+that reinforcement learning over formal proofs can achieve
+competition-level mathematical reasoning, but targets Olympiad
+geometry rather than software verification, and requires massive
+compute for training.
+
+Yao~et~al.~\cite{yao2024liveness} demonstrated mostly-automated
+verification of liveness properties using ranking functions, and
+Gopinathan~et~al.~\cite{gopinathan2023repair} developed
+mostly-automated proof repair for verified libraries---both pointing
+toward increasing automation in formal verification.
+D\'iaz~et~al.~\cite{diaz2025incremental} introduced incremental
+certified programming, which shares our goal of making cumulative
+progress on large proof developments.
+
+\subsection{Autonomous AI Agents for Software Engineering}
+
+SWE-bench~\cite{jimenez2024swebench} established a benchmark for
+evaluating LLM agents on real-world GitHub issues.
+SWE-agent~\cite{yang2024sweagent} demonstrated that purpose-built
+agent-computer interfaces improve automated issue resolution.
+Agentless~\cite{xia2024agentless} showed that simpler, non-agentic
+approaches can also resolve a significant fraction of issues.
+
+These agents operate in a \emph{reactive} mode: given a bug report or
+feature request, they produce a patch.  Lean Squad operates in a
+\emph{proactive, scheduled} mode: it runs every 8 hours regardless
+of external triggers, inspects the repository state, and advances
+the project.  This distinction is important because formal
+verification is not naturally triggered by external events---it is
+a long-running engineering effort that requires sustained, cumulative
+progress.
+
+The phase-weighted task selection mechanism (\S\ref{sec:tasksel})
+can be viewed as a form of \emph{automated project management}:
+the workflow maintains a notion of project phase, allocates effort
+accordingly, and adapts as the project matures.  This is, to our
+knowledge, novel among LLM-agent architectures.
+
+\subsection{Proof Engineering and Large-Scale Verification}
+
+Ringer~et~al.~\cite{ringer2019qed} surveyed the landscape of
+formally verified software engineering, identifying proof maintenance
+as a central challenge---the same challenge that motivated the
+``planning for change'' methodology of Woos~et~al.~\cite{vard}.
+Dejon~et~al.~\cite{dejon2024codetoqed} provided a systematic guide
+to proof engineering, and Luan~et~al.~\cite{luan2025compatibility}
+studied compatibility issues across theorem prover versions, a
+practical concern we sidestep by using Lean~4 stdlib only.
+The proof-repair line of work by
+Ringer~et~al.~\cite{ringer2021repair} and
+Viola~et~al.~\cite{viola2025repair} addresses proof maintenance
+across type equivalences, complementing our approach of isolating
+change behind layer boundaries.
+
+Fiat-Crypto~\cite{fiat-crypto} demonstrated automatic synthesis of
+verified cryptographic arithmetic.  The Aeneas
+toolchain~\cite{aeneas,charon} enables mechanical Lean extraction
+from safe Rust; we note its applicability but do not use it in this
+work.
+
+To calibrate expectations, we compare the scale of our verification
+with landmark projects.
+seL4~\cite{klein2009sel4} verified a production OS microkernel: 8,700
+lines of C, $\sim$200,000 lines of Isabelle/HOL proof, 11 person-years.
+CertiKOS~\cite{gu2016certikos} verified a concurrent OS kernel with
+6,500 lines of C and $\sim$100,000 lines of Coq.
+CompCert~\cite{compcert} verified an optimising C compiler over
+$\sim$100,000 lines of Coq.
+IronFleet~\cite{ironfleet} verified Paxos replication with
+$\sim$42,000 lines of Dafny proof.
+Woos~et~al.~\cite{vard} verified simplified Raft with $\sim$50,000
+lines of Coq across 90 invariants.
+
+Our 7,440 lines of Lean and 443 theorems are modest by comparison.
+However, the relevant metric is not raw scale but \emph{effort}:
+those projects required person-years of expert proof engineering,
+while ours required zero human proof engineering and approximately
+34 LLM agent runs (each $\sim$15--30 minutes of wall-clock time)
+plus two one-line human comments.  If the approach scales---and the
+successful progression from Layer~1 through Layer~6 suggests it
+can---the implications for the cost of formal verification are
+significant.
+
+\medskip\noindent
+Our contribution is, to our knowledge, the first machine-checked
+safety proof for a \emph{production} Raft implementation, using a
+modern proof assistant without external libraries, and generated
+entirely by an automated LLM agent.
+
 %% ============================================================
 \section{Conclusion}
 %% ============================================================
 
-We have presented a machine-checked formal verification of core safety
-properties of \texttt{raft-rs} using Lean~4.  Starting from zero, an
-automated LLM-driven agent produced 443+ theorems across 23 files in
-34 incremental runs, culminating in the end-to-end safety theorem
+Formal verification has historically required deep expertise in proof
+assistants and months of dedicated human effort.  This paper demonstrates
+that LLM-driven agents can eliminate that barrier.
+
+Starting from zero, the Lean Squad agent---running as a scheduled
+GitHub Actions job with no human in the loop---autonomously selected
+22 verification targets in a production Raft implementation, designed
+a six-layer proof architecture, wrote all specifications and proofs,
+and produced 443+ machine-checked theorems across 23 files in 34 runs,
+culminating in the end-to-end safety theorem
 \texttt{raftReachable\_safe} with zero \texttt{sorry}.
+The human author's total involvement was: designing the reusable
+workflow, merging PRs, and writing two short comments.
+He required no Lean expertise, no formal-methods training, and
+invested near-zero hours of proof-engineering labour.
+
+The key enablers are: (i)~a phase-weighted task selection mechanism
+that gives the agent a well-defined next action at every stage of the
+project; (ii)~persistent memory that accumulates proved lemmas,
+target status, and proof strategies across independent runs; and
+(iii)~the dramatically improved reasoning capabilities of modern
+coding agents (Copilot CLI with Claude Opus~4.6 in this project).
 
 The proof architecture is layered, honest, and extensible: each layer's
 residual assumptions are explicit, and the path to a fully concrete
-protocol proof is clear.  The project demonstrates that LLM-driven
-agents can make cumulative, meaningful progress on real-world formal
-verification tasks, even without human proof engineering.
+protocol proof is clear.  The Lean Squad workflow is open-source
+and installs on any GitHub repository with two commands
+(\S\ref{sec:install}), requiring only an LLM API token.
+We believe this shifts the economics of formal verification:
+the cost moves from scarce human proof-engineering expertise to
+commodity LLM compute, making machine-checked safety proofs a
+practical option for ordinary software teams.
 
-Future work includes: closing the residual gap by formalising term
-management and leader election; applying the Aeneas~\cite{aeneas}
-toolchain to mechanically extract Lean models from the safe-Rust
-Aeneas feature; and extending the model to liveness properties.
+Future work on Lean Squad includes reliably applying the Aeneas~\cite{aeneas}
+toolchain to mechanically extract Lean models from safe Rust; generalising it
+to use a broader range of formal verification tools and methodology; and applying
+Lean Squad to other production codebases to test generality.
 
 \begin{acks}
-🔬 \emph{This paper was written by Lean Squad, an automated formal
-verification agent for \texttt{dsyme/raft-lean-squad}.  All theorems
-are machine-checked by Lean~4.28.0.  The agent source code and all
-proof artefacts are available in the repository.}
+🔬 \emph{This paper was co-authored by Don Syme, LeanSquad (an autonomous
+AI automation workflow using GitHub Agentic Workflows), Copilot CLI
+(GitHub's AI coding agent), and Claude Opus~4.6 (Anthropic's LLM).  Don Syme designed the Lean Squad workflow
+and made two brief interventions; all 22 target selections, all
+specifications, all 443+ proofs, and the six-layer architecture were
+produced autonomously by the AI agent.  All theorems are machine-checked
+by Lean~4.28.0 with zero \texttt{sorry}.  The proof artefacts, agent
+configuration, and full run history are available in the repository
+\texttt{dsyme/raft-lean-squad}.  The Lean Squad workflow is
+open-source at \texttt{githubnext/\allowbreak agentics/\allowbreak workflows/\allowbreak lean-squad.md}.}
 \end{acks}
 
 \bibliographystyle{ACM-Reference-Format}
