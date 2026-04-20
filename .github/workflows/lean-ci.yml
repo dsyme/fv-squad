@@ -61,6 +61,30 @@ jobs:
           echo "=== 'sorry' occurrences in build output: $SORRY_COUNT ==="
           exit $BUILD_EXIT
 
+      - name: Count source-level sorry
+        if: success()
+        run: |
+          SOURCE_SORRY=$(grep -rn "sorry" FVSquad/ --include="*.lean" \
+            | grep -v "0 sorry\|Sorry count\|sorry-guarded\|#.*sorry\|-- .*sorry\|/-.*sorry.*-/\|\"sorry" \
+            | wc -l || true)
+          echo "=== Source-level sorry count (excluding comments/strings): $SOURCE_SORRY ==="
+          if [ "$SOURCE_SORRY" -gt 0 ]; then
+            echo "⚠️  $SOURCE_SORRY sorry instance(s) found in source:"
+            grep -rn "sorry" FVSquad/ --include="*.lean" \
+              | grep -v "0 sorry\|Sorry count\|sorry-guarded\|#.*sorry\|-- .*sorry\|/-.*sorry.*-/\|\"sorry" || true
+          else
+            echo "✅  No sorry in source files"
+          fi
+
+      - name: Report proof statistics
+        if: success()
+        run: |
+          THEOREM_COUNT=$(grep -rh "^theorem\|^private theorem" FVSquad/ --include="*.lean" | wc -l || true)
+          FILE_COUNT=$(ls FVSquad/*.lean 2>/dev/null | wc -l || true)
+          echo "✅  Proof statistics:"
+          echo "    - Lean files: $FILE_COUNT"
+          echo "    - Theorems:   $THEOREM_COUNT"
+
       - name: Report linter warnings
         if: success()
         run: |

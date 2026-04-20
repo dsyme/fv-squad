@@ -3,14 +3,14 @@
 > 🔬 *Lean Squad — automated formal verification for `dsyme/fv-squad`.*
 
 ## Last Updated
-- **Date**: 2026-04-20 10:40 UTC
-- **Commit**: `0bf3d5a` — MaybeCommit.lean (MC1-MC12, A6 term safety) added; 458 theorems, 0 sorry, 28 files
+- **Date**: 2026-04-20 11:48 UTC
+- **Commit**: `28ed959` — ConcreteProtocolStep.lean (CPS1–CPS12, A5 bridge) added; 471 theorems, 0 sorry, 29 files
 
 ---
 
 ## Overall Assessment
 
-The FV project has produced **458 theorems across 28 Lean files, all machine-checked by
+The FV project has produced **471 theorems across 29 Lean files, all machine-checked by
 Lean 4 (version 4.28.0, stdlib only — no Mathlib), with 0 `sorry`**.
 
 The `RaftReachable.step` constructor in `RaftTrace.lean` bundles **5 hypotheses** about
@@ -27,19 +27,23 @@ milestones since the original "COMPLETE" declaration:
 - **`MaybeCommit.lean`** (MC1–MC12, 12 theorems): **A6 term safety** formalised — `maybe_commit`
   and `commit_to` from `src/raft_log.rs`; MC4 proves that committed only advances to indices
   whose log term equals the leader's current term.
+- **`ConcreteProtocolStep.lean`** (CPS1–CPS12+, 13 theorems): **A5 bridge** — the
+  `ValidAEStep` structure enumerates the concrete protocol conditions for a single
+  AppendEntries step and CPS2 proves that any such step on a `RaftReachable` state
+  produces a new `RaftReachable` state.
 
-**Remaining gap (A5/A6)**: CT4 and CT5 are proved with explicit hypotheses (`hprev`, `hcand_eq`,
-`hlog_none`, `hcand_mono`) that must be established from a concrete reachability model.
-`MaybeCommit.lean` (MC4) closes the A6 obligation — the term safety condition is now
-formally stated and proved — but the A5 obligation (establishing the hypotheses from a
-global state model) remains.  Roughly 50–100 additional theorems connecting the concrete
-protocol transitions to `RaftReachable.step` would complete the picture.
+**Remaining gap (A5)**: CT4 and CT5 are proved with explicit hypotheses (`hprev`, `hcand_eq`,
+`hlog_none`, `hcand_mono`).  `ConcreteProtocolStep.lean` (CPS2) is the first file to connect
+the abstract `RaftReachable.step` inductive to a concrete AppendEntries protocol rule.
+Establishing the three `ValidAEStep` fields (`hqc_preserved`, `hcommitted_mono`, `hnew_cert`)
+from a concrete election + term model would complete the fully self-contained proof.
+Roughly 40–80 additional theorems needed.
 
-**Summary**: ~90–95% of a fully self-contained, unconditional Raft safety proof is
+**Summary**: ~92–95% of a fully self-contained, unconditional Raft safety proof is
 machine-checked.  The top-level result `raftReachable_safe` (RT2) is proved: any cluster
-state reachable by valid Raft transitions is safe.  The term safety condition (A6) is
-now formally verified in `MaybeCommit.lean`.  No bugs were found in any modelled Rust
-function.  458 theorems, 28 files, 0 sorry.
+state reachable by valid Raft transitions is safe.  Both the term safety condition (A6,
+`MaybeCommit.lean`) and the A5 bridge (CPS2, `ConcreteProtocolStep.lean`) are now formally
+proved.  No bugs were found in any modelled Rust function.  471 theorems, 29 files, 0 sorry.
 
 ---
 
@@ -745,9 +749,11 @@ The resolved gap list:
 ### Remaining open questions
 
 1. **A5 concrete reachability** (remaining gap): CT4 and CT5 are proved with explicit
-   hypotheses (`hprev`, `hcand_eq`, `hlog_none`, `hcand_mono`).  Establishing these from a
-   global Raft state model (inducting over protocol transitions) would make the proof fully
-   self-contained.  Roughly 50–100 additional theorems needed.
+   hypotheses (`hprev`, `hcand_eq`, `hlog_none`, `hcand_mono`).  `ConcreteProtocolStep.lean`
+   (CPS2) now provides the first direct concrete-to-abstract bridge: a `ValidAEStep` on a
+   `RaftReachable` state gives a new `RaftReachable` state.  Establishing the three abstract
+   `ValidAEStep` fields (`hqc_preserved`, `hcommitted_mono`, `hnew_cert`) from a global
+   election + term model would complete the picture.  Roughly 40–80 additional theorems needed.
 2. **`jointCommittedIndex` empty-config divergence**: Lean returns `0`, Rust returns `u64::MAX`.
    The `outgoing ≠ []` precondition is implicit but not enforced by type.
 3. **Voter-list `Nodup`**: Theorems hold semantically without it, but adding it would
@@ -758,7 +764,8 @@ The resolved gap list:
 - Leader completeness (item 2): `LeaderCompleteness.lean` done.
 - Concrete transitions CT4/CT5: fully proved (0 sorry).
 - `CommitRule` (discharge `hnew_cert`): `CommitRule.lean` done.
-- A6 term safety: `MaybeCommit.lean` (this run) — MC4 formally proves the A6 condition.
+- A6 term safety: `MaybeCommit.lean` — MC4 formally proves the A6 condition.
+- A5 bridge: `ConcreteProtocolStep.lean` (this run) — CPS2 connects concrete AE to `RaftReachable`.
 
 ---
 
@@ -780,7 +787,8 @@ The resolved gap list:
 | 10 | `ConcreteTransitions`: AppendEntries model + LMI/CandLogMatching proofs | `ConcreteTransitions.lean` | ✅ Proved (r148+) |
 | 11 | `CommitRule`: discharge `hnew_cert` | `CommitRule.lean` | ✅ Proved (r155+) |
 | 12 | A6 term safety: `maybe_commit` only commits from current term | `MaybeCommit.lean` | ✅ Proved (r157) |
-| **13** | **A5 concrete reachability**: establish CT4/CT5 hypotheses from global state model | **Future work** | **⬜ Remaining gap** |
+| 13 | **A5 bridge**: `ValidAEStep` structure + CPS2 (`validAEStep_raftReachable`) | `ConcreteProtocolStep.lean` | ✅ Proved (r158) |
+| **14** | **A5 completion**: establish `hqc_preserved`/`hcommitted_mono`/`hnew_cert` from concrete election + term model | **Future work** | **⬜ Remaining gap** |
 
 ---
 
@@ -1029,15 +1037,15 @@ stronger than what Raft guarantees).
 
 ---
 
-### `ConcreteTransitions.lean` — 6 theorems (CT1-CT6), 2 sorry
+### `ConcreteTransitions.lean` — 6 theorems (CT1-CT6), 0 sorry
 
 | Theorem | Level | Bug-catching potential | Notes |
 |---------|-------|----------------------|-------|
 | `hlc_of_candLogMatching` (CT1) | **High** | **High** | HLogConsistency from CandLogMatching + coverage; 0 sorry |
 | `applyAE_preserves_prefix` (CT2) | Mid | **High** | AppendEntries preserves entries at indices ≤ prevLogIndex; 0 sorry |
 | `applyAE_extends_at_entries` (CT3) | Mid | **High** | AppendEntries writes new entries at expected positions; 0 sorry |
-| `lmi_preserved_single_step` (CT4) | High | **High** | Single AE step preserves LogMatchingInvariantFor; sorry |
-| `candLogMatching_of_broadcast` (CT5) | **High** | **High** | Leader broadcast → CandLogMatching; sorry (A4/A5 gap) |
+| `lmi_preserved_single_step` (CT4) | High | **High** | Single AE step preserves LogMatchingInvariantFor; 0 sorry |
+| `candLogMatching_of_broadcast` (CT5) | **High** | **High** | Leader broadcast → CandLogMatching; 0 sorry |
 | `hlc_from_concrete_protocol` (CT6) | **High** | **High** | Delegates to CT1; 0 sorry |
 
 **Assessment**: This is the A4 formal spec file.  Its primary contribution is **CT1**
@@ -1051,7 +1059,7 @@ than the original `HLogConsistency`:
 - `CandLogCoversLastIndex` follows from isUpToDate + concrete log history (AppendEntries
   from prior leaders extend the log monotonically).
 - `CandLogMatching` follows from the Log Matching Invariant (LMI) applied to
-  candidate-follower log pairs (CT4 is the key step, currently sorry).
+  candidate-follower log pairs (CT4 is the key step, proved with explicit hypotheses).
 
 **CT2 and CT3** are fully proved and cover the core properties of `applyAppendEntries`:
 prefix preservation and correct entry placement.  These are directly analogous to the
@@ -1096,7 +1104,7 @@ expression of the Raft commit rule as a safety property.
 
 ---
 
-### `MaybeCommit.lean` — 12 theorems (MC1-MC12, 0 sorry) — **NEW (this run)**
+### `MaybeCommit.lean` — 12 theorems (MC1-MC12, 0 sorry)
 
 | Theorem | Level | Bug-catching potential | Notes |
 |---------|-------|----------------------|-------|
@@ -1124,7 +1132,6 @@ would use its own current term, and the old entry would have a different term.
 **MC4 + CR8 together** close both halves of the commit safety picture:
 - **CR8**: the quorum-certification half — committed advances only when a quorum has the entry.
 - **MC4**: the term-safety half — committed advances only when the entry's term = current term.
-Both are needed for full Raft safety; this run formally verifies the second half.
 
 **MC1 (`maybeCommit_ge_committed`)** directly corresponds to the `hcommitted_mono` hypothesis
 in `RaftReachable.step`, providing a concrete discharge proof.
@@ -1134,5 +1141,59 @@ a clean decomposition showing that `maybe_commit` is `commit_to` with an A6 safe
 
 ---
 
-> 🔬 Updated by [Lean Squad](https://github.com/dsyme/raft-lean-squad/actions/runs/24661834670)
-> automated formal verification. Current state: **458 theorems, 0 sorry, 28 Lean files**.
+### `ConcreteProtocolStep.lean` — 13 theorems (CPS1-CPS12+, 0 sorry) — **NEW (this run)**
+
+| Theorem | Level | Bug-catching potential | Notes |
+|---------|-------|----------------------|-------|
+| `validAEStep_hno_overwrite` (CPS1) | **High** | **High** | Concrete discharge of `hno_overwrite`: `h_committed_le_prev` + CT2 |
+| `validAEStep_raftReachable` (CPS2) | **High** | **High** | **Main bridge**: valid AE step on reachable → new reachable state |
+| `validAEStep_hcand_eq_at_entry` (CPS3) | Mid | **High** | New entry in AE msg appears at correct log index |
+| `validAEStep_prefix_unchanged` (CPS4) | Mid | **High** | Indices ≤ `prevLogIndex` unchanged by the step |
+| `validAEStep_lmi_preserved` (CPS5) | **High** | **High** | Valid AE step preserves `LogMatchingInvariantFor` (CT4) |
+| `validAEStep_hlc` (CPS6) | **High** | **High** | `CandLogMatching` before → `HLogConsistency` after (CT5b) |
+| `validAEStep_new_entry_at` (CPS7) | Mid | Medium | Voter `v`'s log at `prevLogIndex+1+j` = msg entry `j` |
+| `validAEStep_logs_v` (CPS8) | Mid | Medium | Voter `v`'s log is the updated AE-applied log |
+| `validAEStep_logs_other` (CPS9) | Mid | Medium | Other voters' logs are unchanged |
+| `twoStep_raftReachable` (CPS10) | **High** | **High** | Two consecutive valid AE steps: result is `RaftReachable` |
+| `validAEStep_committed_mono_of_local` (CPS11a) | Mid | **High** | Local committed-indices of non-`v` voters unchanged |
+| `validAEStep_committed_invariant` (CPS11b) | Mid | **High** | Committed invariant preserved by the step |
+| `ae_step_no_rollback` (CPS12) | **High** | **High** | Global no-rollback: all voters' committed entries preserved |
+
+**Assessment**: **CPS2 (`validAEStep_raftReachable`)** is the most architecturally important
+theorem in this file and in the entire A5 trajectory.  It is the **first theorem in the
+FVSquad project to directly connect a concrete protocol rule to the abstract `RaftReachable`
+inductive**.  It proves: given any `RaftReachable cs` and a `ValidAEStep cs cs'`, the
+resulting state `cs'` is also `RaftReachable`.
+
+This means the project now has a formally verified path from:
+```
+Concrete AppendEntries step conditions (ValidAEStep)
+         ↓  CPS2
+Abstract RaftReachable.step hypotheses are satisfied
+         ↓  RT1
+CommitCertInvariant is preserved
+         ↓  RT2 / raftReachable_safe
+isClusterSafe cs'
+```
+
+**CPS1 (`validAEStep_hno_overwrite`)** directly discharges the `hno_overwrite` hypothesis
+from `RaftReachable.step` using the concrete `h_committed_le_prev` field of `ValidAEStep`
+combined with CT2 (preservation of entries ≤ `prevLogIndex`).  This gives a machine-checked
+proof that the Rust panic guard `if conflict ≤ committed { fatal!("...") }` in `maybe_append`
+is exactly the abstract hypothesis `hno_overwrite` in the safety proof.
+
+**CPS12 (`ae_step_no_rollback`)** is a cluster-global version of the no-rollback property:
+for every voter `u` (not just `v`), committed entries are preserved.  This covers the
+complete cluster safety argument for AppendEntries steps.
+
+**Remaining gap**: The three abstract hypotheses in `ValidAEStep` that must come from outside
+(`hqc_preserved`, `hcommitted_mono`, `hnew_cert`) are the A1/A2/A3 obligations.
+`CommitRule.lean` (CR8) discharges `hnew_cert`; `LeaderCompleteness.lean` + election model
+discharges `hqc_preserved`; `MC1` discharges `hcommitted_mono` given `ValidAEStep`.
+The remaining A5 work is a global election + term model that establishes these fields from
+protocol reachability rather than explicit hypotheses.
+
+---
+
+> 🔬 Updated by [Lean Squad](https://github.com/dsyme/raft-lean-squad/actions/runs/24664746901)
+> automated formal verification. Current state: **471 theorems, 0 sorry, 29 Lean files**.
