@@ -1,37 +1,48 @@
 {
-  "run_id": "r154",
-  "workflow_run": "24660841722",
-  "date": "2026-04-20T10:12:54Z",
+  "run_id": "r157",
+  "workflow_run": "24661834670",
+  "date": "2026-04-20T10:40:00Z",
   "lean_version": "4.28.0",
-  "total_theorems": 437,
+  "total_theorems": 458,
   "total_sorry": 0,
-  "lean_files": 27,
+  "lean_files": 28,
   "completed_tasks_this_run": [
-    "Task 5 (Proof Assistance - CT4 + CT5 proved, 0 sorry)",
-    "Task 9 (CI Audit - healthy, no changes)"
+    "Task 5 (Proof Assistance - MaybeCommit.lean, MC1-MC12, A6 term safety)",
+    "Task 7 (Proof Utility Critique - CRITIQUE.md updated)"
   ],
   "new_theorems": [
-    "CT4: lmi_preserved_single_step (proved with hprev+hcand_eq hypotheses)",
-    "CT5: candLogMatching_of_broadcast (proved with hlog_none+hcand_mono hypotheses)"
+    "MC1: maybeCommit_ge_committed (monotone)",
+    "MC2: maybeCommit_or",
+    "MC3: maybeCommit_advances_iff",
+    "MC4: maybeCommit_term (A6 term safety — main result)",
+    "MC5: maybeCommit_no_advance_mismatch",
+    "MC6: maybeCommit_no_advance_le",
+    "MC7: maybeCommit_eq_maxIndex",
+    "MC8: maybeCommit_le_max",
+    "MC9: maybeCommit_idempotent",
+    "MC10: commitTo_ge_committed",
+    "MC11: commitTo_advances_iff",
+    "MC12: maybeCommit_eq_commitTo"
   ],
-  "pr_created": "feat(fv): prove CT4 + CT5 in ConcreteTransitions — 0 sorry (Tasks 5 & 9)",
-  "branch": "lean-squad/prove-ct4-ct5-task5-task9-24660841722",
+  "pr_created": "feat(fv): MaybeCommit.lean (A6 term safety, MC1-MC12) + CRITIQUE update",
+  "branch": "lean-squad/maybe-commit-task5-7-24661834670",
   "targets": {
-    "concrete_transitions": {
+    "maybe_commit": {
       "phase": 5,
       "status": "complete",
-      "lean_file": "FVSquad/ConcreteTransitions.lean",
-      "theorems": 11,
+      "lean_file": "FVSquad/MaybeCommit.lean",
+      "theorems": 12,
       "sorry_count": 0,
-      "note": "CT4+CT5 proved. All 11 theorems proved (0 sorry). Now imported in FVSquad.lean."
+      "note": "MC1-MC12. MC4 closes A6 term safety. 0 sorry."
     }
   },
   "remaining_sorries": {},
-  "a4_gap_status": "CT4+CT5 proved with explicit hypotheses. A5 gap: establishing hprev/hcand_eq/hlog_none/hcand_mono from a concrete reachability model.",
+  "a5_gap_status": "CT4+CT5 proved with explicit hypotheses. A5 gap: establishing hprev/hcand_eq/hlog_none/hcand_mono from a concrete reachability model.",
+  "a6_gap_status": "CLOSED: MC4 (maybeCommit_term) proves A6 formally.",
   "aeneas_status": "permanently_blocked_no_new_privileges",
   "ci_status": "Healthy. Lean 4.28.0. No changes needed.",
-  "toolchain_notes": "no Mathlib, use 'theorem' not 'lemma', stdlib only. simp only [hw] simplifies if-then-else in Lean 4.28.",
+  "toolchain_notes": "no Mathlib, use 'theorem' not 'lemma', stdlib only. For Prop ifs: use if_pos/if_neg with explicit terms, not simp with anonymous constructors.",
   "sorry_count": 0,
-  "last_run": "24660841722",
-  "last_run_summary": "Run 36: Proved CT4 (lmi_preserved_single_step) and CT5 (candLogMatching_of_broadcast). Added ConcreteTransitions to FVSquad.lean. 437 theorems, 27 files, 0 sorry."
+  "last_run": "24661834670",
+  "last_run_summary": "Run 37: Added MaybeCommit.lean (MC1-MC12, 12 theorems, 0 sorry). MC4 proves A6 term safety (Raft §5.4.2). Updated CRITIQUE.md. 458 theorems, 28 files, 0 sorry."
 }
