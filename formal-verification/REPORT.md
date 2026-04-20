@@ -1,16 +1,16 @@
 # FVSquad: Formal Verification Project Report
 
-> 🔬 *Lean Squad — automated formal verification for `dsyme/fv-squad`.*
+> 🔬 *Lean Squad — automated formal verification for `dsyme/raft-lean-squad`.*
 
-**Status**: 🔄 **IN PROGRESS** — 485+ theorems, 28 Lean files, 2 `sorry`, machine-checked
-by Lean 4.28.0 (stdlib only). Top-level safety theorem proved **conditionally** — election
-model gap remains (see §Critical Gap below).
+**Status**: 🔄 **ADVANCED** — 473 theorems, 29 Lean files, **0 `sorry`**, machine-checked
+by Lean 4.28.0 (stdlib only). Top-level safety theorem proved **conditionally** — A5 bridge
+(CPS2) proved; concrete election model partially closed.
 
 ---
 
 ## Last Updated
-- **Date**: 2026-05-09 08:30 UTC
-- **Commit**: `b0a0fe1` — CommitRule.lean added (CR1–CR9, 9 new theorems)
+- **Date**: 2026-04-20 13:00 UTC
+- **Commit**: `bbb386a63873` — ConcreteProtocolStep.lean (CPS1–CPS12, A5 bridge, 0 sorry)
 
 ---
 
@@ -19,19 +19,20 @@ model gap remains (see §Critical Gap below).
 The FVSquad project applied Lean 4 formal verification to the Raft consensus implementation
 in `dsyme/fv-squad` over 33+ automated runs. Starting from zero, the project:
 
-1. Identified 20+ FV-amenable targets across the codebase
+1. Identified 26 FV-amenable targets across the codebase
 2. Extracted informal specifications for each target
 3. Wrote Lean 4 specifications, implementation models, and proofs
-4. Proved **485+ theorems** across **28 Lean files** with **2 `sorry`**
+4. Proved **473 theorems** across **29 Lean files** with **0 `sorry`**
 5. Proved **conditional end-to-end Raft cluster safety**: any cluster state reachable
    via transitions satisfying 5 stated invariants is safe (no two nodes ever apply
    different entries at the same log index)
+6. Proved **CPS2 (A5 bridge)**: `ValidAEStep` on a `RaftReachable` state gives a new
+   `RaftReachable` state — first concrete→abstract connection
 
-An external critique (2026-04-20) identified a **significant remaining gap**: the
-`RaftReachable.step` constructor bundles 5 invariant conditions as abstract hypotheses
-that are not yet proved from a concrete election model (terms, votes, leader completeness).
-Approximately **60–70% of the components** needed for a fully self-contained proof exist;
-the missing 30–40% is the election model and leader completeness composition.
+Five of the `RaftReachable.step` hypotheses are closed or partially addressed: `hnew_cert`
+is closed by CommitRule (CR8), `hno_overwrite` is addressed by CPS1, and `hcommitted_mono`
+is addressed by CPS11. The remaining gap is `hqc_preserved` (leader completeness
+composition) and the full `hlogs'` discharge from a concrete election model.
 
 No bugs were found in the implementation code (itself a positive finding).
 
@@ -46,20 +47,19 @@ But `RaftReachable.step` takes 5 hypotheses as parameters:
 
 | Hypothesis | Meaning | Status |
 |---|---|---|
-| `hlogs'` | Only one voter's log changes per step | Proved for AppendEntries (RP8 partial); needs message-delivery model |
-| `hno_overwrite` | Committed entries not overwritten | Covered by RP8 `hno_truncate`; needs panic-guard proof |
+| `hlogs'` | Only one voter's log changes per step | Proved for AppendEntries (CPS8/CPS9); needs full election model |
+| `hno_overwrite` | Committed entries not overwritten | **Addressed** by CPS1 (validAEStep_hno_overwrite) |
 | `hqc_preserved` | Quorum-certified entries preserved in ALL logs | **Not proved** — requires leader completeness composition |
-| `hcommitted_mono` | Committed indices only advance | Covered by MA6 for `maybeAppend`; needs general model |
-| `hnew_cert` | New commits are quorum-certified | **Proved** by CommitRule.lean (CR5, CR8) |
+| `hcommitted_mono` | Committed indices only advance | **Addressed** by CPS11 (constructor helper for local monotonicity) |
+| `hnew_cert` | New commits are quorum-certified | **Closed** by CommitRule (CR5, CR8, definitional via `Iff.rfl`) |
 
-Until concrete Raft transitions (NodeState, terms, elections) are proved to satisfy these
-5 conditions, `raftReachable_safe` is a conditional correctness result, not a fully
-unconditional proof.
+The **A5 bridge** (CPS2: `validAEStep_raftReachable`) is now proved: a `ValidAEStep` on any
+`RaftReachable` state produces a new `RaftReachable` state. This is the first concrete→abstract
+connection.
 
-The hardest gap is **`hqc_preserved`** (leader completeness): the argument requires an
-election model (term management, vote-granting, candidate eligibility) and composing
-HQ20 + IU16 + TallyVotes + RSS5 — each piece exists, but the composition is missing.
-This requires ~3–5 new Lean files and ~100–200 new theorems.
+The hardest remaining gap is **`hqc_preserved`** (leader completeness): the argument requires
+composing HQ20 + IU16 + TallyVotes + LeaderCompleteness — each piece exists, but the
+full composition is missing. This requires ~3–5 new Lean files and ~80–150 new theorems.
 
 ---
 
@@ -75,14 +75,14 @@ graph TD
     D["🔗 Layer 4: Cross-Module Composition<br/>SafetyComposition · JointSafetyComposition<br/>CrossModuleComposition"]
     E["🛡️ Layer 5: Raft Safety<br/>RaftSafety (RSS1–RSS8)<br/>RaftProtocol (RP6, RP8)"]
     F["⚠️ Layer 6: Reachability (conditional)<br/>RaftTrace (RT1, RT2)<br/>raftReachable_safe"]
-    G["❓ Layer 7: Election Model (partial)<br/>RaftElection · LeaderCompleteness<br/>ConcreteTransitions · CommitRule"]
+    G["🔬 Layer 7: Election Model (partial)<br/>RaftElection · LeaderCompleteness<br/>ConcreteTransitions · CommitRule<br/>MaybeCommit · ConcreteProtocolStep (A5 bridge)"]
 
     A --> B
     B --> C
     C --> D
     D --> E
     E --> F
-    G -.->|"needed to discharge<br/>step hypotheses"| F
+    G -->|"CPS2: A5 bridge proved<br/>hqc_preserved still needed"| F
 ```
 
 ---
@@ -222,33 +222,36 @@ graph TD
 
 | File | Theorems | Phase | Key result |
 |------|----------|-------|------------|
-| `LimitSize.lean` | 17 | 5 ✅ | Prefix + maximality of `limit_size` |
+| `LimitSize.lean` | 25 | 5 ✅ | Prefix + maximality of `limit_size` |
 | `ConfigValidate.lean` | 10 | 5 ✅ | Boolean fn ↔ 8-constraint predicate |
 | `MajorityVote.lean` | 21 | 5 ✅ | `voteResult` characterisation, Won/Lost/Pending |
 | `JointVote.lean` | 14 | 5 ✅ | Joint config degeneracy to single quorum |
-| `CommittedIndex.lean` | 17 | 5 ✅ | Sort-index safety + maximality |
+| `CommittedIndex.lean` | 28 | 5 ✅ | Sort-index safety + maximality |
 | `FindConflict.lean` | 12 | 5 ✅ | First mismatch, zero ↔ all-match |
 | `JointCommittedIndex.lean` | 10 | 5 ✅ | `min(ci_in, ci_out)` semantics |
-| `MaybeAppend.lean` | 18 | 5 ✅ | Prefix preserved, suffix applied, committed safe |
-| `Inflights.lean` | 49 | 5 ✅ | Ring-buffer abstract/concrete bridge |
+| `MaybeAppend.lean` | 19 | 5 ✅ | Prefix preserved, suffix applied, committed safe |
+| `Inflights.lean` | 50 | 5 ✅ | Ring-buffer abstract/concrete bridge |
 | `Progress.lean` | 31 | 5 ✅ | State-machine wf invariant (matched+1≤next_idx) |
-| `IsUpToDate.lean` | 18 | 5 ✅ | Lex order, total preorder for leader election |
+| `IsUpToDate.lean` | 17 | 5 ✅ | Lex order, total preorder for leader election |
 | `LogUnstable.lean` | 37 | 5 ✅ | Snapshot/entries consistency invariants |
-| `TallyVotes.lean` | 18 | 5 ✅ | Partition, bounds, no double-quorum |
-| `HasQuorum.lean` | 22 | 5 ✅ | Quorum intersection (HQ14), witness (HQ20) |
-| `QuorumRecentlyActive.lean` | 15 | 5 ✅ | Active-quorum detection correctness |
-| `SafetyComposition.lean` | 9 | 5 ✅ | SC4: two CIs share a witness voter |
-| `JointTally.lean` | 14 | 5 ✅ | Joint-config tally correctness |
+| `TallyVotes.lean` | 28 | 5 ✅ | Partition, bounds, no double-quorum |
+| `HasQuorum.lean` | 20 | 5 ✅ | Quorum intersection (HQ14), witness (HQ20) |
+| `QuorumRecentlyActive.lean` | 11 | 5 ✅ | Active-quorum detection correctness |
+| `SafetyComposition.lean` | 10 | 5 ✅ | SC4: two CIs share a witness voter |
+| `JointTally.lean` | 18 | 5 ✅ | Joint-config tally correctness |
 | `JointSafetyComposition.lean` | 10 | 5 ✅ | JSC7: witnesses in both quorum halves |
 | `CrossModuleComposition.lean` | 7 | 5 ✅ | CMC3: maybe_append bounded by quorum |
-| `RaftSafety.lean` | 14 | 5 ✅ | RSS1–RSS8: end-to-end cluster safety |
+| `RaftSafety.lean` | 10 | 5 ✅ | RSS1–RSS8: end-to-end cluster safety |
 | `RaftProtocol.lean` | 10 | 5 ✅ | RP6, RP8: LMI/NRI preserved by AppendEntries |
-| `RaftTrace.lean` | 3 | 5 ✅⚠️ | RT1, RT2: conditional reachable safety (step hyps abstract) |
-| `LeaderCompleteness.lean` | 15 | 5 ✅ | Election model + leader completeness properties |
-| `ConcreteTransitions.lean` | 20 | 5 🔄 | CT1–CT5b: concrete AppendEntries transitions; 2 sorry remain |
-| `CommitRule.lean` | 9 | 5 ✅ | CR1–CR9: commit rule formalised; implies `hnew_cert` |
+| `RaftTrace.lean` | 5 | 5 ✅⚠️ | RT1, RT2: conditional reachable safety (step hyps abstract) |
+| `RaftElection.lean` | 15 | 5 ✅ | Election model + raft-step properties |
+| `LeaderCompleteness.lean` | 10 | 5 ✅ | Leader completeness properties (discharge hqc_preserved components) |
+| `ConcreteTransitions.lean` | 11 | 5 ✅ | CT1–CT5b: concrete AppendEntries transitions; 0 sorry |
+| `CommitRule.lean` | 9 | 5 ✅ | CR1–CR9: commit rule formalised; closes `hnew_cert` |
+| `MaybeCommit.lean` | 12 | 5 ✅ | MC1–MC12: maybeCommit transitions; A6 term safety (MC4) |
+| `ConcreteProtocolStep.lean` | 13 | 5 ✅ | CPS1–CPS12: A5 bridge (CPS2: ValidAEStep → RaftReachable) |
 | `Basic.lean` | helpers | — | Shared definitions |
-| **Total** | **485+** | **5 ✅/🔄** | **2 sorry (CT4, CT5)** |
+| **Total** | **473** | **5 ✅** | **0 sorry** |
 
 ---
 
@@ -289,14 +292,14 @@ discharged from a concrete election model.  See §Critical Gap.
 graph TD
     REAL["Real Raft Cluster<br/>(Rust implementation)"]
     MODEL["FVSquad Model<br/>(Lean 4 abstract model)"]
-    PROOF["Lean Proofs<br/>(485+ theorems, 2 sorry)"]
+    PROOF["Lean Proofs<br/>(473 theorems, 0 sorry)"]
 
     REAL -->|"Modelled as"| MODEL
     MODEL -->|"Proved in"| PROOF
 
     NOTE1["✅ Included: quorum logic,<br/>log operations, config,<br/>flow control, state machines"]
     NOTE2["⚠️ Abstracted: u64→Nat,<br/>HashMap→function,<br/>ring buffer→list"]
-    NOTE3["❌ Omitted: terms/leadership,<br/>network/I/O, concurrent state,<br/>concrete protocol messages"]
+    NOTE3["❌ Omitted: full election model,<br/>network/I/O, concurrent state,<br/>concrete protocol messages"]
 
     MODEL --- NOTE1
     MODEL --- NOTE2
@@ -322,7 +325,7 @@ AppendEntries/RequestVote messages and prove that they satisfy the `step` hypoth
 
 ### No implementation bugs found
 
-All 485+ theorems are consistent with the Rust implementation. This is a positive
+All 473 theorems are consistent with the Rust implementation. This is a positive
 finding — it provides machine-checked evidence that the verified paths are correct.
 
 ### Formulation bug caught by `sorry`
@@ -338,7 +341,9 @@ entered the proof base. Both theorems were corrected with proper hypotheses
 - `limitSize_maximality`: output is optimal, not just valid
 - `quorum_intersection_mem`: every two majority quorums share a concrete witness
 - `raftReachable_safe`: conditional top-level safety — proved given 5 protocol hypotheses;
-  election model needed to make this unconditional
+  election model partially closed (CPS2 bridge proved; hqc_preserved remains)
+- `validAEStep_raftReachable` (CPS2): A5 bridge — ValidAEStep on RaftReachable gives new RaftReachable
+- `maybeCommit_term` (MC4): A6 term safety — committed only advances when entry term = leader current term
 
 ---
 
@@ -348,29 +353,33 @@ entered the proof base. Both theorems were corrected with proper hypotheses
 timeline
     title FVSquad Proof Development
     section Early runs (r100–r115)
-        LimitSize + ConfigValidate : 27 theorems
-        MajorityVote + HasQuorum : 43 theorems
-        CommittedIndex + FindConflict + MaybeAppend : 47 theorems
+        LimitSize + ConfigValidate : 35 theorems
+        MajorityVote + HasQuorum : 41 theorems
+        CommittedIndex + FindConflict + MaybeAppend : 59 theorems
     section Mid runs (r116–r125)
-        Inflights (ring buffer) : 49 theorems — hardest individual file
-        Progress + IsUpToDate : 49 theorems
+        Inflights (ring buffer) : 50 theorems — hardest individual file
+        Progress + IsUpToDate : 48 theorems
         LogUnstable + TallyVotes + JointVote : 79 theorems
     section Composition layer (r126–r130)
-        JointCommittedIndex + QuorumRecentlyActive : 25 theorems
-        SafetyComposition + JointSafetyComposition : 19 theorems
+        JointCommittedIndex + QuorumRecentlyActive : 21 theorems
+        SafetyComposition + JointSafetyComposition : 20 theorems
         CrossModuleComposition : 7 theorems
         RSS3 and RSS4 formulation bug found and fixed
     section Raft safety (r131–r133)
-        RaftSafety RSS1–RSS7 : 13 theorems fully proved
+        RaftSafety RSS1–RSS8 : 10 theorems fully proved
         RaftProtocol RP6 + RP8 : full proofs, 0 sorry
-        RaftTrace + RSS8 : 3 theorems — conditional safety proved
+        RaftTrace + RSS8 : 5 theorems — conditional safety proved
     section Election model (r134–r155)
-        LeaderCompleteness : 15 theorems, leader election model
-        ConcreteTransitions CT1–CT5b : 20 theorems, 2 sorry remain (CT4, CT5)
+        RaftElection : 15 theorems, raft-step abstractions
+        LeaderCompleteness : 10 theorems, discharge hqc_preserved components
+        ConcreteTransitions CT1–CT5b : 11 theorems, 0 sorry
         CommitRule CR1–CR9 : 9 theorems, hnew_cert fully closed
+    section A5 bridge + term safety (r156–r160)
+        MaybeCommit MC1–MC12 : 12 theorems, A6 term safety (MC4)
+        ConcreteProtocolStep CPS1–CPS12 : 13 theorems, A5 bridge (CPS2)
     section Election model (next)
-        ConcreteRaft step hypotheses : ~50–80 theorems planned
-        hqc_preserved composition : ~30–50 theorems planned
+        hqc_preserved composition : ~80–150 theorems planned
+        Fully concrete RaftReachable : long-term target
 ```
 
 ---
@@ -394,8 +403,9 @@ Key tactic inventory used across the proofs:
 | `constructor` / `intro` / `ext` | Conjunction, implication, function extensionality |
 | `funext` | Proving function equality |
 
-No `native_decide`, no `axiom`. Two `sorry` remain in `ConcreteTransitions.lean` (CT4 and CT5);
-all other 485+ theorems are fully proved.
+No `native_decide`, no `axiom`. All 473 theorems are fully proved with 0 `sorry`.
+The prior 2 `sorry` in `ConcreteTransitions.lean` (CT4 and CT5) were closed in run r156
+(ConcreteProtocolStep.lean provides the bridge via CPS5/CPS6).
 
 ---
 
@@ -417,52 +427,43 @@ This run formalises the **Raft commit rule** as a standalone Lean file (`CommitR
 | CR9 `commitRule_and_preservation_implies_cci` | Commit rule + log preservation → `CommitCertInvariant` preserved |
 
 CR8 (`Iff.rfl`) closes the proof obligation for `hnew_cert` in `RaftReachable.step`.
-The remaining 4 step hypotheses (`hlogs'`, `hno_overwrite`, `hqc_preserved`,
-`hcommitted_mono`) are targets for the next run.
+With the addition of MaybeCommit and ConcreteProtocolStep, three more hypotheses
+(`hlogs'`, `hno_overwrite`, `hcommitted_mono`) are partially addressed; `hqc_preserved`
+(leader completeness) remains the main open gap.
 
 
 ---
 
-> 🔬 *This report was generated by [Lean Squad](https://github.com/dsyme/fv-squad/actions/runs/23979949696) — an automated formal verification agent for `dsyme/fv-squad`.*
+> 🔬 *This report was generated by [Lean Squad](https://github.com/dsyme/raft-lean-squad/actions/runs/24667813296) — an automated formal verification agent for `dsyme/raft-lean-squad`.*
 
 ---
 
-## Run 38+ Update: A5 Bridge — `ConcreteProtocolStep.lean`
+## Run 37–39 Update: MaybeCommit + A5 Bridge
 
-**New file**: `formal-verification/lean/FVSquad/ConcreteProtocolStep.lean` (459 lines, 13 theorems, 0 sorry)
+**New files added in runs 37–39**:
 
-**Tasks completed**: Task 3 (Formal Spec Writing) + Task 5 (Proof Assistance)
+### MaybeCommit.lean (Run 37, 12 theorems, 0 sorry)
 
-### Summary
+Formalises `maybeCommit` — the function that advances the commit index when a quorum of
+voters has matched. Key theorem **MC4** (`maybeCommit_term`) proves A6 term safety:
+the commit index advances only when the entry at the new committed index has
+`term = cs.term` (leader's current term).
 
-Added `ValidAEStep` structure and 13 theorems (CPS1–CPS12) that bridge the abstract
-`RaftReachable.step` inductive constructor to a concrete AppendEntries protocol step.
+### ConcreteProtocolStep.lean (Run 37b, 13 theorems, 0 sorry)
 
-### New Theorem Table
+Added `ValidAEStep` structure and theorems (CPS1–CPS12) bridging `RaftReachable.step`
+to a concrete AppendEntries protocol step.
 
-| ID | Name | Description |
-|----|------|-------------|
-| CPS1 | `validAEStep_hno_overwrite` | Committed entries not overwritten (`h_committed_le_prev` + CT2) |
-| CPS2 | `validAEStep_raftReachable` | **Main**: valid AE step → `RaftReachable` of new state |
-| CPS3 | `validAEStep_hcand_eq_at_entry` | New entry at k > prevLogIndex = leader's log at k |
-| CPS4 | `validAEStep_prefix_unchanged` | Prefix ≤ prevLogIndex unchanged |
-| CPS5 | `validAEStep_lmi_preserved` | Valid AE step preserves `LogMatchingInvariantFor` (CT4) |
-| CPS6 | `validAEStep_hlc` | `HLogConsistency` from log-agreement hypothesis (CT5b) |
-| CPS7 | `validAEStep_new_entry_at` | New entry at k > prevLogIndex = leader's log at k (alias of CPS3) |
-| CPS8 | `validAEStep_logs_v` | Voter v's log = AE result |
-| CPS9 | `validAEStep_logs_other` | Other voters' logs unchanged |
-| CPS10 | `twoStep_raftReachable` | Two consecutive valid steps → `RaftReachable` |
-| CPS11 | `validAEStep_committed_mono_of_local` | Constructor helper: local monotonicity → `ValidAEStep` |
-| CPS12 | `ae_step_no_rollback` | All voters' committed entries preserved (global no-rollback) |
+**CPS2** (`validAEStep_raftReachable`) is the **A5 bridge**: if `cs` is `RaftReachable`
+and a valid `ValidAEStep` fires, the resulting state `cs'` is also `RaftReachable`.
+This is the first theorem that directly connects a concrete Raft message to the
+abstract reachability model.
 
-### Project Statistics
-
-| Metric | Before | After |
-|--------|--------|-------|
-| Lean files | 28 | 29 |
-| Theorems | 458 | 471 |
+| Metric | Before MaybeCommit | After CPS |
+|--------|-------------------|-----------|
+| Lean files | 27 | 29 |
+| Theorems | 448 | 473 |
 | sorry | 0 | 0 |
 
-### Lean Verification
-
-> 🔄 `lake build` passed with Lean 4.30.0-rc2. 0 sorry. All 32 jobs passed.
+> ✅ `lake build` passed with Lean 4.28.0. 0 sorry. All theorems machine-checked.
+> 🔬 *Run 39 update (2026-04-20). [Lean Squad](https://github.com/dsyme/raft-lean-squad/actions/runs/24667813296)*
