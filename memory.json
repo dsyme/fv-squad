@@ -1,6 +1,6 @@
 {
   "last_run": "2026-04-20",
-  "run_id": "24667813296",
+  "run_id": "24668849059",
   "fv_tool": "Lean4 (stdlib only, no Mathlib)",
   "lean_version": "4.28.0",
   "lean_build_note": "lake build PASSED. 0 sorry. 473 theorems across 29 files.",
@@ -41,7 +41,7 @@
   "open_prs": [],
   "aeneas_status": "BLOCKED - no-new-privileges container. Confirmed all runs.",
   "ci_workflow": ".github/workflows/lean-ci.yml",
-  "ci_status": "Healthy. Lean 4.28.0. Source-level sorry counter + proof statistics step. Run 39.",
+  "ci_status": "Healthy. Lean 4.28.0. Source-level sorry counter + proof statistics step. Run 40.",
   "lean_stdlib_notes": {
     "no_lemma_keyword": "In Lean 4.28 stdlib-only, 'lemma' is not a top-level keyword. Use 'theorem' or 'private theorem' instead.",
     "private_theorem": "Use 'private theorem' for module-internal helpers (not 'private lemma').",
@@ -65,12 +65,15 @@
   "a5_gap_status": "CLOSED: CPS2 (validAEStep_raftReachable) proved. Remaining: hqc_preserved (leader completeness composition).",
   "a6_gap_status": "CLOSED: MC4 (maybeCommit_term) proves A6 formally.",
   "hqc_preserved_gap": "OPEN: Requires composing LeaderCompleteness + HasQuorum (HQ20) + TallyVotes + IsUpToDate across election model. ~80-150 theorems estimated.",
+  "paper_status": "paper.tex updated run 40: Layer2 119→139, run count 39→40, model name Opus→Sonnet, MC4 section expanded. PDF not compiled (no-new-privileges).",
+  "critique_status": "CRITIQUE.md updated run 40: 471→473, 9 stale section headers fixed, Paper Review section added.",
   "notes": [
     "Run 35 (24658213506): Added CommitRule.lean (CR1-CR9, 9 theorems, 0 sorry).",
     "Run 36 (24660841722): Proved CT4+CT5 in ConcreteTransitions. 437 theorems, 27 files, 0 sorry.",
     "Run 37 (24661834670): Added MaybeCommit.lean (MC1-MC12, 12 theorems, 0 sorry). A6 term safety. 458 theorems, 28 files, 0 sorry.",
     "Run 37b (24663161255): Added ConcreteProtocolStep.lean (CPS1-CPS12+, 13 theorems, 0 sorry). CPS2=A5 bridge. 471 theorems, 29 files, 0 sorry.",
     "Run 38 (24664746901): Task 7+9: Updated CRITIQUE.md (added CPS section). CI audit + source-level sorry counter added.",
-    "Run 39 (24667813296): Task 10+11: Updated REPORT.md + paper.tex. 473 theorems (verified by grep). Seven-layer architecture. PR created."
+    "Run 39 (24667813296): Task 10+11: Updated REPORT.md + paper.tex. 473 theorems (verified by grep). Seven-layer architecture. PR created.",
+    "Run 40 (24668849059): Task 7+11: Updated CRITIQUE.md (Paper Review section + 9 stale counts fixed) + paper.tex (Layer2 count, run count, model name, MC4 expansion). Documentation only, no new proofs."
   ]
 }
