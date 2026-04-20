@@ -1,29 +1,22 @@
 {
-  "run_id": "24685028340",
-  "workflow_run": "24685028340",
-  "date": "2026-04-20T19:06:00Z",
+  "run_id": "24686915309",
+  "date": "2026-04-21",
   "lean_version": "4.28.0",
-  "total_theorems": 471,
+  "total_theorems": 483,
   "total_sorry": 0,
-  "lean_files": 29,
+  "lean_files": 30,
   "completed_tasks_this_run": [
-    "Task 6 (Correspondence Review): Updated CORRESPONDENCE.md — added 11 missing file sections covering all files added in runs 34-41: HasQuorum.lean (20), JointTally.lean (18), LogUnstable.lean (37), MaybeAppend.lean (18), QuorumRecentlyActive.lean (11), CommitRule.lean (9), MaybeCommit.lean (12), ConcreteTransitions.lean (11), ConcreteProtocolStep.lean (14), RaftElection.lean (15), LeaderCompleteness.lean (10). Removed duplicate Known Mismatches section. Updated header, expanded residual gap description. All 29 Lean files now documented.",
-    "Task 7 (Proof Utility Critique, substituting blocked Task 8 Aeneas): Updated CRITIQUE.md — added CPS13 (validAEStep_hqc_preserved_from_lc) to ConcreteProtocolStep section; updated hqc_preserved gap from 'heart of gap / High difficulty' to 'conditionally discharged via CPS13'; rewrote 'hard part: hqc_preserved' section to reflect completed election model and CPS13 discharge; updated hypothesis-status table; corrected theorem count 473→471 throughout; updated Paper Review section; updated overall assessment to 95-97% complete."
+    "Task 5 (Proof Assistance): Created FVSquad/ElectionReachability.lean with 12 theorems (ER1-ER12) bridging abstract election conditions to CandidateLogCovers. Added globs=[FVSquad.+*] to lakefile.toml.",
+    "Task 1 (Research): Updated TARGETS.md (ER gap progress section) and RESEARCH.md (current project state run 43 summary + priority next steps)."
   ],
-  "pr_branch": "lean-squad/correspondence-review-task6-24685028340",
-  "targets": {},
-  "remaining_sorries": {},
+  "pr_branch": "lean-squad-run43-election-reachability",
   "a5_gap_status": "CLOSED: CPS2 proves A5 bridge. CPS13 discharges hqc_preserved given CandidateLogCovers.",
-  "a6_gap_status": "CLOSED: MC4 (maybeCommit_term) proves A6 formally.",
-  "hqc_preserved_gap": "CONDITIONALLY CLOSED: CPS13 discharges hqc_preserved. Final gap: derive CandidateLogCovers from concrete election reachability (20-40 theorems).",
+  "hqc_preserved_gap": "ER1-ER12 proved. Remaining: derive CandLogMatching from LMI + vote, HWM from voterLog+isUpToDate. ER5+ER7+ER3 chain ready.",
   "aeneas_status": "permanently_blocked_no_new_privileges",
-  "ci_status": "Healthy. Lean 4.28.0.",
-  "toolchain_notes": "no Mathlib, use 'theorem' not 'lemma', stdlib only.",
   "sorry_count": 0,
-  "last_run": "2026-04-20",
-  "last_run_summary": "Run 42: Task 6 (CORRESPONDENCE.md — 11 missing sections) + Task 7 (CRITIQUE.md — CPS13, hqc_preserved, count corrections). Documentation only, no new proofs.",
-  "theorem_count": 471,
-  "file_count": 29,
-  "last_pr_branch": "lean-squad/correspondence-review-task6-24685028340",
-  "last_task": "Task 6+7: CORRESPONDENCE.md 11 missing sections + CRITIQUE.md updates"
+  "theorem_count": 483,
+  "file_count": 30,
+  "last_run": 43,
+  "last_task": "Task 5+1: ElectionReachability.lean (12 theorems) + TARGETS.md/RESEARCH.md updates",
+  "toolchain_notes": "no Mathlib, use 'theorem' not 'lemma', stdlib only. lakefile.toml has globs=[FVSquad.+*] so all modules compiled."
 }
