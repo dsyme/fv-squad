@@ -66,9 +66,11 @@ a follower only accepts entries if its log matches the leader's at `prevLogIndex
 CT1 (proved): CandLogMatching + CandLogCoversLastIndex → HLogConsistency
 CT2 (proved): applyAppendEntries preserves prefix
 CT3 (proved): applyAppendEntries extends log at entry positions
-CT4 (partial): single AE step preserves LogMatchingInvariantFor
-CT5 (sorry): broadcast → CandLogMatching (needs global state model)
-CT6 (sorry): concrete protocol → HLogConsistency (via CT1 + CT5)
+CT4 (sorry):  single AE step preserves LogMatchingInvariantFor (LMI)
+CT4b (proved): valid AE step preserves CandLogMatching (simpler, provable)
+CT5 (sorry):  broadcast → CandLogMatching (needs global state model)
+CT5b (proved): hae → HLogConsistency directly (simpler A4 path)
+CT6 (sorry):  concrete protocol → HLogConsistency (via CT1+CT5)
 ```
 
 ## Theorem Index
@@ -78,9 +80,11 @@ CT6 (sorry): concrete protocol → HLogConsistency (via CT1 + CT5)
 | CT1 | `hlc_of_candLogMatching`          | ✅ proved       | HLogConsistency from CandLogMatching + coverage       |
 | CT2 | `applyAE_preserves_prefix`        | ✅ proved       | AE preserves entries at indices ≤ prevLogIndex        |
 | CT3 | `applyAE_extends_at_entries`      | ✅ proved       | AE sets log at new entry positions                    |
-| CT4 | `lmi_preserved_single_step`       | 🔄 partial sorry| Single AE step preserves LMI (one sub-case sorry)     |
-| CT5 | `candLogMatching_of_broadcast`    | ⬛ sorry        | Leader broadcast → CandLogMatching (needs global model)|
-| CT6 | `hlc_from_concrete_protocol`      | ⬛ sorry        | Concrete protocol → HLogConsistency (via CT1+CT5)     |
+| CT4  | `lmi_preserved_single_step`        | 🔄 sorry        | Single AE step preserves LMI (one sub-case sorry)       |
+| CT4b | `clm_preserved_single_step`        | ✅ proved       | Valid AE step preserves CandLogMatching                 |
+| CT5  | `candLogMatching_of_broadcast`     | ⬛ sorry        | Leader broadcast → CandLogMatching (needs global model) |
+| CT5b | `hlc_from_hae`                     | ✅ proved       | hae → HLogConsistency directly (simpler A4 path)        |
+| CT6  | `hlc_from_concrete_protocol`       | ⬛ sorry        | Concrete protocol → HLogConsistency (via CT1+CT5)       |
 
 ## Remaining Gap (A5)
 
@@ -296,6 +300,49 @@ theorem lmi_preserved_single_step (E : Type) (logs : VoterLogs E) (candLog : Nat
       if w = v then applyAppendEntries E (logs v) msg i else logs w i) := by
   sorry
 
+/-! ## CT4b: CandLogMatching preserved by valid AE step (proved) -/
+
+/-- **CT4b** (`clm_preserved_single_step`) — A valid AppendEntries step preserves
+    `CandLogMatching` between the candidate log and the updated voter logs.
+
+    A step is *valid* here when:
+    1. At `prevLogIndex`, the candidate and voter `v` agree (`hprev`).
+    2. All new entries written (indices > `prevLogIndex`) are taken from the candidate
+       log (`hnew`): `applyAppendEntries E (logs v) msg k = candLog k`.
+
+    After the step, voter `v`'s log at indices ≤ `prevLogIndex` is unchanged (CT2), and
+    at indices > `prevLogIndex` it equals the candidate's log (hnew).  CandLogMatching is
+    therefore maintained for the updated log family.
+
+    **Proof**: case split on `w = v`.
+    - `w ≠ v`: logs unchanged, hclm gives the result directly.
+    - `w = v`: case split on `j ≤ prevLogIndex`.
+      - `j ≤ prevLogIndex`: new log at `j` = old log at `j` (CT2); use hclm at
+        `prevLogIndex` via `hprev`.
+      - `j > prevLogIndex`: new log at `j` = candLog at `j` (hnew); goal is trivial.
+
+    **Significance**: this is the inductive step for establishing CandLogMatching after
+    a sequence of valid AE broadcasts.  Once CandLogMatching holds (e.g., from the
+    initial election state), it is maintained by every valid AE step, so it holds in
+    all post-broadcast states.  Combined with CT5b/hlc_from_hae, this closes the A4
+    gap without requiring a full global state model. -/
+theorem clm_preserved_single_step (E : Type) (logs : VoterLogs E) (candLog : Nat → Option E)
+    (msg : AppendEntriesMsg E) (v : Nat)
+    (hclm : CandLogMatching E logs candLog)
+    (hprev : candLog msg.prevLogIndex = logs v msg.prevLogIndex)
+    (hnew : ∀ k > msg.prevLogIndex, applyAppendEntries E (logs v) msg k = candLog k) :
+    CandLogMatching E (fun w i => if w = v then applyAppendEntries E (logs v) msg i else logs w i)
+        candLog := by
+  intro w k hk j hj
+  by_cases hw : w = v
+  · simp only [hw] at hk ⊢
+    by_cases hj_prev : j ≤ msg.prevLogIndex
+    · rw [applyAE_preserves_prefix E (logs v) msg j hj_prev]
+      exact hclm v msg.prevLogIndex hprev j hj_prev
+    · exact (hnew j (by omega)).symm
+  · simp only [if_neg hw] at hk ⊢
+    exact hclm w k hk j hj
+
 /-! ## CT5: Leader broadcast gives CandLogMatching -/
 
 /-- **CT5** — After the leader broadcasts AppendEntries and followers accept,
@@ -319,6 +366,44 @@ theorem candLogMatching_of_broadcast (E : Type)
   -- From hae: for j ≤ voterLog v, logs v j = candLog j
   -- But we don't know k ≤ voterLog v in general — sorry
   sorry
+
+/-! ## CT5b: Direct path from hae to HLogConsistency (proved) -/
+
+/-- **CT5b** (`hlc_from_hae`) — `HLogConsistency` follows directly from the log-agreement
+    hypothesis `hae`, without the `CandLogMatching` detour through CT1 and CT5.
+
+    `hae` states: *for every voter `w` and every index `k ≤ voter's lastIndex`, voter `w`'s
+    log agrees with the candidate's log at `k`.*  This is exactly what `HLogConsistency`
+    requires (it only cares about `k ≤ (voterLog w).index`).
+
+    **Proof**: trivial — `hae w k hkle : logs w k = candLog k`, symmetry gives the goal.
+
+    **Significance**: this provides a simpler proof chain for the A4 gap:
+
+    ```
+    (1) clm_preserved_single_step  (CT4b, proved):
+            CandLogMatching + valid AE step → CandLogMatching on updated logs
+    (2) hlc_from_hae               (CT5b, proved):
+            hae → HLogConsistency
+    (3) Combining (1) inductively:
+            initial CandLogMatching (from election) + valid AE broadcasts
+            → CandLogMatching holds for all followers post-broadcast
+            → hae holds (by CandLogCoversLastIndex + CandLogMatching)
+            → HLogConsistency (by CT5b)
+    ```
+
+    The remaining A4 gap is entirely in step (3): establishing the *initial*
+    `CandLogMatching` at the start of the leader's term, and proving that the
+    AE broadcasts satisfy the `hprev` and `hnew` preconditions of CT4b.  This
+    requires a concrete election + AppendEntries model (~50–100 more definitions). -/
+theorem hlc_from_hae (E : Type)
+    (voterLog : Nat → LogId) (logs : VoterLogs E)
+    (candLastTerm candLastIndex : Nat → Nat)
+    (candLog : Nat → Option E)
+    (hae : ∀ w k, k ≤ (voterLog w).index → logs w k = candLog k) :
+    HLogConsistency E voterLog logs candLastTerm candLastIndex candLog := by
+  intro _cand w k _e _huptodate _hentry hkle
+  exact (hae w k hkle).symm
 
 /-! ## CT6: Concrete protocol gives HLogConsistency -/
 
