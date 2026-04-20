@@ -1,9 +1,16 @@
-# FVSquad: Formal Verification Project Final Report
+# FVSquad: Formal Verification Project Report
 
 > 🔬 *Lean Squad — automated formal verification for `dsyme/fv-squad`.*
 
-**Status**: ✅ **COMPLETE** — 443+ theorems, 23 Lean files, 0 `sorry`, machine-checked
-by Lean 4.28.0 (stdlib only).
+**Status**: 🔄 **IN PROGRESS** — 443+ theorems, 23 Lean files, 0 `sorry`, machine-checked
+by Lean 4.28.0 (stdlib only). Top-level safety theorem proved **conditionally** — election
+model gap remains (see §Critical Gap below).
+
+---
+
+## Last Updated
+- **Date**: 2026-04-20 06:30 UTC
+- **Commit**: `222503e` — Report updated with critique-driven gap analysis
 
 ---
 
@@ -16,13 +23,43 @@ in `dsyme/fv-squad` over 33+ automated runs. Starting from zero, the project:
 2. Extracted informal specifications for each target
 3. Wrote Lean 4 specifications, implementation models, and proofs
 4. Proved **443+ theorems** across **23 Lean files** with **0 `sorry`**
-5. Achieved a machine-checked proof of **end-to-end Raft cluster safety**: for any cluster
-   state reachable via valid Raft transitions, no two nodes ever apply different entries
-   at the same log index
+5. Proved **conditional end-to-end Raft cluster safety**: any cluster state reachable
+   via transitions satisfying 5 stated invariants is safe (no two nodes ever apply
+   different entries at the same log index)
 
-No bugs were found in the implementation code (this is itself a positive finding:
-the quorum logic, log operations, config validation, flow control, election counting,
-and protocol invariants are all consistent with their formal specifications).
+An external critique (2026-04-20) identified a **significant remaining gap**: the
+`RaftReachable.step` constructor bundles 5 invariant conditions as abstract hypotheses
+that are not yet proved from a concrete election model (terms, votes, leader completeness).
+Approximately **60–70% of the components** needed for a fully self-contained proof exist;
+the missing 30–40% is the election model and leader completeness composition.
+
+No bugs were found in the implementation code (itself a positive finding).
+
+---
+
+## Critical Gap: The Election Model
+
+The top-level theorem `raftReachable_safe` (RT2) proves:
+> *Any `RaftReachable` cluster state is safe.*
+
+But `RaftReachable.step` takes 5 hypotheses as parameters:
+
+| Hypothesis | Meaning | Status |
+|---|---|---|
+| `hlogs'` | Only one voter's log changes per step | Proved for AppendEntries (RP8 partial); needs message-delivery model |
+| `hno_overwrite` | Committed entries not overwritten | Covered by RP8 `hno_truncate`; needs panic-guard proof |
+| `hqc_preserved` | Quorum-certified entries preserved in ALL logs | **Not proved** — requires leader completeness composition |
+| `hcommitted_mono` | Committed indices only advance | Covered by MA6 for `maybeAppend`; needs general model |
+| `hnew_cert` | New commits are quorum-certified | Partially covered by CMC3; needs commit-rule proof |
+
+Until concrete Raft transitions (NodeState, terms, elections) are proved to satisfy these
+5 conditions, `raftReachable_safe` is a conditional correctness result, not a fully
+unconditional proof.
+
+The hardest gap is **`hqc_preserved`** (leader completeness): the argument requires an
+election model (term management, vote-granting, candidate eligibility) and composing
+HQ20 + IU16 + TallyVotes + RSS5 — each piece exists, but the composition is missing.
+This requires ~3–5 new Lean files and ~100–200 new theorems.
 
 ---
 
@@ -37,13 +74,15 @@ graph TD
     C["🔄 Layer 3: Protocol Operations<br/>FindConflict · MaybeAppend<br/>IsUpToDate · QuorumRecentlyActive"]
     D["🔗 Layer 4: Cross-Module Composition<br/>SafetyComposition · JointSafetyComposition<br/>CrossModuleComposition"]
     E["🛡️ Layer 5: Raft Safety<br/>RaftSafety (RSS1–RSS8)<br/>RaftProtocol (RP6, RP8)"]
-    F["✅ Layer 6: Reachability<br/>RaftTrace (RT1, RT2)<br/>raftReachable_safe"]
+    F["⚠️ Layer 6: Reachability (conditional)<br/>RaftTrace (RT1, RT2)<br/>raftReachable_safe"]
+    G["❓ Layer 7: Election Model (missing)<br/>RaftElection · LeaderCompleteness<br/>ConcreteRaft · CommitRule"]
 
     A --> B
     B --> C
     C --> D
     D --> E
     E --> F
+    G -.->|"needed to discharge<br/>step hypotheses"| F
 ```
 
 ---
@@ -156,17 +195,19 @@ graph TD
     RP8 --> RSS8
 ```
 
-### Layer 6 — Reachability (1 file, 3 theorems)
+### Layer 6 — Reachability (1 file, 3 theorems) ⚠️ Conditional
 
-The capstone: unconditional end-to-end safety for all reachable states.
+The top-level results — proved assuming `RaftReachable.step` hypotheses hold for each
+protocol step.  See §Critical Gap for why these hypotheses are not yet discharged from
+a concrete election model.
 
 ```mermaid
 graph TD
     INIT["RaftReachable.init<br/>initialCluster satisfies CCI<br/>(vacuously: no entries)"]
-    STEP["RaftReachable.step<br/>One valid Raft transition<br/>preserves CCI<br/>(5 abstract hypotheses)"]
+    STEP["RaftReachable.step<br/>One valid Raft transition<br/>preserves CCI<br/>(5 abstract hypotheses — not yet\ndischarged from election model)"]
     RT0["RT0: initialCluster_cci<br/>Initial state ⊨ CCI"]
     RT1["RT1: raftReachable_cci<br/>∀ reachable cs, cs ⊨ CCI<br/>(structural induction)"]
-    RT2["RT2: raftReachable_safe<br/>∀ reachable cs, isClusterSafe cs<br/>TOP-LEVEL THEOREM"]
+    RT2["RT2: raftReachable_safe<br/>∀ reachable cs, isClusterSafe cs<br/>TOP-LEVEL — conditional on step hyps"]
 
     INIT --> RT0
     RT0 --> RT1
@@ -202,7 +243,7 @@ graph TD
 | `CrossModuleComposition.lean` | 7 | 5 ✅ | CMC3: maybe_append bounded by quorum |
 | `RaftSafety.lean` | 14 | 5 ✅ | RSS1–RSS8: end-to-end cluster safety |
 | `RaftProtocol.lean` | 10 | 5 ✅ | RP6, RP8: LMI/NRI preserved by AppendEntries |
-| `RaftTrace.lean` | 3 | 5 ✅ | RT1, RT2: unconditional reachable safety |
+| `RaftTrace.lean` | 3 | 5 ✅⚠️ | RT1, RT2: conditional reachable safety (step hyps abstract) |
 | `Basic.lean` | helpers | — | Shared definitions |
 | **Total** | **443+** | **5 ✅** | **0 sorry** |
 
@@ -218,7 +259,7 @@ graph LR
     D["raft_cluster_safety<br/>RSS6 (RaftSafety)"]
     E["raft_end_to_end_safety_full<br/>RSS8 (RaftSafety)"]
     F["raftReachable_cci<br/>RT1 (RaftTrace)"]
-    G["raftReachable_safe<br/>RT2 ✅ TOP-LEVEL"]
+    G["raftReachable_safe<br/>RT2 ⚠️ conditional"]
 
     A --> B --> C --> D --> E
     F --> G
@@ -232,8 +273,10 @@ theorem raftReachable_safe [DecidableEq E]
     (cs : ClusterState E) (h : RaftReachable cs) : isClusterSafe cs
 ```
 
-This states: for any cluster state `cs` reachable by valid Raft transitions, `cs` is
-safe — no two voters have different entries at the same committed index.
+This states: for any cluster state `cs` reachable by valid Raft transitions (satisfying the
+5 `step` hypotheses), `cs` is safe — no two voters have different entries at the same
+committed index.  The theorem is machine-checked, but the 5 `step` hypotheses are not yet
+discharged from a concrete election model.  See §Critical Gap.
 
 ---
 
@@ -291,7 +334,8 @@ entered the proof base. Both theorems were corrected with proper hypotheses
 
 - `limitSize_maximality`: output is optimal, not just valid
 - `quorum_intersection_mem`: every two majority quorums share a concrete witness
-- `raftReachable_safe`: unconditional top-level safety — the hardest result
+- `raftReachable_safe`: conditional top-level safety — proved given 5 protocol hypotheses;
+  election model needed to make this unconditional
 
 ---
 
@@ -316,7 +360,11 @@ timeline
     section Raft safety (r131–r133)
         RaftSafety RSS1–RSS7 : 13 theorems fully proved
         RaftProtocol RP6 + RP8 : full proofs, 0 sorry
-        RaftTrace + RSS8 : 3 theorems — project complete
+        RaftTrace + RSS8 : 3 theorems — conditional safety proved
+    section Election model (future)
+        RaftElection NodeState : ~30–50 theorems planned
+        LeaderCompleteness : ~50–80 theorems planned
+        ConcreteRaft transitions : ~30–50 theorems planned
 ```
 
 ---

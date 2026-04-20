@@ -3,29 +3,34 @@
 > 🔬 *Lean Squad — automated formal verification for `dsyme/fv-squad`.*
 
 ## Last Updated
-- **Date**: 2026-04-04 13:35 UTC
-- **Commit**: `870d496` — FV project complete (0 sorry; 443+ theorems; 23 Lean files)
+- **Date**: 2026-04-20 06:30 UTC
+- **Commit**: `222503e` — Critique updated: gap analysis for RaftReachable.step hypotheses
 
 ---
 
 ## Overall Assessment
 
-The FV project is **complete**: **443+ theorems across 23 Lean files, all at phase 5,
-with 0 `sorry` remaining**.  Every theorem in the FVSquad portfolio is machine-checked
-by Lean 4 (version 4.28.0, stdlib only — no Mathlib).
+The FV project has produced **443+ theorems across 23 Lean files, all machine-checked by
+Lean 4 (version 4.28.0, stdlib only — no Mathlib), with 0 `sorry`**.  However, a
+**critical gap** remains at the protocol level that was overlooked in the previous
+"COMPLETE" assessment.
 
-The final run (r133) added `RaftTrace.lean`, which provides a protocol-level inductive
-reachability model (`RaftReachable`) and closes the last remaining gap:
+The `RaftReachable.step` constructor in `RaftTrace.lean` bundles **5 hypotheses as
+axioms** about each protocol transition.  These encode deep Raft correctness properties
+(log monotonicity, leader completeness, quorum-certified commitment) but are **not proved
+from first principles** — they are assumed to hold for any supplied transition.  Until
+concrete Raft transitions (elections, AppendEntries, commit advancement) are provided and
+shown to satisfy these hypotheses, `raftReachable_safe` (RT2) is conditionally correct
+only: it proves safety *given* the hypotheses, but the hypotheses themselves are axioms
+rather than proved facts.
 
-- **`raftReachable_cci` (RT1)** — every reachable state satisfies `CommitCertInvariant`,
-  proved by structural induction on `RaftReachable`.
-- **`raftReachable_safe` (RT2)** — every reachable cluster state is safe (no two
-  nodes ever apply different entries at the same index), proved by composing RT1 with
-  RSS8 (`raft_end_to_end_safety_full`).
-- **`raft_end_to_end_safety_full` (RSS8)** — fully proved via `CommitCertInvariant`
-  threading, turning the formerly sorry-guarded theorem into a clean one-liner.
-- **`initialCluster_cci` (RT0)** — the initial (empty) cluster satisfies
-  `CommitCertInvariant` vacuously, established as the induction base.
+**Realistic assessment**: ~60–70% of the components needed for a fully self-contained Raft
+safety proof exist.  The quorum arithmetic, log operations, safety composition, and
+CCI-threading layers are complete and correct.  The missing connecting tissue is the
+*election model* — term management, vote-granting conditions, and the leader-completeness
+composition that would discharge `hqc_preserved`.  Closing the gap would require
+approximately 3–5 new Lean files and 100–200 additional theorems.  This is the hardest
+single remaining part of Raft verification.
 
 The proof hierarchy spans 6 layers: individual data-structure correctness → quorum
 arithmetic → cross-module composition → log-entry safety → conditional end-to-end
@@ -662,9 +667,68 @@ real Raft transitions to these abstract hypotheses.
 
 ---
 
-## Gaps and Recommendations — Final Status
+## Critical Gap Analysis (from External Critique, 2026-04-20)
 
-The FV project is complete. All identified gaps have been resolved. The resolved gap list:
+An independent critique has identified a **significant structural gap** in the current proof:
+the `RaftReachable.step` constructor bundles 5 hypotheses as axioms that are never
+discharged from a concrete protocol model.  These are not `sorry`-guarded in Lean (so they
+appear as 0 sorry), but they represent informal assumptions rather than proved facts.
+
+### Hypothesis-by-hypothesis status
+
+| Hypothesis | What it requires | Existing support | Difficulty |
+|---|---|---|---|
+| `hlogs'` | Only one node's log changes per step | RP8 already models this for AppendEntries | **Low** — needs a message-delivery model |
+| `hno_overwrite` | Committed entries aren't overwritten | MA13 + RP8 prove this for `maybeAppend` | **Medium** — needs proof the panic guard is never triggered |
+| `hqc_preserved` | Quorum-certified entries preserved in ALL logs | **The heart of the gap** — requires leader completeness | **High** |
+| `hcommitted_mono` | Committed indices only advance | MA6 already proves this for `maybeAppend` | **Low** |
+| `hnew_cert` | Newly committed entries are quorum-certified | CMC3 + CI-Safety give partial support | **Medium-high** — needs leader commit rule |
+
+### The hard part: `hqc_preserved` (leader completeness)
+
+The individual building blocks exist but have **never been composed**:
+
+- **HQ20** (`quorum_intersection_mem`) — any two quorums share a member ✅
+- **IU16** (`isUpToDate` comparison) — the election restriction ✅
+- **TallyVotes** — vote counting ✅
+- **RSS5** (`raft_leader_completeness_via_witness`) — leader completeness given an explicit
+  witness ✅
+
+But there is **no election model** — no `NodeState` with `currentTerm`/`votedFor`, no
+vote-granting conditions, no proof that election winners have all committed entries.  The
+argument would be: election quorum ∩ commit quorum is non-empty (HQ20), the intersection
+voter has the entry AND voted for the leader, `isUpToDate` ensures the leader's log is at
+least as fresh, therefore the leader has the entry.  Each piece exists; the composition
+doesn't.
+
+### Why this gap matters
+
+`raftReachable_safe` (RT2) reads:
+> *"For any cluster state reachable by valid Raft transitions, no two nodes ever apply
+>  different entries at the same log index."*
+
+But "valid Raft transitions" means exactly the states satisfying the five `step`
+hypotheses.  Until those hypotheses are proved from a concrete protocol model (terms,
+votes, message delivery), the theorem is a conditional correctness result — correct given
+the model, but not a proof that the *actual* Raft implementation is safe.
+
+### Recommended next targets (replanned)
+
+| Priority | New Target | Gap addressed | Difficulty |
+|----------|-----------|---------------|------------|
+| **1** | `NodeState` model | `currentTerm`, `votedFor`, election bookkeeping | Medium |
+| **2** | `ElectionSafety` | At most one leader per term (HQ20 + TallyVotes) | Medium-high |
+| **3** | `LeaderCompleteness` | Elected leader has all committed entries (HQ20 + IU16 + RSS5) | High |
+| **4** | `ConcreteTransitions` | AppendEntries + RequestVote with terms; discharge `hlogs'`+`hno_overwrite`+`hcommitted_mono` | Medium |
+| **5** | `CommitRule` | Discharge `hnew_cert` — advance committed only after quorum ACK | Medium-high |
+
+---
+
+## Gaps and Recommendations — Updated
+
+~~The FV project is complete.~~ All previously identified gaps have been resolved; the
+critical remaining work is the election model and concrete transition satisfaction.
+The resolved gap list:
 
 | Gap | Resolution | Run |
 |-----|-----------|-----|
@@ -675,21 +739,25 @@ The FV project is complete. All identified gaps have been resolved. The resolved
 | CMC6: acked → log entry bridge | Proved; CMC6 now machine-checked | r130 |
 | RSS3/RSS4: incorrect formulation | Corrected with proper hypotheses and proved | r130 |
 
-### Remaining open questions (not blockers)
+### Remaining open questions (critical blockers)
 
-1. **Concrete protocol transitions**: `RaftReachable.step` hypotheses are abstract;
-   connecting them to real Raft message types (AppendEntries, RequestVote with terms)
-   would close the last informal gap.
-2. **`jointCommittedIndex` empty-config divergence**: Lean returns `0`, Rust returns `u64::MAX`.
+1. **Concrete protocol transitions** (CRITICAL): `RaftReachable.step` hypotheses are abstract
+   axioms.  Until concrete Raft message types (AppendEntries, RequestVote with terms) and a
+   `NodeState` model are provided and shown to satisfy these hypotheses, the proof is
+   conditional on unproved assumptions rather than fully self-contained.
+2. **Election model** (CRITICAL): no `NodeState` with `currentTerm`/`votedFor`, no vote-granting
+   rule, no proof that election winners satisfy leader completeness.  This is the single hardest
+   gap.  ~3–5 new Lean files, ~100–200 new theorems needed.
+3. **`jointCommittedIndex` empty-config divergence**: Lean returns `0`, Rust returns `u64::MAX`.
    The `outgoing ≠ []` precondition is implicit but not enforced by type.
-3. **Voter-list `Nodup`**: Theorems hold semantically without it, but adding it would
+4. **Voter-list `Nodup`**: Theorems hold semantically without it, but adding it would
    strengthen the model against duplicate-voter configurations.
 
 ---
 
 ## Trajectory to Completion
 
-**COMPLETE** — all steps achieved:
+**Partially complete** — existing steps achieved; election model remains:
 
 | Step | Task | File | Status |
 |------|------|------|--------|
@@ -698,7 +766,12 @@ The FV project is complete. All identified gaps have been resolved. The resolved
 | 3 | Prove `NoRollbackInvariantFor` maintained by single AppendEntries step (RP8) | `RaftProtocol.lean` | ✅ Proved (r131) |
 | 4 | Define `RaftReachable` inductive type and prove CCI as invariant (RT1) | `RaftTrace.lean` | ✅ Proved (r133) |
 | 5 | Close `raft_end_to_end_safety_full` (RSS8) | `RaftSafety.lean` | ✅ Proved (r133) |
-| 6 | Top-level safety: `raftReachable_safe` (RT2) | `RaftTrace.lean` | ✅ Proved (r133) |
+| 6 | Top-level safety: `raftReachable_safe` (RT2) | `RaftTrace.lean` | ✅ Proved (r133) — **conditional** |
+| **7** | **`NodeState` model: terms, votedFor, term monotonicity** | **`RaftElection.lean`** | **⬜ Not started** |
+| **8** | **`ElectionSafety`: at most one leader per term** | **`RaftElection.lean`** | **⬜ Not started** |
+| **9** | **`LeaderCompleteness`: elected leader has all committed entries** | **`LeaderCompleteness.lean`** | **⬜ Not started** |
+| **10** | **`ConcreteTransitions`: discharge hlogs'/hno_overwrite/hcommitted_mono** | **`ConcreteRaft.lean`** | **⬜ Not started** |
+| **11** | **`CommitRule`: discharge hnew_cert** | **`ConcreteRaft.lean`** | **⬜ Not started** |
 
 ---
 
