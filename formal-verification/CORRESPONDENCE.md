@@ -7,8 +7,8 @@ correspondence level, known divergences, and the impact on any proofs that rely 
 definition.
 
 ## Last Updated
-- **Date**: 2026-04-04 13:35 UTC
-- **Commit**: `870d496` — FV project complete (0 sorry; 443+ theorems; 23 Lean files)
+- **Date**: 2026-04-20 19:06 UTC
+- **Commit**: `8d7b970` — Run 41 complete (0 sorry; 471 theorems; 29 Lean files)
 
 ---
 
@@ -696,16 +696,6 @@ All 18 theorems proved (0 sorry). Coverage:
 
 ---
 
-## Known Mismatches
-
-No known mismatches as of this update. All Lean models are at *abstraction* level —
-deliberate, documented abstractions that do not invalidate any proved theorem.
-See each file section above for the full divergence lists.
-
-> 🔬 Updated by Lean Squad run [23912617612](https://github.com/dsyme/fv-squad/actions/runs/23912617612).
-
----
-
 ## `FVSquad/SafetyComposition.lean` ↔ `src/quorum/majority.rs` + `src/tracker.rs`
 
 **Lean file**: `formal-verification/lean/FVSquad/SafetyComposition.lean`
@@ -934,12 +924,436 @@ entries at the same log index.
 
 ---
 
+## `FVSquad/HasQuorum.lean` ↔ `src/tracker.rs` — `has_quorum`
+
+**Lean file**: `formal-verification/lean/FVSquad/HasQuorum.lean`
+**Rust source**: [`src/tracker.rs#L357`](../src/tracker.rs#L357)
+**Phase**: 5 ✅ (20 theorems, 0 sorry)
+
+Models `ProgressTracker::has_quorum` — determines whether a set of node IDs forms a majority
+quorum of the current voter list.
+
+### Type/definition mapping
+
+| Lean name | Rust name | Rust location | Correspondence | Notes |
+|---|---|---|---|---|
+| `overlapCount` | *(inner filter count)* | `src/tracker.rs#L357` | Exact | Counts voters in `potential_quorum`; equivalent to `HashSet::get` iteration |
+| `intersectCount` / `unionCount` | *(set-arithmetic helpers)* | — | Exact | Pure auxiliaries for quorum intersection proofs |
+| `hasQuorum` | `ProgressTracker::has_quorum` | `src/tracker.rs#L357` | Abstraction | See divergences below |
+
+### Known divergences (Abstraction-level)
+
+1. **`HashSet<u64>` → `Nat → Bool`** — The potential quorum is modelled as a membership
+   predicate rather than a hash set. Any Rust hash set yields such a predicate; the
+   abstraction is sound.
+2. **`u64` → `Nat`** — No overflow modelled; voter IDs and counts are far below 2⁶³.
+3. **`voters` uniqueness** — Rust maintains voters as a deduplicated list. The Lean model
+   allows duplicates; uniqueness is stated as an explicit precondition in proofs that
+   require it (HQ14, HQ20).
+4. **`JointConfig` not modelled here** — The joint-quorum variant is modelled in
+   `JointVote.lean` and `JointTally.lean`; this file covers only the majority path.
+
+### Impact on proofs
+
+HQ20 (`quorum_intersection_mem`) produces an explicit shared voter and is used by
+`RaftElection.lean` (RE4) and `LeaderCompleteness.lean` (LC1). The full 20-theorem set
+(HQ1–HQ20) covers empty/singleton cases, monotonicity, and inclusion-exclusion.
+
+**Assessment**: Abstraction is sound. Uniqueness assumption is documented and enforced
+at use sites.
+
+---
+
+## `FVSquad/JointTally.lean` ↔ `src/tracker.rs` — `tally_votes` (joint)
+
+**Lean file**: `formal-verification/lean/FVSquad/JointTally.lean`
+**Rust source**: [`src/tracker.rs#L303`](../src/tracker.rs#L303)
+**Phase**: 5 ✅ (18 theorems, 0 sorry)
+
+Models `ProgressTracker::tally_votes` for the joint-quorum case — when `self.conf.voters`
+is a `JointConfig` with non-empty `incoming` and `outgoing` halves.
+
+### Type/definition mapping
+
+| Lean name | Rust name | Rust location | Correspondence | Notes |
+|---|---|---|---|---|
+| `jointTallyVotes` | `ProgressTracker::tally_votes` (joint path) | `src/tracker.rs#L303` | Abstraction | See divergences |
+
+### Known divergences (Abstraction-level)
+
+1. **Double-counting of overlap voters** — If a voter `v` appears in both `incoming` and
+   `outgoing` (which the real `JointConfig` prohibits by invariant), the Lean model counts
+   `v`'s vote twice. Theorems that depend on this state `no_overlap` as an explicit
+   precondition (JT14).
+2. **`u64` → `Nat`** — No overflow.
+
+### Impact on proofs
+
+JT1–JT4 are the primary results (result, Won/Lost/Pending characterisations); JT5 connects
+the joint tally to the single-quorum tally when `outgoing = []`.
+
+**Assessment**: Abstraction is sound for well-formed joint configs (disjoint halves).
+
+---
+
+## `FVSquad/LogUnstable.lean` ↔ `src/log_unstable.rs`
+
+**Lean file**: `formal-verification/lean/FVSquad/LogUnstable.lean`
+**Rust source**: [`src/log_unstable.rs`](../src/log_unstable.rs)
+**Phase**: 5 ✅ (37 theorems, 0 sorry)
+
+Models the `Unstable` struct — the not-yet-persisted (in-memory) segment of the Raft log —
+and its key query and mutation operations.
+
+### Type/definition mapping
+
+| Lean name | Rust name | Rust location | Correspondence | Notes |
+|---|---|---|---|---|
+| `Unstable` | `Unstable` struct | `src/log_unstable.rs#L1` | Abstraction | Terms only; payload fields omitted |
+| `maybeFirstIndex` | `Unstable::maybe_first_index` | `src/log_unstable.rs` | Exact | Snapshot index + 1 |
+| `maybeLastIndex` | `Unstable::maybe_last_index` | `src/log_unstable.rs` | Exact | Last entry or snapshot index |
+| `maybeTerm` | `Unstable::maybe_term` | `src/log_unstable.rs` | Exact | Term at a given index |
+| `truncate` / `append` / `stableTo` | mutation operations | `src/log_unstable.rs` | Abstraction | Pure return value; no mutation |
+
+### Known divergences (Abstraction-level)
+
+1. **Terms only** — Rust entries hold arbitrary `Entry` payloads; Lean entries are `Nat` terms only.
+2. **Pure functions** — Rust methods mutate `self`. Lean models return new `Unstable` values.
+3. **Panic paths omitted** — Fatal-log conditions are excluded by preconditions.
+4. **`u64` → `Nat`** — No overflow.
+5. **`entries_size` not modelled** — Byte-size accounting is irrelevant to correctness.
+
+### Impact on proofs
+
+37 theorems covering query correctness, round-trip properties (stableTo / append), and
+boundary conditions. Foundational lemmas for log-correctness properties in the wider portfolio.
+
+**Assessment**: Abstraction is sound. Term-only model is sufficient for all targeted properties.
+
+---
+
+## `FVSquad/MaybeAppend.lean` ↔ `src/raft_log.rs` — `maybe_append`
+
+**Lean file**: `formal-verification/lean/FVSquad/MaybeAppend.lean`
+**Rust source**: [`src/raft_log.rs#L267`](../src/raft_log.rs#L267)
+**Phase**: 5 ✅ (18 theorems, 0 sorry)
+
+Models `RaftLog::maybe_append` — the AppendEntries receiver logic that conditionally
+appends leader entries to the follower's log after finding any conflict point.
+
+### Type/definition mapping
+
+| Lean name | Rust name | Rust location | Correspondence | Notes |
+|---|---|---|---|---|
+| `MaybeAppendState` | `RaftLog` fields subset | `src/raft_log.rs#L267` | Abstraction | `{ log, committed, persisted }` |
+| `maybeAppend` | `RaftLog::maybe_append` | `src/raft_log.rs#L267` | Abstraction | Pure model; see divergences |
+
+### Known divergences (Abstraction-level)
+
+1. **Abstract log** — Rust uses a concrete `RaftLog` with stable/unstable split. Lean uses
+   `Nat → Option Nat` (index → optional term); both storage layers merged.
+2. **Panic path omitted** — `conflict ≤ committed` triggers `fatal!` in Rust. Excluded
+   by precondition; proofs cover only the success path.
+3. **Consecutive entries assumption** — `ents[k].index = idx + 1 + k` stated as explicit
+   precondition.
+4. **`u64` → `Nat`** — No overflow.
+
+### Impact on proofs
+
+The `conflict > committed` panic guard in Rust is the enforcement of `hno_overwrite` in
+`RaftReachable.step`; `MaybeAppend.lean` formalises the conditions under which it holds.
+
+**Assessment**: Abstraction is sound. The panic-exclusion precondition matches the Rust
+caller contract exactly.
+
+---
+
+## `FVSquad/QuorumRecentlyActive.lean` ↔ `src/tracker.rs` — `quorum_recently_active`
+
+**Lean file**: `formal-verification/lean/FVSquad/QuorumRecentlyActive.lean`
+**Rust source**: [`src/tracker.rs#L336`](../src/tracker.rs#L336)
+**Phase**: 5 ✅ (11 theorems, 0 sorry)
+
+Models `ProgressTracker::quorum_recently_active` — checks whether a quorum of voters
+have recently been active from the perspective of a given leader node.
+
+### Type/definition mapping
+
+| Lean name | Rust name | Rust location | Correspondence | Notes |
+|---|---|---|---|---|
+| `isActive` | *(inline logic)* | `src/tracker.rs#L336–354` | Abstraction | Leader always active + recent_active flag |
+| `quorumRecentlyActive` | `ProgressTracker::quorum_recently_active` | `src/tracker.rs#L336` | Abstraction | Read semantics only; write side-effects omitted |
+
+### Known divergences (Abstraction-level)
+
+1. **Write side-effects omitted** — The Rust function sets `recent_active := false` on
+   non-leader nodes. The Lean model captures only the return value.
+2. **`HashMap` → `List (Nat × Progress)`** — Modelled as an association list; duplicates
+   allowed (the real Rust has unique-keyed map maintained by configuration change machinery).
+3. **`u64` → `Nat`** — No overflow.
+
+### Impact on proofs
+
+QRA15 (monotonicity) ensures more active entries never decreases the quorum check result.
+
+**Assessment**: Abstraction is sound. The write-side-effect omission does not affect
+the correctness of the proven properties.
+
+---
+
+## `FVSquad/CommitRule.lean` — Raft Commit Rule
+
+**Lean file**: `formal-verification/lean/FVSquad/CommitRule.lean`
+**Rust source**: Commit logic distributed across `src/raft.rs` and `src/raft_log.rs`
+**Phase**: 5 ✅ (9 theorems, 0 sorry)
+
+Formalises the **Raft commit rule** abstractly: a leader advances `committed` to index `k`
+only when a quorum of followers have confirmed entry `k`.
+
+### Type/definition mapping
+
+| Lean name | Rust concept | Rust location | Correspondence | Notes |
+|---|---|---|---|---|
+| `MatchIndexQuorum` | leader's per-voter `matchIndex` tracking | `src/tracker.rs` (`Progress.matched`) | Abstraction | Predicate: quorum of voters have `matchIndex ≥ k` |
+| `CommitRuleValid cs cs'` | commit advance validity condition | distributed in `src/raft.rs` | Abstraction | Definitionally equal to `hnew_cert` in `RaftReachable.step` |
+
+### Known divergences
+
+1. **Distributed commit logic** — The Rust commit rule is enforced across `maybe_commit`
+   and `tally_votes`. The Lean model captures only the quorum-ACK condition; term-safety
+   (A6) is in `MaybeCommit.lean`.
+2. **Abstract `matchIndex`** — `Progress.matched` (`u64`) modelled as `Nat`.
+
+### Impact on proofs
+
+CR8 proves `CommitRuleValid cs cs'` is definitionally equal to `hnew_cert` in
+`RaftReachable.step`, directly discharging that proof obligation. CR9 shows that the
+commit rule plus log preservation implies `CommitCertInvariant` is preserved.
+
+**Assessment**: Abstraction-level. The CR8 bridge is definitional — no assumptions added.
+
+---
+
+## `FVSquad/MaybeCommit.lean` ↔ `src/raft_log.rs` — `maybe_commit` / `commit_to`
+
+**Lean file**: `formal-verification/lean/FVSquad/MaybeCommit.lean`
+**Rust source**: [`src/raft_log.rs#L530`](../src/raft_log.rs#L530) and [`src/raft_log.rs#L304`](../src/raft_log.rs#L304)
+**Phase**: 5 ✅ (12 theorems, 0 sorry)
+
+Models `RaftLog::maybe_commit` and `RaftLog::commit_to` — the functions that advance the
+committed index with the A6 term-safety check.
+
+### Type/definition mapping
+
+| Lean name | Rust name | Rust location | Correspondence | Notes |
+|---|---|---|---|---|
+| `maybeCommit` | `RaftLog::maybe_commit` | `src/raft_log.rs#L530` | Abstraction | Abstract log `Nat → Option Nat`; see divergences |
+| `commitTo` | `RaftLog::commit_to` | `src/raft_log.rs#L304` | Exact | Modelled as `max committed toCommit` (panic excluded) |
+
+### Known divergences (Abstraction-level)
+
+1. **Abstract log** — Same as `MaybeAppend.lean` (no storage split).
+2. **`zero_term_on_err_compacted` abstracted** — Rust returns 0 for compacted entries;
+   Lean uses `log k = some term` directly; compacted-entry handling excluded by
+   precondition.
+3. **`fatal!` panic path omitted** — `commit_to` panics if `toCommit > lastIndex`.
+4. **`u64` → `Nat`** — No overflow.
+
+### Impact on proofs
+
+MC4 (`maybeCommit_term`) is the primary result: **A6 term safety** — if `maybeCommit`
+advances `committed`, the entry at the new committed index has the term supplied as argument
+(the leader's current term). This directly formalises Raft §5.4.2 and closes the A6
+obligation. MC12 shows `maybeCommit = commitTo` when the term check passes.
+
+**Assessment**: Abstraction is sound. MC4 is the critical A6 closure theorem.
+
+---
+
+## `FVSquad/ConcreteTransitions.lean` — AppendEntries Model and HLogConsistency (A4)
+
+**Lean file**: `formal-verification/lean/FVSquad/ConcreteTransitions.lean`
+**Rust source**: AppendEntries receiver in `src/raft_log.rs` and `src/raft.rs`
+**Phase**: 5 ✅ (11 theorems, 0 sorry)
+
+Provides a concrete AppendEntries RPC message type, a pure application function, and
+proves `HLogConsistency` from the protocol invariants.
+
+### Type/definition mapping
+
+| Lean name | Rust concept | Rust location | Correspondence | Notes |
+|---|---|---|---|---|
+| `AppendEntriesMsg E` | AppendEntries RPC | `src/raft.rs` (message types) | Abstraction | Core fields: `prevLogIndex`, `prevLogTerm`, `entries`, `leaderCommit` |
+| `applyAppendEntries` | `RaftLog::maybe_append` receiver path | `src/raft_log.rs#L267` | Abstraction | Term-stripped; models log update only |
+| `CandLogMatching` | Log Matching Property (leader-side) | distributed in `src/raft_log.rs` | Abstraction | Candidate log agrees with every voter at all shared indices |
+| `CandLogCoversLastIndex` | Leader log coverage condition | — | Abstraction | Candidate log covers each voter's last index |
+
+### Known divergences (Abstraction-level)
+
+1. **Term stripping** — `applyAppendEntries` operates on term-only logs; payload content
+   not verified.
+2. **Single-step model** — One AE message to one follower per step.
+3. **AE acceptance as precondition** — Full AE rejection path not modelled.
+
+### Impact on proofs
+
+CT1 establishes `HLogConsistency` from `CandLogMatching + CandLogCoversLastIndex`.
+CT5b/CT6 close the A4 path: concrete protocol transitions → `HLogConsistency`.
+These results are used by `LeaderCompleteness.lean` (LC7/LC8) and `ConcreteProtocolStep.lean`
+(CPS13).
+
+**Assessment**: Abstraction is sound. The `HLogConsistency` result is the key A4 deliverable.
+
+---
+
+## `FVSquad/ConcreteProtocolStep.lean` — A5 Bridge (ValidAEStep → RaftReachable)
+
+**Lean file**: `formal-verification/lean/FVSquad/ConcreteProtocolStep.lean`
+**Rust source**: AppendEntries protocol in `src/raft.rs` and `src/raft_log.rs`
+**Phase**: 5 ✅ (14 theorems, 0 sorry)
+
+The **A5 bridge**: given a single concrete valid AppendEntries step (`ValidAEStep`), the
+resulting cluster state is `RaftReachable`.
+
+### Type/definition mapping
+
+| Lean name | Rust concept | Rust location | Correspondence | Notes |
+|---|---|---|---|---|
+| `ValidAEStep E cs cs'` | One valid AE transaction | `src/raft.rs` + `src/raft_log.rs` | Abstraction | Bundles structural + commit-rule conditions |
+| `validAEStep_raftReachable` (CPS2) | AE protocol step preserves reachability | — | Abstraction | Central A5 bridge theorem |
+| `validAEStep_hqc_preserved_from_lc` (CPS13) | `hqc_preserved` discharge | — | Abstraction | Via `CandidateLogCovers` + `HasQuorum.monotone` + `LeaderCompleteness` |
+
+### ValidAEStep hypotheses vs Rust conditions
+
+| Hypothesis | What it expresses | Rust correspondence |
+|---|---|---|
+| `hvoter` | Follower `v` is in voter list | `prs.contains(v)` |
+| `hlog'` | New log is AE application | `maybe_append` success path |
+| `hno_overwrite` | Committed prefix unchanged | `conflict > committed` panic guard |
+| `hcommitted_mono` | Committed indices advance | `commit_to` monotonicity |
+| `hnew_cert` | New commits are quorum-certified | commit rule (via `CommitRule.lean`) |
+| `hqc_preserved` | QC entries remain in all logs | Leader Completeness (via `LeaderCompleteness.lean`) |
+
+### Known divergences (Abstraction-level)
+
+1. **No term management** — `ValidAEStep` does not model Raft term tracking; term safety
+   (A6) is handled separately by `MaybeCommit.lean`.
+2. **Single-voter step** — One AE application to one follower per step.
+3. **`hqc_preserved` weakened** — In run 41, `hqc_preserved` was weakened to a log-agreement
+   form that simplifies discharging from concrete transitions. This is a deliberate modelling
+   choice.
+
+### Impact on proofs
+
+CPS2 (`validAEStep_raftReachable`) shows any `ValidAEStep` on a `RaftReachable` state
+produces another `RaftReachable` state. CPS13 discharges `hqc_preserved` using
+`CandidateLogCovers` from `LeaderCompleteness`.
+
+**Assessment**: Abstraction-level. Every `ValidAEStep` hypothesis corresponds to a concrete
+Rust condition. The residual gap is showing `ValidAEStep` is satisfied by the real
+`src/raft.rs` message-handling loop (requires a full state-machine model).
+
+---
+
+## `FVSquad/RaftElection.lean` ↔ `src/raft.rs` — Election model
+
+**Lean file**: `formal-verification/lean/FVSquad/RaftElection.lean`
+**Rust source**: [`src/raft.rs#L63`](../src/raft.rs#L63) (StateRole), [`src/raft.rs#L163`](../src/raft.rs#L163) (Raft struct fields)
+**Phase**: 5 ✅ (15 theorems, 0 sorry)
+
+Models the Raft leader election mechanism (§5.2) and proves ElectionSafety: at most one
+candidate wins per term.
+
+### Type/definition mapping
+
+| Lean name | Rust name | Rust location | Correspondence | Notes |
+|---|---|---|---|---|
+| `NodeRole` | `StateRole` | `src/raft.rs#L63` | Exact | Three variants: Follower / Candidate / Leader |
+| `NodeState` | `Raft` struct (subset) | `src/raft.rs#L163–188` | Abstraction | `currentTerm`, `votedFor`, `role` only |
+| `VoteRecord` | `HashMap<u64, bool>` votes | `src/tracker.rs` | Abstraction | Modelled as function `Nat → Nat → Option Nat` (automatically single-valued) |
+| `wonInTerm` | *(election outcome via `tally_votes`)* | `src/tracker.rs` | Abstraction | Predicate: majority quorum voted for candidate |
+| `voteGranted` | vote-request handler | `src/raft.rs` | Abstraction | Guards: `votedFor` check + `isUpToDate` condition |
+
+### Known divergences (Abstraction-level)
+
+1. **Heavy abstraction** — Omits log entries, committed index, message queues, election
+   timers, `prs` (progress tracker), heartbeat tracking, leadership transfer, randomised
+   election timeout.
+2. **`VoteRecord` as a function** — Rust uses `HashMap<u64, bool>`; Lean uses `Nat → Nat
+   → Option Nat` (automatically single-valued per voter per term, making the Raft
+   one-vote-per-term invariant structural rather than assumed).
+3. **`votedFor : Option Nat`** — Rust uses `u64` with 0 as `INVALID_ID` sentinel.
+4. **`u64` → `Nat`** — No overflow.
+
+### Impact on proofs
+
+RE5 (`electionSafety`) is the primary result: at most one candidate wins per term. RE7
+(`voteGranted_isUpToDate`) links election victory to `isUpToDate`, feeding into
+`LeaderCompleteness.lean`.
+
+**Assessment**: Abstraction is sound. The function representation of `VoteRecord` makes
+the single-vote invariant structural.
+
+---
+
+## `FVSquad/LeaderCompleteness.lean` — Leader Completeness Property (Raft §5.4.1)
+
+**Lean file**: `formal-verification/lean/FVSquad/LeaderCompleteness.lean`
+**Rust source**: Protocol semantics of `src/raft.rs` (vote granting) and AppendEntries
+**Phase**: 5 ✅ (10 theorems, 0 sorry)
+
+Formalises the Raft **Leader Completeness** property (§5.4.1): an elected leader has all
+quorum-committed entries in its log. Provides the discharge condition for `hqc_preserved`
+in `RaftReachable.step`.
+
+### Type/definition mapping
+
+| Lean name | Rust concept | Rust location | Correspondence | Notes |
+|---|---|---|---|---|
+| `VoteRecordConsistency` | Invariant: votes cast via `voteGranted` | `src/raft.rs` vote handler | Abstraction | Predicate: all recorded votes satisfy `voteGranted` |
+| `CandidateLogCovers` | Leader has all committed entries | — | Abstraction | Winning candidate's log agrees with voters who voted |
+| `HLogConsistency` | Log Matching Property (candidate-side) | Raft §5.3 | Abstraction | isUpToDate → candidate has all voter entries |
+| `leaderCompleteness` (LC3) | Leader Completeness §5.4.1 | — | Abstraction | Winner has all committed entries |
+
+### Known divergences (Abstraction-level)
+
+1. **`CandidateLogCovers` and `HLogConsistency` as hypotheses** — Taken as preconditions;
+   `ConcreteTransitions.lean` (CT5b/CT6) supplies them from the concrete AE broadcast model.
+2. **Election model abstraction** — Uses `RaftElection.lean`'s `wonInTerm` / `VoteRecord`;
+   full protocol state (term management, message delays) not modelled.
+
+### Impact on proofs
+
+LC3 (`leaderCompleteness`) is the central result. LC6 (`hqc_preserved_from_leaderBroadcast`)
+directly provides the discharge condition for `hqc_preserved` in `RaftReachable.step`.
+LC8 (`leaderCompleteness_via_logMatching`) gives the full chain: LMI + VRC + HLogConsistency
+→ Leader Completeness.
+
+**Assessment**: Abstraction-level. The conditional structure (hypotheses vs derived facts)
+is honest; the proofs show *that* leader completeness implies `hqc_preserved`, and separately
+*that* concrete AE steps imply leader completeness.
+
+---
+
 ## Known Mismatches
 
-No known mismatches as of this final update. All Lean models are at *abstraction* or
-*exact* level. The honest residual gap is that `RaftReachable.step` hypotheses are
-abstract — they precisely capture what preserves the safety invariant but do not yet
-correspond to concrete Raft protocol transitions. This is a documented modelling choice,
-not a semantic error.
+No known mismatches as of this update. All 29 Lean models are at *abstraction* or *exact*
+level. The honest residual gaps are:
 
-> 🔬 Updated by [Lean Squad](https://github.com/dsyme/fv-squad/actions/runs/23979949696) automated formal verification. Final update: project complete, 0 sorry, 443+ theorems, 23 Lean files.
+1. **`RaftReachable.step` hypotheses are abstract** — They precisely capture what
+   preserves `CommitCertInvariant` but do not yet correspond to concrete Raft protocol
+   transitions end-to-end. `ConcreteProtocolStep.lean` provides the A5 bridge
+   (`ValidAEStep → RaftReachable`), but `ValidAEStep` itself uses abstract preconditions
+   that would need derivation from the full Raft state machine.
+2. **A6 term safety not yet connected to `RaftReachable.step`** — `MaybeCommit.lean`
+   (MC4) formally proves A6, and `CommitRule.lean` (CR8) bridges the commit rule to
+   `hnew_cert`. Connecting MC4 directly into the `RaftReachable.step` chain remains
+   future work.
+3. **`HLogConsistency` as hypothesis** — `ConcreteTransitions.lean` uses `HLogConsistency`
+   as a precondition; deriving it from the full Raft state machine (not just the AE
+   broadcast model) is the remaining A4/A5 gap.
+
+These are all documented modelling choices, not semantic errors. No proved theorem is
+invalidated by these gaps.
+
+> 🔬 Updated by [Lean Squad](https://github.com/dsyme/raft-lean-squad/actions/runs/24685028340) automated formal verification. Run 42: Task 6 Correspondence Review — added 11 missing file sections (471 theorems, 29 Lean files, 0 sorry).
