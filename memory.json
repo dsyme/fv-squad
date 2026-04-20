@@ -1,151 +1,157 @@
 {
-    "last_run": "r146-task11",
-    "run_id": "24562328877",
-    "fv_tool": "Lean4 (stdlib only, no Mathlib)",
-    "lean_version": "4.28.0",
-    "lean_build_note": "lake build PASSED. 0 sorry. 443+ theorems across 23 files. ENTIRE SUITE MACHINE-CHECKED.",
-    "project_status": "COMPLETE",
-    "targets": [
-        {
-            "id": "limit_size",
-            "phase": 5,
-            "notes": "17 proved. Merged."
-        },
-        {
-            "id": "config_validate",
-            "phase": 5,
-            "notes": "10 proved. Merged."
-        },
-        {
-            "id": "vote_result",
-            "phase": 5,
-            "notes": "21 proved. Merged."
-        },
-        {
-            "id": "joint_vote_result",
-            "phase": 5,
-            "notes": "14 proved. Merged."
-        },
-        {
-            "id": "committed_index",
-            "phase": 5,
-            "notes": "17 proved. Merged."
-        },
-        {
-            "id": "find_conflict",
-            "phase": 5,
-            "notes": "12 proved. Merged."
-        },
-        {
-            "id": "joint_committed_index",
-            "phase": 5,
-            "notes": "10 proved. Merged."
-        },
-        {
-            "id": "maybe_append",
-            "phase": 5,
-            "notes": "18 proved. Merged."
-        },
-        {
-            "id": "inflights",
-            "phase": 5,
-            "notes": "49 proved. Merged."
-        },
-        {
-            "id": "progress",
-            "phase": 5,
-            "notes": "31 proved. Merged."
-        },
-        {
-            "id": "is_up_to_date",
-            "phase": 5,
-            "notes": "18 proved. Merged."
-        },
-        {
-            "id": "log_unstable",
-            "phase": 5,
-            "notes": "37 proved. Merged."
-        },
-        {
-            "id": "tally_votes",
-            "phase": 5,
-            "notes": "28 proved. Merged."
-        },
-        {
-            "id": "has_quorum",
-            "phase": 5,
-            "notes": "22 proved. Merged."
-        },
-        {
-            "id": "quorum_recently_active",
-            "phase": 5,
-            "notes": "15 proved. Merged."
-        },
-        {
-            "id": "safety_composition",
-            "phase": 5,
-            "notes": "9 proved (SC4/SC6/SC9). Merged."
-        },
-        {
-            "id": "joint_tally",
-            "phase": 5,
-            "notes": "14 proved. Merged."
-        },
-        {
-            "id": "joint_safety_composition",
-            "phase": 5,
-            "notes": "10 proved (JSC7). Merged."
-        },
-        {
-            "id": "raft_safety",
-            "phase": 5,
-            "lean_file": "FVSquad/RaftSafety.lean",
-            "notes": "ALL 14 proved (0 sorry). RSS8 proved via CommitCertInvariant. Merged r133."
-        },
-        {
-            "id": "cross_module_composition",
-            "phase": 5,
-            "lean_file": "FVSquad/CrossModuleComposition.lean",
-            "notes": "ALL 7 proved (0 sorry). Merged r129."
-        },
-        {
-            "id": "raft_protocol",
-            "phase": 5,
-            "lean_file": "FVSquad/RaftProtocol.lean",
-            "notes": "ALL 10 proved (0 sorry). Merged r133. RP6+RP8 proved."
-        },
-        {
-            "id": "raft_trace",
-            "phase": 5,
-            "lean_file": "FVSquad/RaftTrace.lean",
-            "notes": "ALL proved (0 sorry). RT0+RT1+RT2. RaftReachable inductive. Merged r133."
-        }
-    ],
-    "total_theorems_proved": 443,
-    "total_sorry": 0,
-    "open_prs": [
-        "lean-squad/paper-task11-24562328877: Conference paper (Task 11) \u2014 paper.tex + paper.bib, ACM sigconf, 443 theorems"
-    ],
-    "aeneas_status": "BLOCKED - no-new-privileges container. Confirmed all runs.",
-    "ci_workflow": ".github/workflows/lean-ci.yml",
-    "ci_status": "Healthy. Lean 4.28.0. No lake update needed (stdlib only).",
-    "lean_stdlib_notes": {
-        "no_lemma_keyword": "In Lean 4.28 stdlib-only, 'lemma' is not a top-level keyword. Use 'theorem' or 'private theorem' instead.",
-        "private_theorem": "Use 'private theorem' for module-internal helpers (not 'private lemma').",
-        "funext_by_cases": "funext fun w => by by_cases hw : w = v <;> simp [hw, heq] is clean for proving function equality.",
-        "no_split_ifs": "split_ifs is Mathlib only. Use by_cases h : P <;> simp [h].",
-        "no_push_neg": "push_neg is Mathlib only. Use omega or Nat.lt_of_not_le.",
-        "no_le_rfl": "le_rfl does not exist. Use Nat.le_refl _.",
-        "beq_iff_eq": "beq_iff_eq : a == b \u2194 a = b \u2014 stdlib for LawfulBEq.",
-        "induction_implicit_vars": "In 'induction h with | step ... =>', implicit vars get \u271d-named. Use 'rename_i cs_prev cs_new' to name them.",
-        "strong_induction": "induction n using Nat.strongRecOn with | ind n ih => ..."
+  "last_run": "r146-task11",
+  "run_id": "24562328877",
+  "fv_tool": "Lean4 (stdlib only, no Mathlib)",
+  "lean_version": "4.28.0",
+  "lean_build_note": "lake build PASSED. 0 sorry. 443+ theorems across 23 files. ENTIRE SUITE MACHINE-CHECKED.",
+  "project_status": "COMPLETE",
+  "targets": [
+    {
+      "id": "limit_size",
+      "phase": 5,
+      "notes": "17 proved. Merged."
     },
-    "findings": [
-        "SOUNDNESS: Prior RSS3/RSS4 were false as stated (no hypotheses = arbitrary logs). Fixed r130 with LogMatchingInvariantFor/NoRollbackInvariantFor.",
-        "No bugs found in implementation code.",
-        "PROJECT COMPLETE: 443+ theorems, 0 sorry, 23 Lean files. raftReachable_safe is the top-level unconditional safety theorem."
-    ],
-    "correspondence_status": "UPDATED r134: Full documentation for all 23 files including SafetyComposition, JointSafetyComposition, CrossModuleComposition, RaftSafety, RaftProtocol, RaftTrace.",
-    "critique_status": "UPDATED r134: Reflects project completion. 0 sorry. RaftProtocol + RaftTrace sections added. RSS8 shown as proved.",
-    "report_status": "UPDATED r134. paper.tex created in formal-verification/paper/ (ACM sigconf, 11-page target). PDF compilation skipped (no network)."
+    {
+      "id": "config_validate",
+      "phase": 5,
+      "notes": "10 proved. Merged."
+    },
+    {
+      "id": "vote_result",
+      "phase": 5,
+      "notes": "21 proved. Merged."
+    },
+    {
+      "id": "joint_vote_result",
+      "phase": 5,
+      "notes": "14 proved. Merged."
+    },
+    {
+      "id": "committed_index",
+      "phase": 5,
+      "notes": "17 proved. Merged."
+    },
+    {
+      "id": "find_conflict",
+      "phase": 5,
+      "notes": "12 proved. Merged."
+    },
+    {
+      "id": "joint_committed_index",
+      "phase": 5,
+      "notes": "10 proved. Merged."
+    },
+    {
+      "id": "maybe_append",
+      "phase": 5,
+      "notes": "18 proved. Merged."
+    },
+    {
+      "id": "inflights",
+      "phase": 5,
+      "notes": "49 proved. Merged."
+    },
+    {
+      "id": "progress",
+      "phase": 5,
+      "notes": "31 proved. Merged."
+    },
+    {
+      "id": "is_up_to_date",
+      "phase": 5,
+      "notes": "18 proved. Merged."
+    },
+    {
+      "id": "log_unstable",
+      "phase": 5,
+      "notes": "37 proved. Merged."
+    },
+    {
+      "id": "tally_votes",
+      "phase": 5,
+      "notes": "28 proved. Merged."
+    },
+    {
+      "id": "has_quorum",
+      "phase": 5,
+      "notes": "22 proved. Merged."
+    },
+    {
+      "id": "quorum_recently_active",
+      "phase": 5,
+      "notes": "15 proved. Merged."
+    },
+    {
+      "id": "safety_composition",
+      "phase": 5,
+      "notes": "9 proved (SC4/SC6/SC9). Merged."
+    },
+    {
+      "id": "joint_tally",
+      "phase": 5,
+      "notes": "14 proved. Merged."
+    },
+    {
+      "id": "joint_safety_composition",
+      "phase": 5,
+      "notes": "10 proved (JSC7). Merged."
+    },
+    {
+      "id": "raft_safety",
+      "phase": 5,
+      "lean_file": "FVSquad/RaftSafety.lean",
+      "notes": "ALL 14 proved (0 sorry). RSS8 proved via CommitCertInvariant. Merged r133."
+    },
+    {
+      "id": "cross_module_composition",
+      "phase": 5,
+      "lean_file": "FVSquad/CrossModuleComposition.lean",
+      "notes": "ALL 7 proved (0 sorry). Merged r129."
+    },
+    {
+      "id": "raft_protocol",
+      "phase": 5,
+      "lean_file": "FVSquad/RaftProtocol.lean",
+      "notes": "ALL 10 proved (0 sorry). Merged r133. RP6+RP8 proved."
+    },
+    {
+      "id": "raft_trace",
+      "phase": 5,
+      "lean_file": "FVSquad/RaftTrace.lean",
+      "notes": "ALL proved (0 sorry). RT0+RT1+RT2. RaftReachable inductive. Merged r133."
+    }
+  ],
+  "total_theorems_proved": 443,
+  "total_sorry": 0,
+  "open_prs": [
+    "lean-squad/paper-task11-24562328877: Conference paper (Task 11) \u2014 paper.tex + paper.bib, ACM sigconf, 443 theorems"
+  ],
+  "aeneas_status": "BLOCKED - no-new-privileges container. Confirmed all runs.",
+  "ci_workflow": ".github/workflows/lean-ci.yml",
+  "ci_status": "Healthy. Lean 4.28.0. No lake update needed (stdlib only).",
+  "lean_stdlib_notes": {
+    "no_lemma_keyword": "In Lean 4.28 stdlib-only, 'lemma' is not a top-level keyword. Use 'theorem' or 'private theorem' instead.",
+    "private_theorem": "Use 'private theorem' for module-internal helpers (not 'private lemma').",
+    "funext_by_cases": "funext fun w => by by_cases hw : w = v <;> simp [hw, heq] is clean for proving function equality.",
+    "no_split_ifs": "split_ifs is Mathlib only. Use by_cases h : P <;> simp [h].",
+    "no_push_neg": "push_neg is Mathlib only. Use omega or Nat.lt_of_not_le.",
+    "no_le_rfl": "le_rfl does not exist. Use Nat.le_refl _.",
+    "beq_iff_eq": "beq_iff_eq : a == b \u2194 a = b \u2014 stdlib for LawfulBEq.",
+    "induction_implicit_vars": "In 'induction h with | step ... =>', implicit vars get \u271d-named. Use 'rename_i cs_prev cs_new' to name them.",
+    "strong_induction": "induction n using Nat.strongRecOn with | ind n ih => ..."
+  },
+  "findings": [
+    "SOUNDNESS: Prior RSS3/RSS4 were false as stated (no hypotheses = arbitrary logs). Fixed r130 with LogMatchingInvariantFor/NoRollbackInvariantFor.",
+    "No bugs found in implementation code.",
+    "PROJECT COMPLETE: 443+ theorems, 0 sorry, 23 Lean files. raftReachable_safe is the top-level unconditional safety theorem."
+  ],
+  "correspondence_status": "UPDATED r134: Full documentation for all 23 files including SafetyComposition, JointSafetyComposition, CrossModuleComposition, RaftSafety, RaftProtocol, RaftTrace.",
+  "critique_status": "UPDATED r134: Reflects project completion. 0 sorry. RaftProtocol + RaftTrace sections added. RSS8 shown as proved.",
+  "report_status": "UPDATED r134. paper.tex created in formal-verification/paper/ (ACM sigconf, 11-page target). PDF compilation skipped (no network).",
+  "notes": [
+    "Run 35 (24658213506): Added CommitRule.lean (CR1-CR9, 9 theorems, 0 sorry). CR8=Iff.rfl closes hnew_cert. 485+ theorems, 28 files, 2 sorry (CT4/CT5)."
+  ],
+  "total_theorems": 485,
+  "lean_files": 28,
+  "sorry_count": 2
 }
