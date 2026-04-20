@@ -79,24 +79,26 @@ properties of \texttt{raft-rs}---a production Rust implementation of the
 Raft distributed consensus protocol---with near-zero human labour.  The
 human author required no expertise in Lean, formal methods, or proof
 engineering; his role was limited to designing the reusable workflow,
-merging pull requests, and writing two short comments across 34
+merging pull requests, and writing two short comments across 39
 autonomous agent runs.
 
-The agent autonomously researched the codebase, selected 22 verification
-targets, designed a six-layer proof architecture (data structures, quorum arithmetic,
-protocol operations, cross-module composition, Raft safety, and
-reachability), wrote all specifications, and completed all proofs:
-443~theorems across 23~Lean~4 files (stdlib only, no Mathlib),
+The agent autonomously researched the codebase, selected 26 verification
+targets, designed a seven-layer proof architecture (data structures, quorum arithmetic,
+protocol operations, cross-module composition, Raft safety, reachability, and
+election model), wrote all specifications, and completed all proofs:
+473~theorems across 29~Lean~4 files (stdlib only, no Mathlib),
 culminating in the end-to-end theorem \texttt{raftReachable\_safe}---for
 any cluster state reachable via valid Raft transitions from an empty
 initial state, no two nodes ever apply different log entries at the same
 committed index---with zero \texttt{sorry}.  One formulation bug was
 caught by the \texttt{sorry} discipline; no implementation bugs were
 found, providing machine-checked evidence of correctness on the verified
-paths.
+paths.  The A5 bridge theorem (\texttt{validAEStep\_raftReachable}) was
+also proved, connecting a concrete AppendEntries step to the abstract
+reachability model for the first time.
 
-The total LLM token cost was approximately \$240 (34~runs at
-$\sim$\$7 each using Claude Opus~4.6 pricing at time of publication).
+The total LLM token cost was approximately \$280 (39~runs at
+$\sim$\$7 each using Claude Sonnet~4.6 pricing at time of publication).
 The Lean Squad workflow is open-source, installs on any GitHub repository
 with two commands, and requires only an LLM API token.  The proof
 artefacts and full run history are available at
@@ -112,8 +114,8 @@ automation workflow implemented using GitHub Agentic Workflows, with
 author (Don Syme) took a deliberately \emph{hands-off} approach: he
 designed the automated Lean Squad workflow itself (\S\ref{sec:workflow}) and
 merged pull requests, but was not involved in target selection,
-the six-layer proof architecture, specification writing, or any actual
-proof engineering.  His total intervention over the project's 34~runs
+the seven-layer proof architecture, specification writing, or any actual
+proof engineering.  His total intervention over the project's 39~runs
 amounted to two short GitHub comments (\S\ref{sec:interventions}).
 \medskip
 
@@ -144,7 +146,7 @@ addresses this barrier directly, and is different in three ways:
   self-contained verification artefact.
 \item The entire effort is \emph{automated}: every target selection,
   specification, proof architecture decision, and proof was produced by an
-  LLM-driven FV agent across 34 independent runs, with only two brief
+  LLM-driven FV agent across 39 independent runs, with only two brief
   human interventions (\S\ref{sec:interventions}).  The human author
   required no Lean expertise, no formal-methods background, and invested
   near-zero hours of proof-engineering labour.
@@ -332,7 +334,7 @@ memory with new discoveries, proved theorems, and remaining obligations.
 Memory may be stale (referencing merged PRs or closed issues), so the
 agent is instructed to verify references against the current repository
 state.  This mechanism enables cumulative progress across independent
-runs: the six-layer architecture, the choice of targets, and the
+runs: the seven-layer architecture, the choice of targets, and the
 proof strategy all emerged organically from the agent's interaction
 with its own memory and the growing codebase, not from human direction.
 
@@ -422,20 +424,25 @@ stdlib-only and dropping Aeneas---as it gained experience with the
 proof artefacts across subsequent runs.
 
 Over later iterations the agent expanded the target list to
-\textbf{22~targets} and organised them into six layers
+\textbf{26~targets} and organised them into seven layers
 (Table~\ref{tab:layers}).  Twelve additional targets were added as
 the agent discovered cross-module composition opportunities
 (\texttt{SafetyComposition}, \texttt{CrossModuleComposition}),
 protocol-level properties (\texttt{RaftSafety}, \texttt{RaftProtocol}),
-the reachability model (\texttt{RaftTrace}), and further quorum
+the reachability model (\texttt{RaftTrace}), further quorum
 lemmas (\texttt{HasQuorum}, \texttt{TallyVotes},
 \texttt{QuorumRecentlyActive}, \texttt{IsUpToDate},
-\texttt{LogUnstable}).  This layered architecture emerged from the
+\texttt{LogUnstable}), and the election model
+(\texttt{RaftElection}, \texttt{LeaderCompleteness},
+\texttt{ConcreteTransitions}, \texttt{CommitRule},
+\texttt{MaybeCommit}, \texttt{ConcreteProtocolStep}).
+This layered architecture emerged from the
 agent's own analysis of module dependencies---it was not prescribed by
 the human author.
 Layers build on each other: Layer~2 (Quorum Arithmetic) uses types from
 Layer~1; Layer~4 (Composition) spans Layer~2 and Layer~3; Layers~5--6
-depend on all preceding layers.
+depend on all preceding layers; Layer~7 (Election Model) provides
+concrete discharge lemmas for the abstract step hypotheses of Layer~6.
 
 \begin{table}[h]
 \centering\small
@@ -443,14 +450,15 @@ depend on all preceding layers.
 \toprule
 Layer & Description & Files & Theorems \\
 \midrule
-1 & Data Structures     & 5  & $\approx$144 \\
-2 & Quorum Arithmetic   & 7  & $\approx$116 \\
-3 & Protocol Operations & 4  & $\approx$63  \\
-4 & Cross-Module Composition & 3 & 26 \\
-5 & Raft Safety         & 2  & 24  \\
-6 & Reachability        & 1  & 3   \\
+1 & Data Structures     & 5  & 153 \\
+2 & Quorum Arithmetic   & 7  & 119 \\
+3 & Protocol Operations & 4  & $\approx$59  \\
+4 & Cross-Module Composition & 3 & 27 \\
+5 & Raft Safety         & 2  & 20  \\
+6 & Reachability        & 1  & 5   \\
+7 & Election Model (partial) & 6 & 70 \\
 \midrule
-  & \textbf{Total}      & \textbf{22} & \textbf{443+} \\
+  & \textbf{Total}      & \textbf{29} & \textbf{473} \\
 \bottomrule
 \end{tabular}
 \caption{Proof layers and theorem counts.}
@@ -656,7 +664,7 @@ inductive RaftReachable [DecidableEq E] :
 \label{fig:rr}
 \end{figure}
 
-\texttt{RaftTrace.lean} (3 theorems) closes the gap between the conditional
+\texttt{RaftTrace.lean} (5~theorems) closes the gap between the conditional
 safety result (RSS8) and an unconditional statement.  It defines the
 \texttt{RaftReachable} inductive predicate (Figure~\ref{fig:rr}) and
 proves by structural induction that every reachable state satisfies
@@ -674,10 +682,54 @@ theorem raftReachable_safe [DecidableEq E]
 
 The two-line proof follows immediately from RT1 and RSS8.
 
+\paragraph{Layer~7: Election Model (partial).}
+
+Six additional files formalise Raft's election and commit machinery
+at a more concrete level, providing components to discharge the
+\texttt{RaftReachable.step} hypotheses.
+
+\texttt{RaftElection.lean} (15~theorems) formalises abstract Raft-step
+properties including single-voter log-change invariants, providing
+lemmas used by higher layers.
+
+\texttt{LeaderCompleteness.lean} (10~theorems) formalises leader
+completeness properties needed to discharge \texttt{hqc\_preserved}: the
+property that a newly elected leader has all quorum-certified entries
+in its log.
+
+\texttt{ConcreteTransitions.lean} (11~theorems) formalises the
+\texttt{AppendEntries} effect function directly, proving CT1--CT5b:
+key properties of how the log is updated by a concrete AE step.
+
+\texttt{CommitRule.lean} (9~theorems) formalises the Raft commit rule
+(\texttt{leaderCommit} reflects a genuine quorum acknowledgement).
+Theorem CR8 proves \texttt{CommitRuleValid~=~hnew\_cert} by
+definitional equality (\texttt{Iff.rfl}), \emph{closing} the
+\texttt{hnew\_cert} hypothesis of \texttt{RaftReachable.step}.
+
+\texttt{MaybeCommit.lean} (12~theorems) formalises \texttt{maybeCommit},
+the function that advances the commit index.  Theorem MC4
+(\texttt{maybeCommit\_term}) proves A6 term safety: the commit index
+advances only when the entry at the new committed index has
+\texttt{term~=~cs.term} (leader's current term), formalising
+Raft~\S5.4.2.
+
+\texttt{ConcreteProtocolStep.lean} (13~theorems) introduces the
+\texttt{ValidAEStep} structure and proves the \emph{A5 bridge}
+(CPS2, \texttt{validAEStep\_raftReachable}): if \texttt{cs} is
+\texttt{RaftReachable} and a valid \texttt{ValidAEStep} fires on it,
+the resulting state \texttt{cs'} is also \texttt{RaftReachable}.  This is
+the first theorem that directly connects a concrete Raft message to the
+abstract reachability model.
+
+The remaining open gap is \texttt{hqc\_preserved} (leader completeness
+composition), which requires composing LeaderCompleteness with quorum
+arithmetic across the election model.
+
 \subsection{Proof Statistics}
 
 Table~\ref{tab:inventory} summarises the full file inventory.
-Total: 443+ theorems, 23 files, 0 \texttt{sorry}, 7{,}440 lines of Lean.
+Total: 473 theorems, 29~files, 0 \texttt{sorry}, $\approx$9{,}800 lines of Lean.
 
 \begin{table}[h]
 \centering\small
@@ -685,34 +737,40 @@ Total: 443+ theorems, 23 files, 0 \texttt{sorry}, 7{,}440 lines of Lean.
 \toprule
 File & Thms & Key result \\
 \midrule
-LimitSize         & 17 & Prefix, maximality \\
+LimitSize         & 25 & Prefix, maximality \\
 ConfigValidate    & 10 & 8-constraint predicate equiv \\
 MajorityVote      & 21 & Won/Lost/Pending characterisation \\
 JointVote         & 14 & Joint-config degeneracy \\
-CommittedIndex    & 17 & Sort-index safety + maximality \\
+CommittedIndex    & 28 & Sort-index safety + maximality \\
 FindConflict      & 12 & First mismatch; zero $\Leftrightarrow$ all-match \\
 JointCommittedIndex & 10 & $\min(\mathit{ci}_{in}, \mathit{ci}_{out})$ \\
-MaybeAppend       & 18 & Prefix preserved; suffix applied \\
-Inflights         & 49 & Ring-buffer abstract/concrete bridge \\
+MaybeAppend       & 19 & Prefix preserved; suffix applied \\
+Inflights         & 50 & Ring-buffer abstract/concrete bridge \\
 Progress          & 31 & State-machine WF invariant \\
-IsUpToDate        & 18 & Lex order, total preorder \\
+IsUpToDate        & 17 & Lex order, total preorder \\
 LogUnstable       & 37 & Snapshot/entries consistency \\
-TallyVotes        & 18 & Partition, bounds, no-double-quorum \\
-HasQuorum         & 22 & Quorum intersection (HQ14, HQ20) \\
-QuorumRecentlyActive & 15 & Active-quorum detection \\
-SafetyComposition &  9 & SC4: two CIs share witness \\
-JointTally        & 14 & Joint-config tally correctness \\
+TallyVotes        & 28 & Partition, bounds, no-double-quorum \\
+HasQuorum         & 20 & Quorum intersection (HQ14, HQ20) \\
+QuorumRecentlyActive & 11 & Active-quorum detection \\
+SafetyComposition & 10 & SC4: two CIs share witness \\
+JointTally        & 18 & Joint-config tally correctness \\
 JointSafetyComposition & 10 & JSC7: witnesses in both halves \\
 CrossModuleComposition &  7 & CMC3: maybe\_append bounded \\
-RaftSafety        & 14 & RSS1--RSS8: cluster safety \\
+RaftSafety        & 10 & RSS1--RSS8: cluster safety \\
 RaftProtocol      & 10 & LMI, NRI preserved by AppendEntries \\
-RaftTrace         &  3 & RT1, RT2: unconditional safety \\
+RaftTrace         &  5 & RT1, RT2: reachable safety \\
+RaftElection      & 15 & Abstract Raft-step properties \\
+LeaderCompleteness & 10 & Leader completeness components \\
+ConcreteTransitions & 11 & CT1--CT5b: concrete AE effects \\
+CommitRule        &  9 & CR8: \texttt{hnew\_cert} closed \\
+MaybeCommit       & 12 & MC4: A6 term safety \\
+ConcreteProtocolStep & 13 & CPS2: A5 bridge (concrete→abstract) \\
 Basic             & -- & Shared definitions \\
 \midrule
-\textbf{Total}    & \textbf{443+} & \textbf{0 sorry} \\
+\textbf{Total}    & \textbf{473} & \textbf{0 sorry} \\
 \bottomrule
 \end{tabular}
-\caption{Full file inventory (all at Phase 5).}
+\caption{Full file inventory (all at Phase~5, 0 sorry).}
 \label{tab:inventory}
 \end{table}
 
@@ -720,7 +778,7 @@ Basic             & -- & Shared definitions \\
 \label{sec:findings}
 
 \paragraph{No implementation bugs found.}
-All 443+ theorems are consistent with the Rust implementation.  This is
+All 473~theorems are consistent with the Rust implementation.  This is
 itself a meaningful positive finding: the quorum arithmetic, log operations,
 config validation, flow control, and state-machine invariants are all
 consistent with their formal specifications on the verified paths.
@@ -756,11 +814,15 @@ artefacts: they precisely state what a protocol transition must satisfy
 to preserve \texttt{CommitCertInvariant}.
 
 The residual gap is that these hypotheses are \emph{assumed} rather than
-derived from concrete Raft messages.  Closing the gap requires:
-(a)~formalising election safety (an elected leader has all quorum-certified
-entries), (b)~the commit rule (\texttt{leaderCommit} reflects a genuine
-quorum acknowledgement), and (c)~term monotonicity.  This is standard Raft
-proof-engineering and would be a natural extension of the current work.
+derived from concrete Raft messages.  The A5 bridge
+(\texttt{validAEStep\_raftReachable}, CPS2) has now been proved: a
+\texttt{ValidAEStep}---a concrete AppendEntries step---on a
+\texttt{RaftReachable} state produces a new \texttt{RaftReachable} state.
+The \texttt{hnew\_cert} hypothesis is also closed via CR8.  Closing the
+full gap requires: (a)~formalising election safety (an elected leader has
+all quorum-certified entries, i.e.\ \texttt{hqc\_preserved}), and
+(b)~term monotonicity for \texttt{hcommitted\_mono}.  This is standard
+Raft proof-engineering and remains as future work.
 
 Concretely, \texttt{hno\_overwrite} corresponds to the Rust panic guard:
 \begin{lstlisting}[language=Rust2]
@@ -777,7 +839,7 @@ the appropriate preconditions.
 
 \subsection{Proof Utility Assessment}
 
-The six-layer architecture ensures that every theorem in upper layers has
+The seven-layer architecture ensures that every theorem in upper layers has
 a genuine dependency on lower layers.  In particular:
 
 \begin{itemize}\setlength\itemsep{0pt}
@@ -814,7 +876,7 @@ update always runs.
 
 The human author's role was deliberately hands-off: he designed the
 Lean Squad workflow itself (\S\ref{sec:workflow}), installed it on the
-repository, and reviewed merged PRs.  Over the entire 34-run project,
+repository, and reviewed merged PRs.  Over the entire 39-run project,
 his total intervention consisted of exactly two GitHub comments:
 
 \paragraph{Intervention 1 (Issue \#59, run~$\approx$20).}
@@ -843,23 +905,25 @@ level: no end-to-end Raft safety theorem exists yet.''
 This triggered the agent to create \texttt{RaftSafety.lean} and
 \texttt{CrossModuleComposition.lean} (run~r128), adding 25 new
 theorems including the first end-to-end cluster safety results.
-Subsequent runs (r129--r134) completed the remaining sorry-guarded
-theorems and produced the final \texttt{raftReachable\_safe}.
+Subsequent runs (r129--r139) completed the remaining sorry-guarded
+theorems, produced the final \texttt{raftReachable\_safe}, and
+extended the election model layer to 70 new theorems including
+the A5 bridge (CPS2) and A6 term safety (MC4).
 
 \paragraph{What is remarkable} is not that two interventions occurred,
 but what did \emph{not} require human intervention: the choice of all
-22 FV targets, the six-layer proof architecture, all 22 informal
-specifications, all Lean formalisations, all 443+ proofs, the
+26 FV targets, the seven-layer proof architecture, all 26 informal
+specifications, all Lean formalisations, all 473 proofs, the
 correspondence review, the proof utility critique, the project report,
 and even an initial draft of this paper were produced autonomously.
 The human never selected a target, wrote a specification, suggested a
 proof strategy, or debugged a failing proof.
 
-Across 34 runs spanning $\approx$6 weeks, the agent produced:
+Across 39 runs spanning $\approx$8 weeks, the agent produced:
 \begin{itemize}\setlength\itemsep{0pt}
-  \item 22 informal specification documents
-  \item 23 Lean~4 source files (7,440 lines)
-  \item 443+ machine-checked theorems
+  \item 26 informal specification documents
+  \item 29 Lean~4 source files ($\approx$9{,}800 lines)
+  \item 473 machine-checked theorems
   \item 1 formulation bug caught and corrected
   \item 0 implementation bugs
 \end{itemize}
@@ -891,7 +955,7 @@ not existing (use \texttt{Nat.le\_refl \_}).
 The workflow's ten-task structure with adaptive weights means the
 agent always has a well-defined next action.  The agent does not need
 a human to tell it what to do next---the weight computation, combined
-with persistent memory, provides sufficient direction.  The six-layer
+with persistent memory, provides sufficient direction.  The seven-layer
 proof architecture emerged organically from this process rather than
 being prescribed.
 
@@ -918,16 +982,16 @@ claiming full correspondence---is essential for correctly assessing
 proof value.
 
 \paragraph{Negative results have value.}
-Finding no implementation bugs in 443 theorem-checks is itself evidence
+Finding no implementation bugs in 473~theorem-checks is itself evidence
 of implementation quality.  The absence of counterexamples in the
 verified paths raises confidence, even without a fully concrete model.
 
 \subsection{Cost}
 \label{sec:cost}
 
-Each of the 34 Lean Squad runs consumed approximately \$7 of LLM
-token cost at Claude Opus~4.6 pricing (at time of publication), for a total of
-approximately~\$240.  This covers the full pipeline: reading
+Each of the 39 Lean Squad runs consumed approximately \$7 of LLM
+token cost at Claude Sonnet~4.6 pricing (at time of publication), for a total of
+approximately~\$280.  This covers the full pipeline: reading
 persistent memory, researching the codebase, selecting tasks,
 installing the Lean toolchain, writing or modifying Lean files,
 running \texttt{lake build}, and creating pull requests.  The
@@ -958,7 +1022,7 @@ We note two mitigating factors.  First, the proofs are machine-checked
 by Lean's kernel: regardless of how the agent arrived at a proof term,
 its correctness is independently verified.  Training-data influence
 cannot produce a false positive.  Second, several architectural
-decisions---stdlib-only (no Mathlib), the six-layer decomposition, the
+decisions---stdlib-only (no Mathlib), the seven-layer decomposition, the
 \texttt{RaftReachable} abstract model---have no direct precedent in the
 prior Raft verification literature, suggesting that the agent did more
 than reproduce memorised material.  Nevertheless, this overlap should
@@ -1110,8 +1174,8 @@ Bayaz\i t~et~al.~\cite{bayazit2025llm} conducted a case study on
 the effectiveness of LLMs for verification with proof assistants,
 finding that LLMs can discharge simple lemmas but struggle with
 multi-step proofs requiring creative insight.  Our experience
-\emph{diverges}: the Lean Squad agent completed all 443+ theorems
-including multi-step compositional proofs (Layers~4--6) that require
+\emph{diverges}: the Lean Squad agent completed all 473~theorems
+including multi-step compositional proofs (Layers~4--7) that require
 chaining lemmas across modules.  We attribute this difference to
 four factors: (i)~the workflow's phase-weighted task selection
 (\S\ref{sec:workflow}) decomposes the problem into tractable
@@ -1141,7 +1205,7 @@ formalisation.
 The closest analogue to our persistent-memory mechanism is
 LEGO-Prover's growing library~\cite{wang2024legoprover}, but
 LEGO-Prover operates within a single proof session, whereas Lean
-Squad accumulates knowledge across 34 independent GitHub Actions runs
+Squad accumulates knowledge across 39 independent GitHub Actions runs
 spanning weeks.  AlphaProof~\cite{trinh2024alphaproof} demonstrated
 that reinforcement learning over formal proofs can achieve
 competition-level mathematical reasoning, but targets Olympiad
@@ -1216,13 +1280,13 @@ $\sim$42,000 lines of Dafny proof.
 Woos~et~al.~\cite{vard} verified simplified Raft with $\sim$50,000
 lines of Coq across 90 invariants.
 
-Our 7,440 lines of Lean and 443 theorems are modest by comparison.
+Our $\approx$9{,}800 lines of Lean and 473 theorems are modest by comparison.
 However, the relevant metric is not raw scale but \emph{effort}:
 those projects required person-years of expert proof engineering,
 while ours required zero human proof engineering and approximately
 34 LLM agent runs (each $\sim$15--30 minutes of wall-clock time)
 plus two one-line human comments.  If the approach scales---and the
-successful progression from Layer~1 through Layer~6 suggests it
+successful progression from Layer~1 through Layer~7 suggests it
 can---the implications for the cost of formal verification are
 significant.
 
@@ -1242,11 +1306,13 @@ that LLM-driven agents can eliminate that barrier.
 
 Starting from zero, the Lean Squad agent---running as a scheduled
 GitHub Actions job with no human in the loop---autonomously selected
-22 verification targets in a production Raft implementation, designed
-a six-layer proof architecture, wrote all specifications and proofs,
-and produced 443+ machine-checked theorems across 23 files in 34 runs,
+26 verification targets in a production Raft implementation, designed
+a seven-layer proof architecture, wrote all specifications and proofs,
+and produced 473 machine-checked theorems across 29 files in 39 runs,
 culminating in the end-to-end safety theorem
-\texttt{raftReachable\_safe} with zero \texttt{sorry}.
+\texttt{raftReachable\_safe} with zero \texttt{sorry}, plus the A5
+bridge (CPS2) connecting concrete AppendEntries steps to the abstract
+reachability model.
 The human author's total involvement was: designing the reusable
 workflow, merging PRs, and writing two short comments.
 He required no Lean expertise, no formal-methods training, and
@@ -1257,7 +1323,7 @@ that gives the agent a well-defined next action at every stage of the
 project; (ii)~persistent memory that accumulates proved lemmas,
 target status, and proof strategies across independent runs; and
 (iii)~the dramatically improved reasoning capabilities of modern
-coding agents (Copilot CLI with Claude Opus~4.6 in this project).
+coding agents (Copilot CLI with Claude Sonnet~4.6 in this project).
 
 The proof architecture is layered, honest, and extensible: each layer's
 residual assumptions are explicit, and the path to a fully concrete
@@ -1269,17 +1335,19 @@ the cost moves from scarce human proof-engineering expertise to
 commodity LLM compute, making machine-checked safety proofs a
 practical option for ordinary software teams.
 
-Future work on Lean Squad includes reliably applying the Aeneas~\cite{aeneas}
-toolchain to mechanically extract Lean models from safe Rust; generalising it
-to use a broader range of formal verification tools and methodology; and applying
-Lean Squad to other production codebases to test generality.
+Future work on Lean Squad includes closing the \texttt{hqc\_preserved}
+gap (leader completeness composition for fully unconditional safety),
+reliably applying the Aeneas~\cite{aeneas} toolchain to mechanically
+extract Lean models from safe Rust; generalising it to use a broader
+range of formal verification tools and methodology; and applying Lean
+Squad to other production codebases to test generality.
 
 \begin{acks}
 🔬 \emph{This paper was co-authored by Don Syme, LeanSquad (an autonomous
 AI automation workflow using GitHub Agentic Workflows), Copilot CLI
-(GitHub's AI coding agent), and Claude Opus~4.6 (Anthropic's LLM).  Don Syme designed the Lean Squad workflow
-and made two brief interventions; all 22 target selections, all
-specifications, all 443+ proofs, and the six-layer architecture were
+(GitHub's AI coding agent), and Claude Sonnet~4.6 (Anthropic's LLM).  Don Syme designed the Lean Squad workflow
+and made two brief interventions; all 26 target selections, all
+specifications, all 473 proofs, and the seven-layer architecture were
 produced autonomously by the AI agent.  All theorems are machine-checked
 by Lean~4.28.0 with zero \texttt{sorry}.  The proof artefacts, agent
 configuration, and full run history are available in the repository
