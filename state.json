@@ -1,14 +1,14 @@
 {
-  "run_id": "24668849059",
-  "workflow_run": "24668849059",
-  "date": "2026-04-20T13:23:00Z",
+  "run_id": "24680821349",
+  "workflow_run": "24680821349",
+  "date": "2026-04-20T17:30:00Z",
   "lean_version": "4.28.0",
-  "total_theorems": 473,
+  "total_theorems": 471,
   "total_sorry": 0,
   "lean_files": 29,
   "completed_tasks_this_run": [
-    "Task 7 (Proof Utility Critique): CRITIQUE.md updated — 471→473, 9 stale section headers corrected, Paper Review section added with accuracy/completeness/clarity assessment",
-    "Task 11 (Conference Paper): paper.tex updated — Layer2 119→139, Layer3 tilde removed, run count 39→40, model Opus→Sonnet, MC4 expanded, cost $280→$287"
+    "Task 5 (Proof Assistance): Weakened hqc_preserved in RaftTrace.lean and ConcreteProtocolStep.lean; removed qc_preserved_by_logs_change helper; added CPS13 (validAEStep_hqc_preserved_from_lc) \u2014 proves hqc_preserved from CandidateLogCovers via hasQuorum_monotone + leaderCompleteness. lake build: 471 theorems, 0 sorry.",
+    "Task 10 (Project Report): Updated REPORT.md with Run 41 changes, CPS13 description, corrected theorem counts (473->471), updated hypothesis status table (hqc_preserved now closed by CPS13), Layer 7 count (ConcreteProtocolStep: 13->14)."
   ],
   "pr_created": "lean-squad/critique-paper-task7-11-24668849059",
   "targets": {},
@@ -25,5 +25,8 @@
   "theorem_count": 473,
   "file_count": 29,
   "last_pr": "lean-squad/critique-paper-task7-11-24668849059",
-  "last_task": "Task 7+11: CRITIQUE.md + paper.tex update"
+  "last_task": "Task 7+11: CRITIQUE.md + paper.tex update",
+  "cps13_added": true,
+  "hqc_preserved_weakened": true,
+  "cps_count": 14
 }

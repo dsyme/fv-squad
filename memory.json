@@ -1,39 +1,161 @@
 {
   "last_run": "2026-04-20",
-  "run_id": "24668849059",
+  "run_id": "24680821349",
   "fv_tool": "Lean4 (stdlib only, no Mathlib)",
   "lean_version": "4.28.0",
-  "lean_build_note": "lake build PASSED. 0 sorry. 473 theorems across 29 files.",
+  "lean_build_note": "lake build PASSED. 0 sorry. 471 theorems across 29 files.",
   "project_status": "ADVANCED (A5 bridge CPS2 proved; hqc_preserved is the main remaining gap)",
   "targets": [
-    {"id": "limit_size", "phase": 5, "notes": "25 proved. Merged."},
-    {"id": "config_validate", "phase": 5, "notes": "10 proved. Merged."},
-    {"id": "vote_result", "phase": 5, "notes": "21 proved. Merged."},
-    {"id": "joint_vote_result", "phase": 5, "notes": "14 proved. Merged."},
-    {"id": "committed_index", "phase": 5, "notes": "28 proved. Merged."},
-    {"id": "find_conflict", "phase": 5, "notes": "12 proved. Merged."},
-    {"id": "joint_committed_index", "phase": 5, "notes": "10 proved. Merged."},
-    {"id": "maybe_append", "phase": 5, "notes": "19 proved. Merged."},
-    {"id": "inflights", "phase": 5, "notes": "50 proved. Merged."},
-    {"id": "progress", "phase": 5, "notes": "31 proved. Merged."},
-    {"id": "is_up_to_date", "phase": 5, "notes": "17 proved. Merged."},
-    {"id": "log_unstable", "phase": 5, "notes": "37 proved. Merged."},
-    {"id": "tally_votes", "phase": 5, "notes": "28 proved. Merged."},
-    {"id": "has_quorum", "phase": 5, "notes": "20 proved. Merged."},
-    {"id": "quorum_recently_active", "phase": 5, "notes": "11 proved. Merged."},
-    {"id": "safety_composition", "phase": 5, "notes": "10 proved. Merged."},
-    {"id": "joint_tally", "phase": 5, "notes": "18 proved. Merged."},
-    {"id": "joint_safety_composition", "phase": 5, "notes": "10 proved. Merged."},
-    {"id": "raft_safety", "phase": 5, "lean_file": "FVSquad/RaftSafety.lean", "notes": "10 proved (0 sorry). Merged."},
-    {"id": "cross_module_composition", "phase": 5, "lean_file": "FVSquad/CrossModuleComposition.lean", "notes": "7 proved (0 sorry). Merged."},
-    {"id": "raft_protocol", "phase": 5, "lean_file": "FVSquad/RaftProtocol.lean", "notes": "10 proved (0 sorry). Merged."},
-    {"id": "raft_trace", "phase": 5, "lean_file": "FVSquad/RaftTrace.lean", "notes": "5 proved (0 sorry). RT0+RT1+RT2. Merged."},
-    {"id": "concrete_transitions", "phase": 5, "lean_file": "FVSquad/ConcreteTransitions.lean", "notes": "11 proved (0 sorry). CT1-CT5b. Merged."},
-    {"id": "commit_rule", "phase": 5, "lean_file": "FVSquad/CommitRule.lean", "notes": "9 proved (0 sorry). CR8: CommitRuleValid = hnew_cert. Merged."},
-    {"id": "maybe_commit", "phase": 5, "lean_file": "FVSquad/MaybeCommit.lean", "notes": "12 proved (0 sorry). MC4=A6 term safety. Merged."},
-    {"id": "concrete_protocol_step", "phase": 5, "lean_file": "FVSquad/ConcreteProtocolStep.lean", "notes": "13 proved (0 sorry). CPS2=A5 bridge. Merged."},
-    {"id": "raft_election", "phase": 5, "lean_file": "FVSquad/RaftElection.lean", "notes": "15 proved (0 sorry). Abstract Raft-step properties. Merged."},
-    {"id": "leader_completeness", "phase": 5, "lean_file": "FVSquad/LeaderCompleteness.lean", "notes": "10 proved (0 sorry). hqc_preserved discharge components. Merged."}
+    {
+      "id": "limit_size",
+      "phase": 5,
+      "notes": "25 proved. Merged."
+    },
+    {
+      "id": "config_validate",
+      "phase": 5,
+      "notes": "10 proved. Merged."
+    },
+    {
+      "id": "vote_result",
+      "phase": 5,
+      "notes": "21 proved. Merged."
+    },
+    {
+      "id": "joint_vote_result",
+      "phase": 5,
+      "notes": "14 proved. Merged."
+    },
+    {
+      "id": "committed_index",
+      "phase": 5,
+      "notes": "28 proved. Merged."
+    },
+    {
+      "id": "find_conflict",
+      "phase": 5,
+      "notes": "12 proved. Merged."
+    },
+    {
+      "id": "joint_committed_index",
+      "phase": 5,
+      "notes": "10 proved. Merged."
+    },
+    {
+      "id": "maybe_append",
+      "phase": 5,
+      "notes": "19 proved. Merged."
+    },
+    {
+      "id": "inflights",
+      "phase": 5,
+      "notes": "50 proved. Merged."
+    },
+    {
+      "id": "progress",
+      "phase": 5,
+      "notes": "31 proved. Merged."
+    },
+    {
+      "id": "is_up_to_date",
+      "phase": 5,
+      "notes": "17 proved. Merged."
+    },
+    {
+      "id": "log_unstable",
+      "phase": 5,
+      "notes": "37 proved. Merged."
+    },
+    {
+      "id": "tally_votes",
+      "phase": 5,
+      "notes": "28 proved. Merged."
+    },
+    {
+      "id": "has_quorum",
+      "phase": 5,
+      "notes": "20 proved. Merged."
+    },
+    {
+      "id": "quorum_recently_active",
+      "phase": 5,
+      "notes": "11 proved. Merged."
+    },
+    {
+      "id": "safety_composition",
+      "phase": 5,
+      "notes": "10 proved. Merged."
+    },
+    {
+      "id": "joint_tally",
+      "phase": 5,
+      "notes": "18 proved. Merged."
+    },
+    {
+      "id": "joint_safety_composition",
+      "phase": 5,
+      "notes": "10 proved. Merged."
+    },
+    {
+      "id": "raft_safety",
+      "phase": 5,
+      "lean_file": "FVSquad/RaftSafety.lean",
+      "notes": "10 proved (0 sorry). Merged."
+    },
+    {
+      "id": "cross_module_composition",
+      "phase": 5,
+      "lean_file": "FVSquad/CrossModuleComposition.lean",
+      "notes": "7 proved (0 sorry). Merged."
+    },
+    {
+      "id": "raft_protocol",
+      "phase": 5,
+      "lean_file": "FVSquad/RaftProtocol.lean",
+      "notes": "10 proved (0 sorry). Merged."
+    },
+    {
+      "id": "raft_trace",
+      "phase": 5,
+      "lean_file": "FVSquad/RaftTrace.lean",
+      "notes": "5 proved (0 sorry). RT0+RT1+RT2. Merged."
+    },
+    {
+      "id": "concrete_transitions",
+      "phase": 5,
+      "lean_file": "FVSquad/ConcreteTransitions.lean",
+      "notes": "11 proved (0 sorry). CT1-CT5b. Merged."
+    },
+    {
+      "id": "commit_rule",
+      "phase": 5,
+      "lean_file": "FVSquad/CommitRule.lean",
+      "notes": "9 proved (0 sorry). CR8: CommitRuleValid = hnew_cert. Merged."
+    },
+    {
+      "id": "maybe_commit",
+      "phase": 5,
+      "lean_file": "FVSquad/MaybeCommit.lean",
+      "notes": "12 proved (0 sorry). MC4=A6 term safety. Merged."
+    },
+    {
+      "id": "concrete_protocol_step",
+      "phase": 5,
+      "lean_file": "FVSquad/ConcreteProtocolStep.lean",
+      "notes": "13 proved (0 sorry). CPS2=A5 bridge. Merged."
+    },
+    {
+      "id": "raft_election",
+      "phase": 5,
+      "lean_file": "FVSquad/RaftElection.lean",
+      "notes": "15 proved (0 sorry). Abstract Raft-step properties. Merged."
+    },
+    {
+      "id": "leader_completeness",
+      "phase": 5,
+      "lean_file": "FVSquad/LeaderCompleteness.lean",
+      "notes": "10 proved (0 sorry). hqc_preserved discharge components. Merged."
+    }
   ],
   "total_theorems": 473,
   "lean_files": 29,
@@ -49,24 +171,24 @@
     "no_split_ifs": "split_ifs is Mathlib only. Use by_cases h : P <;> simp [h].",
     "no_push_neg": "push_neg is Mathlib only. Use omega or Nat.lt_of_not_le.",
     "no_le_rfl": "le_rfl does not exist. Use Nat.le_refl _.",
-    "beq_iff_eq": "beq_iff_eq : a == b <-> a = b — stdlib for LawfulBEq.",
+    "beq_iff_eq": "beq_iff_eq : a == b <-> a = b \u2014 stdlib for LawfulBEq.",
     "induction_implicit_vars": "In 'induction h with | step ... =>', implicit vars get ~-named. Use 'rename_i cs_prev cs_new' to name them.",
     "strong_induction": "induction n using Nat.strongRecOn with | ind n ih => ...",
     "if_neg_pattern": "For Prop ifs, use if_pos/if_neg with explicit term not simp; avoid anonymous constructors like <hgt, hterm> in simp args.",
-    "by_cases_and": "by_cases h : P ∧ Q works fine; use h.1/h.2 to extract components; And.intro p q to construct."
+    "by_cases_and": "by_cases h : P \u2227 Q works fine; use h.1/h.2 to extract components; And.intro p q to construct."
   },
   "findings": [
     "SOUNDNESS: Prior RSS3/RSS4 were false as stated (no hypotheses = arbitrary logs). Fixed r130 with LogMatchingInvariantFor/NoRollbackInvariantFor.",
     "No bugs found in implementation code.",
     "PROJECT SUBSTANTIALLY COMPLETE: 473 theorems, 0 sorry, 29 Lean files. raftReachable_safe is the top-level unconditional safety theorem.",
-    "A6 term safety: MC4 (maybeCommit_term) formally proves Raft §5.4.2 — committed only advances when entry term = leader current term.",
-    "A5 bridge: CPS2 (validAEStep_raftReachable) is first concrete→abstract connection — ValidAEStep on RaftReachable gives new RaftReachable."
+    "A6 term safety: MC4 (maybeCommit_term) formally proves Raft \u00a75.4.2 \u2014 committed only advances when entry term = leader current term.",
+    "A5 bridge: CPS2 (validAEStep_raftReachable) is first concrete\u2192abstract connection \u2014 ValidAEStep on RaftReachable gives new RaftReachable."
   ],
   "a5_gap_status": "CLOSED: CPS2 (validAEStep_raftReachable) proved. Remaining: hqc_preserved (leader completeness composition).",
   "a6_gap_status": "CLOSED: MC4 (maybeCommit_term) proves A6 formally.",
   "hqc_preserved_gap": "OPEN: Requires composing LeaderCompleteness + HasQuorum (HQ20) + TallyVotes + IsUpToDate across election model. ~80-150 theorems estimated.",
-  "paper_status": "paper.tex updated run 40: Layer2 119→139, run count 39→40, model name Opus→Sonnet, MC4 section expanded. PDF not compiled (no-new-privileges).",
-  "critique_status": "CRITIQUE.md updated run 40: 471→473, 9 stale section headers fixed, Paper Review section added.",
+  "paper_status": "paper.tex updated run 40: Layer2 119\u2192139, run count 39\u219240, model name Opus\u2192Sonnet, MC4 section expanded. PDF not compiled (no-new-privileges).",
+  "critique_status": "CRITIQUE.md updated run 40: 471\u2192473, 9 stale section headers fixed, Paper Review section added.",
   "notes": [
     "Run 35 (24658213506): Added CommitRule.lean (CR1-CR9, 9 theorems, 0 sorry).",
     "Run 36 (24660841722): Proved CT4+CT5 in ConcreteTransitions. 437 theorems, 27 files, 0 sorry.",
@@ -75,5 +197,9 @@
     "Run 38 (24664746901): Task 7+9: Updated CRITIQUE.md (added CPS section). CI audit + source-level sorry counter added.",
     "Run 39 (24667813296): Task 10+11: Updated REPORT.md + paper.tex. 473 theorems (verified by grep). Seven-layer architecture. PR created.",
     "Run 40 (24668849059): Task 7+11: Updated CRITIQUE.md (Paper Review section + 9 stale counts fixed) + paper.tex (Layer2 count, run count, model name, MC4 expansion). Documentation only, no new proofs."
-  ]
+  ],
+  "theorem_count": 471,
+  "lean_file_count": 29,
+  "last_pr_branch": "lean-squad/cps13-hqc-discharge-task5-10-24680821349",
+  "last_task": "Task 5 (Proof Assistance) + Task 10 (Project Report): CPS13 hqc_preserved discharge"
 }
