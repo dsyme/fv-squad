@@ -48,7 +48,7 @@ See `CRITIQUE.md §Critical Gap Analysis` for the full analysis.
 | Priority | ID | File | Function | Phase | Notes |
 |----------|----|------|----------|-------|-------|
 | 11 | `progress_set` | `src/tracker/progress_set.rs` | quorum tracking over progress map | 1 | Formalise `ProgressSet::quorum_active` and quorum detection across the voter progress map. |
-| 22 | `raft_log_append` | `src/raft_log.rs` | `RaftLog::append` | 3 ✅ | Lean spec written (Run 45). `FVSquad/RaftLogAppend.lean` (11 theorems: RA1–RA9 + 2 helpers). Key: taa_maybeLastIndex proves last-index arithmetic; ra3/ra7 prove committed-below-return. Delegates to LogUnstable.lean's truncateAndAppend. |
+| 22 | `raft_log_append` | `src/raft_log.rs` | `RaftLog::append` | 4 ✅ | Lean spec + impl extraction (Run 45+46). `FVSquad/RaftLogAppend.lean` (14 theorems: RA1–RA9 + taa_entries_nonempty + taa_maybeLastIndex + taa_maybeTerm_before + ra_prefix_preserved + ra_committed_prefix_preserved). P4/P5 prefix-preservation proved (Run 46). |
 
 ## Next Steps
 
@@ -113,10 +113,24 @@ preconditions — and proves that it satisfies all five `RaftReachable.step` hyp
 |------------------|--------------|
 | `hlogs'`         | `ValidAEStep.hlogs'_other` |
 | `hno_overwrite`  | CPS1 (`h_committed_le_prev` + CT2) |
-| `hqc_preserved`  | `ValidAEStep.hqc_preserved` (explicit, needs A3) |
+| `hqc_preserved`  | CPS13 (`validAEStep_hqc_preserved_from_lc`) |
 | `hcommitted_mono`| `ValidAEStep.hcommitted_mono` (explicit) |
 | `hnew_cert`      | `ValidAEStep.hnew_cert` (explicit, needs CommitRuleValid) |
 
-**Remaining gap**: the three explicit hypotheses (`hqc_preserved`, `hcommitted_mono`,
-`hnew_cert`) need to be discharged from the election and term model.  A3 (LeaderCompleteness)
-handles `hqc_preserved`.  CommitRule CR8 handles `hnew_cert`.
+**Run 46: ElectionConcreteModel.lean** — closes the `hqc_preserved` gap (8 theorems):
+
+| File | Theorems | Status |
+|------|---------|--------|
+| `FVSquad/ElectionConcreteModel.lean` | 8 (ECM1–ECM7) | ✅ proved, 0 sorry |
+
+The file proves `hqc_preserved` from the **shared-source hypothesis** `hae`:
+
+| Theorem | Role |
+|---------|------|
+| ECM1 (`candLogCoversLastIndex_of_hae`) | ER9 with R = candLog — trivial from hae |
+| ECM2 (`candLogMatching_of_hae`) | CT5 with hae + hlog_none + hcand_mono |
+| ECM3 (`candidateLogCovers_of_hae`) | ER10 = ECM1 + ECM2 + hconsist |
+| ECM4 (`hqc_preserved_of_hae`) | CPS13 ∘ ECM3 |
+| ECM5 (`hae_of_validAEStep`) | Single AE step gives voter ≡ leader at new indices |
+| ECM6 (`hqc_preserved_of_validAEStep`) | Complete bridge: hae + ValidAEStep → hqc_preserved |
+| ECM7 (`sharedSource_of_hae`) | Explicit shared-source witness (R = candLog) |

@@ -262,4 +262,80 @@ theorem ra9_return_is_batch_last
     (raftLogAppend rl (first :: rest)).2 = first.1 + (first :: rest).length - 1 :=
   ra3_return_lastEntry rl first rest hle
 
+-- ═══════════════════════════════════════════════════════════
+-- Prefix preservation theorems (P4 / P5 of the informal spec)
+-- ═══════════════════════════════════════════════════════════
+
+/-- RA-PFIX1: `truncateAndAppend` preserves `maybeTerm` at every index strictly
+    before `after` (the start of the new batch).
+
+    This is the key log-monotonicity property used for P4/P5 of the informal spec:
+    entries that predate the batch's start index are not modified.
+
+    Precondition `hle` (no-gap): `after ≤ u.offset + u.entries.length`.
+    Without this, a gap could introduce new entries at indices < `after`. -/
+theorem taa_maybeTerm_before (u : Unstable) (newTerms : List Nat) (after idx : Nat)
+    (hidx : idx < after) (hle : after ≤ u.offset + u.entries.length) :
+    maybeTerm (truncateAndAppend u newTerms after) idx = maybeTerm u idx := by
+  by_cases h1 : after = u.offset + u.entries.length
+  · -- Case 1: after = offset + len → append
+    have hE := truncateAndAppend_case1 u newTerms after h1
+    have hO := truncateAndAppend_case1_offset u newTerms after h1
+    have hS := truncateAndAppend_snapshot_preserved u newTerms after
+    simp only [maybeTerm, hO, hS, hE]
+    by_cases h2 : idx < u.offset
+    · simp [h2]
+    · simp only [if_neg h2]
+      have hidxu : idx - u.offset < u.entries.length := by omega
+      exact List.getElem?_append_left hidxu
+  · by_cases h2 : after ≤ u.offset
+    · -- Case 2: after ≤ offset → replace
+      obtain ⟨hO, hE⟩ := truncateAndAppend_case2 u newTerms after h1 h2
+      have hS := truncateAndAppend_snapshot_preserved u newTerms after
+      simp only [maybeTerm, hO, hS]
+      simp [show idx < after from hidx, show idx < u.offset from by omega]
+    · -- Case 3: offset < after (and after < offset + len, from hle + h1)
+      have hgt : u.offset < after := Nat.lt_of_not_le h2
+      have hE := truncateAndAppend_case3 u newTerms after h1 h2
+      have hS := truncateAndAppend_snapshot_preserved u newTerms after
+      have hO : (truncateAndAppend u newTerms after).offset = u.offset := by
+        unfold truncateAndAppend; rw [if_neg h1, if_neg h2]
+      simp only [maybeTerm, hO, hS, hE]
+      by_cases h3 : idx < u.offset
+      · simp [h3]
+      · simp only [if_neg h3]
+        have hidxt : idx - u.offset < after - u.offset := by omega
+        have htlen : (u.entries.take (after - u.offset)).length = after - u.offset := by
+          simp [List.length_take]; omega
+        rw [List.getElem?_append_left (by rw [htlen]; exact hidxt)]
+        simp [show idx - u.offset < after - u.offset from hidxt]
+
+/-- RA-PFIX2: `raftLogAppend` preserves `maybeTerm` in the unstable segment for every
+    index `k` strictly before the batch's start index (`first.1 = after`).
+
+    This captures **postcondition P5** from the informal spec: entries at indices
+    `≤ ents[0].index - 1 = after` are not modified by `raftLogAppend`.
+
+    Precondition `hle` (no-gap): `first.1 ≤ rl.unstable.offset + rl.unstable.entries.length`. -/
+theorem ra_prefix_preserved (rl : RaftLog) (first : Entry) (rest : List Entry)
+    (k : Nat) (hk : k < first.1)
+    (hle : first.1 ≤ rl.unstable.offset + rl.unstable.entries.length) :
+    maybeTerm (raftLogAppend rl (first :: rest)).1.unstable k = maybeTerm rl.unstable k := by
+  simp only [raftLogAppend]
+  exact taa_maybeTerm_before rl.unstable ((first :: rest).map (·.2)) first.1 k hk
+    (by simpa using hle)
+
+/-- RA-PFIX3: **Postcondition P4** — entries at indices `≤ committed` are not modified.
+
+    This is the invariant that the panic guard in `raftLogAppend` is designed to protect:
+    any batch satisfying `committed < first.1` (i.e., `first.1 > committed`) cannot
+    touch any committed prefix entry.  Hence committed entries are preserved in the
+    unstable segment after `raftLogAppend`. -/
+theorem ra_committed_prefix_preserved (rl : RaftLog) (first : Entry) (rest : List Entry)
+    (k : Nat) (hk : k ≤ rl.committed)
+    (hguard : rl.committed < first.1)
+    (hle : first.1 ≤ rl.unstable.offset + rl.unstable.entries.length) :
+    maybeTerm (raftLogAppend rl (first :: rest)).1.unstable k = maybeTerm rl.unstable k :=
+  ra_prefix_preserved rl first rest k (by omega) hle
+
 end FVSquad.RaftLogAppend
