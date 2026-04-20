@@ -1,21 +1,21 @@
 {
-  "run_id": "24690473002",
+  "run_id": "24691887782",
   "date": "2026-04-20",
   "lean_version": "4.28.0",
-  "total_theorems": 483,
+  "total_theorems": 494,
   "total_sorry": 0,
-  "lean_files": 30,
+  "lean_files": 31,
   "completed_tasks_this_run": [
-    "Task 2 (Informal Spec Extraction): Created formal-verification/specs/raft_log_append_informal.md. Documents RaftLog::append: preconditions (committed-prefix guard), postconditions P1-P8, 6 edge cases, test-driven examples, 3 open questions. TARGETS.md updated: raft_log_append Phase 1 -> 2.",
-    "Task 7 (Proof Utility Critique): Updated CRITIQUE.md with ElectionReachability.lean section (ER1-ER12, 12 theorems, all High bug-catching potential). Updated overall assessment (471->483 theorems, 29->30 files). Updated paper review section with ElectionReachability gap analysis."
+    "Task 3 (Formal Spec Writing): Created FVSquad/RaftLogAppend.lean with 11 theorems (RA1-RA9 + taa_entries_nonempty + taa_maybeLastIndex). Key: last-index arithmetic proved across all 3 truncateAndAppend cases. TARGETS.md: raft_log_append Phase 2->3.",
+    "Task 9 (CI Audit): CI lean-ci.yml verified healthy — uses checkout@v4, cache@v4, correct Lean toolchain install, proof statistics reporting. No changes needed."
   ],
-  "pr_branch": "lean-squad-run44-informal-spec-critique-24690473002",
+  "pr_branch": "lean-squad-run45-raft-log-append-24691887782",
   "hqc_preserved_gap": "ER1-ER12 bridge available. Two paths to CandidateLogCovers: (1) HWM via LMI (ER5+ER7+ER3), (2) shared-source log (ER9+ER10). Remaining: show shared-source log exists after concrete election.",
   "aeneas_status": "permanently_blocked_no_new_privileges",
   "sorry_count": 0,
-  "theorem_count": 483,
-  "file_count": 30,
-  "last_run": 44,
-  "last_task": "Task 2+7: raft_log_append informal spec + CRITIQUE.md update (ER1-ER12 section)",
-  "toolchain_notes": "no Mathlib, use 'theorem' not 'lemma', stdlib only. lakefile.toml has globs=[FVSquad.+*] so all modules compiled."
+  "theorem_count": 494,
+  "file_count": 31,
+  "last_run": 45,
+  "last_task": "Task 3+9: RaftLogAppend.lean (11 theorems) + CI audit",
+  "toolchain_notes": "no Mathlib, use 'theorem' not 'lemma', stdlib only. lakefile.toml has globs=[FVSquad.+*]. LogUnstable.lean has no namespace — do NOT use 'open FVSquad.LogUnstable'. Import and use names directly."
 }
