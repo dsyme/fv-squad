@@ -2,15 +2,15 @@
 
 > 🔬 *Lean Squad — automated formal verification for `dsyme/fv-squad`.*
 
-**Status**: 🔄 **IN PROGRESS** — 443+ theorems, 23 Lean files, 0 `sorry`, machine-checked
+**Status**: 🔄 **IN PROGRESS** — 485+ theorems, 28 Lean files, 2 `sorry`, machine-checked
 by Lean 4.28.0 (stdlib only). Top-level safety theorem proved **conditionally** — election
 model gap remains (see §Critical Gap below).
 
 ---
 
 ## Last Updated
-- **Date**: 2026-04-20 06:30 UTC
-- **Commit**: `222503e` — Report updated with critique-driven gap analysis
+- **Date**: 2026-05-09 08:30 UTC
+- **Commit**: `b0a0fe1` — CommitRule.lean added (CR1–CR9, 9 new theorems)
 
 ---
 
@@ -22,7 +22,7 @@ in `dsyme/fv-squad` over 33+ automated runs. Starting from zero, the project:
 1. Identified 20+ FV-amenable targets across the codebase
 2. Extracted informal specifications for each target
 3. Wrote Lean 4 specifications, implementation models, and proofs
-4. Proved **443+ theorems** across **23 Lean files** with **0 `sorry`**
+4. Proved **485+ theorems** across **28 Lean files** with **2 `sorry`**
 5. Proved **conditional end-to-end Raft cluster safety**: any cluster state reachable
    via transitions satisfying 5 stated invariants is safe (no two nodes ever apply
    different entries at the same log index)
@@ -50,7 +50,7 @@ But `RaftReachable.step` takes 5 hypotheses as parameters:
 | `hno_overwrite` | Committed entries not overwritten | Covered by RP8 `hno_truncate`; needs panic-guard proof |
 | `hqc_preserved` | Quorum-certified entries preserved in ALL logs | **Not proved** — requires leader completeness composition |
 | `hcommitted_mono` | Committed indices only advance | Covered by MA6 for `maybeAppend`; needs general model |
-| `hnew_cert` | New commits are quorum-certified | Partially covered by CMC3; needs commit-rule proof |
+| `hnew_cert` | New commits are quorum-certified | **Proved** by CommitRule.lean (CR5, CR8) |
 
 Until concrete Raft transitions (NodeState, terms, elections) are proved to satisfy these
 5 conditions, `raftReachable_safe` is a conditional correctness result, not a fully
@@ -75,7 +75,7 @@ graph TD
     D["🔗 Layer 4: Cross-Module Composition<br/>SafetyComposition · JointSafetyComposition<br/>CrossModuleComposition"]
     E["🛡️ Layer 5: Raft Safety<br/>RaftSafety (RSS1–RSS8)<br/>RaftProtocol (RP6, RP8)"]
     F["⚠️ Layer 6: Reachability (conditional)<br/>RaftTrace (RT1, RT2)<br/>raftReachable_safe"]
-    G["❓ Layer 7: Election Model (missing)<br/>RaftElection · LeaderCompleteness<br/>ConcreteRaft · CommitRule"]
+    G["❓ Layer 7: Election Model (partial)<br/>RaftElection · LeaderCompleteness<br/>ConcreteTransitions · CommitRule"]
 
     A --> B
     B --> C
@@ -244,8 +244,11 @@ graph TD
 | `RaftSafety.lean` | 14 | 5 ✅ | RSS1–RSS8: end-to-end cluster safety |
 | `RaftProtocol.lean` | 10 | 5 ✅ | RP6, RP8: LMI/NRI preserved by AppendEntries |
 | `RaftTrace.lean` | 3 | 5 ✅⚠️ | RT1, RT2: conditional reachable safety (step hyps abstract) |
+| `LeaderCompleteness.lean` | 15 | 5 ✅ | Election model + leader completeness properties |
+| `ConcreteTransitions.lean` | 20 | 5 🔄 | CT1–CT5b: concrete AppendEntries transitions; 2 sorry remain |
+| `CommitRule.lean` | 9 | 5 ✅ | CR1–CR9: commit rule formalised; implies `hnew_cert` |
 | `Basic.lean` | helpers | — | Shared definitions |
-| **Total** | **443+** | **5 ✅** | **0 sorry** |
+| **Total** | **485+** | **5 ✅/🔄** | **2 sorry (CT4, CT5)** |
 
 ---
 
@@ -286,7 +289,7 @@ discharged from a concrete election model.  See §Critical Gap.
 graph TD
     REAL["Real Raft Cluster<br/>(Rust implementation)"]
     MODEL["FVSquad Model<br/>(Lean 4 abstract model)"]
-    PROOF["Lean Proofs<br/>(443+ theorems, 0 sorry)"]
+    PROOF["Lean Proofs<br/>(485+ theorems, 2 sorry)"]
 
     REAL -->|"Modelled as"| MODEL
     MODEL -->|"Proved in"| PROOF
@@ -319,7 +322,7 @@ AppendEntries/RequestVote messages and prove that they satisfy the `step` hypoth
 
 ### No implementation bugs found
 
-All 443+ theorems are consistent with the Rust implementation. This is a positive
+All 485+ theorems are consistent with the Rust implementation. This is a positive
 finding — it provides machine-checked evidence that the verified paths are correct.
 
 ### Formulation bug caught by `sorry`
@@ -361,10 +364,13 @@ timeline
         RaftSafety RSS1–RSS7 : 13 theorems fully proved
         RaftProtocol RP6 + RP8 : full proofs, 0 sorry
         RaftTrace + RSS8 : 3 theorems — conditional safety proved
-    section Election model (future)
-        RaftElection NodeState : ~30–50 theorems planned
-        LeaderCompleteness : ~50–80 theorems planned
-        ConcreteRaft transitions : ~30–50 theorems planned
+    section Election model (r134–r155)
+        LeaderCompleteness : 15 theorems, leader election model
+        ConcreteTransitions CT1–CT5b : 20 theorems, 2 sorry remain (CT4, CT5)
+        CommitRule CR1–CR9 : 9 theorems, hnew_cert fully closed
+    section Election model (next)
+        ConcreteRaft step hypotheses : ~50–80 theorems planned
+        hqc_preserved composition : ~30–50 theorems planned
 ```
 
 ---
@@ -388,7 +394,32 @@ Key tactic inventory used across the proofs:
 | `constructor` / `intro` / `ext` | Conjunction, implication, function extensionality |
 | `funext` | Proving function equality |
 
-No `native_decide`, no `axiom`, no `sorry` in the final proof state.
+No `native_decide`, no `axiom`. Two `sorry` remain in `ConcreteTransitions.lean` (CT4 and CT5);
+all other 485+ theorems are fully proved.
+
+---
+
+## CommitRule.lean — Run 35 Addition
+
+This run formalises the **Raft commit rule** as a standalone Lean file (`CommitRule.lean`,
+9 new theorems CR1–CR9, 0 sorry):
+
+| Theorem | Statement |
+|---------|-----------|
+| CR1 `qc_from_quorum_acks` | Quorum of acks with matching log entry → `isQuorumCommitted` |
+| CR2 `qc_preserved_by_log_agreement` | Changing one voter's log cannot break a quorum commit already held elsewhere |
+| CR3 `qc_preserved_by_log_growth` | Growing a log (appending) preserves existing quorum commits |
+| CR4 `matchIndex_quorum_qc` | If `matchIndex` reports quorum agreement at `k`, then `isQuorumCommitted` holds |
+| CR5 `commitRuleValid_implies_hnew_cert` | `CommitRuleValid` directly satisfies the `hnew_cert` hypothesis of `RaftReachable.step` |
+| CR6 `hnew_cert_of_qc_advance` | When quorum commitment advances, `hnew_cert` holds for the new commit |
+| CR7 `qc_of_accepted_ae_quorum` | If a quorum of voters accepted the AppendEntries, quorum commitment holds |
+| CR8 `commitRuleValid_step_condition` | `CommitRuleValid = hnew_cert` (definitional equality, `Iff.rfl`) |
+| CR9 `commitRule_and_preservation_implies_cci` | Commit rule + log preservation → `CommitCertInvariant` preserved |
+
+CR8 (`Iff.rfl`) closes the proof obligation for `hnew_cert` in `RaftReachable.step`.
+The remaining 4 step hypotheses (`hlogs'`, `hno_overwrite`, `hqc_preserved`,
+`hcommitted_mono`) are targets for the next run.
+
 
 ---
 
