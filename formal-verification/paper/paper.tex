@@ -64,7 +64,7 @@
 \author{Copilot CLI}
 \affiliation{\institution{AI Coding Agent (GitHub)}\country{}}
 
-\author{Claude Opus 4.6}
+\author{Claude Sonnet 4.6}
 \affiliation{\institution{AI Model (Anthropic)}\country{}}
 \email{}
 
@@ -97,7 +97,7 @@ paths.  The A5 bridge theorem (\texttt{validAEStep\_raftReachable}) was
 also proved, connecting a concrete AppendEntries step to the abstract
 reachability model for the first time.
 
-The total LLM token cost was approximately \$280 (39~runs at
+The total LLM token cost was approximately \$287 (40~runs at
 $\sim$\$7 each using Claude Sonnet~4.6 pricing at time of publication).
 The Lean Squad workflow is open-source, installs on any GitHub repository
 with two commands, and requires only an LLM API token.  The proof
@@ -110,12 +110,12 @@ artefacts and full run history are available at
 \noindent\textbf{Note on authorship and voice.}  Throughout this paper, ``we''
 generally reflects the perspective of \emph{LeanSquad}, an autonomous AI
 automation workflow implemented using GitHub Agentic Workflows, with
-\emph{Copilot CLI} (GitHub) as the underlying AI coding agent using the \emph{Claude Opus~4.6} (Anthropic) LLM.  The human
+\emph{Copilot CLI} (GitHub) as the underlying AI coding agent using the \emph{Claude Sonnet~4.6} (Anthropic) LLM.  The human
 author (Don Syme) took a deliberately \emph{hands-off} approach: he
 designed the automated Lean Squad workflow itself (\S\ref{sec:workflow}) and
 merged pull requests, but was not involved in target selection,
 the seven-layer proof architecture, specification writing, or any actual
-proof engineering.  His total intervention over the project's 39~runs
+proof engineering.  His total intervention over the project's 40~runs
 amounted to two short GitHub comments (\S\ref{sec:interventions}).
 \medskip
 
@@ -146,7 +146,7 @@ addresses this barrier directly, and is different in three ways:
   self-contained verification artefact.
 \item The entire effort is \emph{automated}: every target selection,
   specification, proof architecture decision, and proof was produced by an
-  LLM-driven FV agent across 39 independent runs, with only two brief
+  LLM-driven FV agent across 40 independent runs, with only two brief
   human interventions (\S\ref{sec:interventions}).  The human author
   required no Lean expertise, no formal-methods background, and invested
   near-zero hours of proof-engineering labour.
@@ -451,8 +451,8 @@ concrete discharge lemmas for the abstract step hypotheses of Layer~6.
 Layer & Description & Files & Theorems \\
 \midrule
 1 & Data Structures     & 5  & 153 \\
-2 & Quorum Arithmetic   & 7  & 119 \\
-3 & Protocol Operations & 4  & $\approx$59  \\
+2 & Quorum Arithmetic   & 7  & 139 \\
+3 & Protocol Operations & 4  & 59  \\
 4 & Cross-Module Composition & 3 & 27 \\
 5 & Raft Safety         & 2  & 20  \\
 6 & Reachability        & 1  & 5   \\
@@ -709,10 +709,15 @@ definitional equality (\texttt{Iff.rfl}), \emph{closing} the
 
 \texttt{MaybeCommit.lean} (12~theorems) formalises \texttt{maybeCommit},
 the function that advances the commit index.  Theorem MC4
-(\texttt{maybeCommit\_term}) proves A6 term safety: the commit index
+(\texttt{maybeCommit\_term}) proves \emph{A6 term safety}: the commit index
 advances only when the entry at the new committed index has
-\texttt{term~=~cs.term} (leader's current term), formalising
-Raft~\S5.4.2.
+\texttt{term~=~cs.term} (leader's current term), formalising Raft~\S5.4.2.
+This is the formal Lean proof of the mechanism that prevents the ``figure~8''
+problem from the Raft paper: a stale entry from an old leader's term cannot
+be directly committed by a new leader, because \texttt{maybeCommit}
+would use the new leader's current term, and the old entry would carry a
+different term.  MC4 and CR8 together close both halves of commit
+safety: CR8 proves the quorum-certification half, MC4 proves the term-safety half.
 
 \texttt{ConcreteProtocolStep.lean} (13~theorems) introduces the
 \texttt{ValidAEStep} structure and proves the \emph{A5 bridge}
@@ -876,7 +881,7 @@ update always runs.
 
 The human author's role was deliberately hands-off: he designed the
 Lean Squad workflow itself (\S\ref{sec:workflow}), installed it on the
-repository, and reviewed merged PRs.  Over the entire 39-run project,
+repository, and reviewed merged PRs.  Over the entire 40-run project,
 his total intervention consisted of exactly two GitHub comments:
 
 \paragraph{Intervention 1 (Issue \#59, run~$\approx$20).}
@@ -919,7 +924,7 @@ and even an initial draft of this paper were produced autonomously.
 The human never selected a target, wrote a specification, suggested a
 proof strategy, or debugged a failing proof.
 
-Across 39 runs spanning $\approx$8 weeks, the agent produced:
+Across 40 runs spanning $\approx$8 weeks, the agent produced:
 \begin{itemize}\setlength\itemsep{0pt}
   \item 26 informal specification documents
   \item 29 Lean~4 source files ($\approx$9{,}800 lines)
@@ -989,7 +994,7 @@ verified paths raises confidence, even without a fully concrete model.
 \subsection{Cost}
 \label{sec:cost}
 
-Each of the 39 Lean Squad runs consumed approximately \$7 of LLM
+Each of the 40 Lean Squad runs consumed approximately \$7 of LLM
 token cost at Claude Sonnet~4.6 pricing (at time of publication), for a total of
 approximately~\$280.  This covers the full pipeline: reading
 persistent memory, researching the codebase, selecting tasks,
@@ -1010,7 +1015,7 @@ economics will only improve.
 \subsection{Training Data Overlap}
 \label{sec:training}
 
-It is virtually certain that Claude Opus~4.6 was trained on published
+It is virtually certain that Claude Sonnet~4.6 was trained on published
 papers, source code, and proof artefacts related to the formal
 verification of Raft---including Ongaro's dissertation~\cite{ongaro2014dissertation},
 the Verdi/VRaft Coq development~\cite{vard}, TLA+ specifications, and
@@ -1205,7 +1210,7 @@ formalisation.
 The closest analogue to our persistent-memory mechanism is
 LEGO-Prover's growing library~\cite{wang2024legoprover}, but
 LEGO-Prover operates within a single proof session, whereas Lean
-Squad accumulates knowledge across 39 independent GitHub Actions runs
+Squad accumulates knowledge across 40 independent GitHub Actions runs
 spanning weeks.  AlphaProof~\cite{trinh2024alphaproof} demonstrated
 that reinforcement learning over formal proofs can achieve
 competition-level mathematical reasoning, but targets Olympiad
@@ -1308,7 +1313,7 @@ Starting from zero, the Lean Squad agent---running as a scheduled
 GitHub Actions job with no human in the loop---autonomously selected
 26 verification targets in a production Raft implementation, designed
 a seven-layer proof architecture, wrote all specifications and proofs,
-and produced 473 machine-checked theorems across 29 files in 39 runs,
+and produced 473 machine-checked theorems across 29 files in 40 runs,
 culminating in the end-to-end safety theorem
 \texttt{raftReachable\_safe} with zero \texttt{sorry}, plus the A5
 bridge (CPS2) connecting concrete AppendEntries steps to the abstract

@@ -3,14 +3,14 @@
 > 🔬 *Lean Squad — automated formal verification for `dsyme/fv-squad`.*
 
 ## Last Updated
-- **Date**: 2026-04-20 11:48 UTC
-- **Commit**: `28ed959` — ConcreteProtocolStep.lean (CPS1–CPS12, A5 bridge) added; 471 theorems, 0 sorry, 29 files
+- **Date**: 2026-04-20 13:23 UTC
+- **Commit**: `a8f66e9` — REPORT.md + paper.tex updated (Run 39 merged); 473 theorems, 0 sorry, 29 files
 
 ---
 
 ## Overall Assessment
 
-The FV project has produced **471 theorems across 29 Lean files, all machine-checked by
+The FV project has produced **473 theorems across 29 Lean files, all machine-checked by
 Lean 4 (version 4.28.0, stdlib only — no Mathlib), with 0 `sorry`**.
 
 The `RaftReachable.step` constructor in `RaftTrace.lean` bundles **5 hypotheses** about
@@ -43,13 +43,13 @@ Roughly 40–80 additional theorems needed.
 machine-checked.  The top-level result `raftReachable_safe` (RT2) is proved: any cluster
 state reachable by valid Raft transitions is safe.  Both the term safety condition (A6,
 `MaybeCommit.lean`) and the A5 bridge (CPS2, `ConcreteProtocolStep.lean`) are now formally
-proved.  No bugs were found in any modelled Rust function.  471 theorems, 29 files, 0 sorry.
+proved.  No bugs were found in any modelled Rust function.  473 theorems, 29 files, 0 sorry.
 
 ---
 
 ## Proved Theorems
 
-### `LimitSize.lean` — 17 theorems
+### `LimitSize.lean` — 25 theorems
 
 | Theorem | Level | Bug-catching potential | Notes |
 |---------|-------|----------------------|-------|
@@ -167,7 +167,7 @@ counterpart but serve as sanity checks on the model.
 
 ---
 
-### `CommittedIndex.lean` — 17 theorems
+### `CommittedIndex.lean` — 28 theorems
 
 | Theorem | Level | Bug-catching potential | Notes |
 |---------|-------|----------------------|-------|
@@ -262,7 +262,7 @@ the full divergence analysis.
 
 ---
 
-### `MaybeAppend.lean` — 18 theorems (includes 2 helpers)
+### `MaybeAppend.lean` — 19 theorems (includes 2 helpers)
 
 | Theorem | Level | Bug-catching potential | Notes |
 |---------|-------|----------------------|-------|
@@ -302,7 +302,7 @@ these theorems.
 
 ---
 
-### `Inflights.lean` — 49 theorems *(phase 5 — complete)*
+### `Inflights.lean` — 50 theorems *(phase 5 — complete)*
 
 | Theorem | Level | Bug-catching potential | Notes |
 |---------|-------|----------------------|-------|
@@ -436,7 +436,7 @@ TV12, and TV18; without it, these proofs would require substantially more case a
 
 ---
 
-### `HasQuorum.lean` — 22 theorems *(phase 5 — complete)*
+### `HasQuorum.lean` — 20 theorems *(phase 5 — complete)*
 
 | Theorem | Level | Bug-catching potential | Notes |
 |---------|-------|----------------------|-------|
@@ -486,7 +486,7 @@ expected but worth documenting as a model boundary.
 
 ---
 
-### `QuorumRecentlyActive.lean` — 15 theorems *(phase 5 — complete)*
+### `QuorumRecentlyActive.lean` — 11 theorems *(phase 5 — complete)*
 
 | Theorem | Level | Bug-catching potential | Notes |
 |---------|-------|----------------------|-------|
@@ -520,7 +520,7 @@ the current return value.  All 15 theorems reason only about the quorum-check se
 
 ---
 
-### `SafetyComposition.lean` — 9 theorems *(phase 5 — complete)*
+### `SafetyComposition.lean` — 10 theorems *(phase 5 — complete)*
 
 | Theorem | Level | Bug-catching potential | Notes |
 |---------|-------|----------------------|-------|
@@ -581,7 +581,7 @@ single-config results to joint-quorum configurations (see below).
 
 ---
 
-### `RaftSafety.lean` — 14 theorems *(phase 5 — complete, 0 sorry)*
+### `RaftSafety.lean` — 10 theorems *(phase 5 — complete, 0 sorry)*
 
 | Theorem | Level | Bug-catching | Status | Notes |
 |---------|-------|-------------|--------|-------|
@@ -645,7 +645,7 @@ hypothesis, proving the no-rollback property from it.
 
 ---
 
-### `RaftTrace.lean` — 3 theorems *(phase 5 — complete, 0 sorry)*
+### `RaftTrace.lean` — 5 theorems *(phase 5 — complete, 0 sorry)*
 
 | Theorem | Level | Bug-catching | Status | Notes |
 |---------|-------|-------------|--------|-------|
@@ -1141,7 +1141,7 @@ a clean decomposition showing that `maybe_commit` is `commit_to` with an A6 safe
 
 ---
 
-### `ConcreteProtocolStep.lean` — 13 theorems (CPS1-CPS12+, 0 sorry) — **NEW (this run)**
+### `ConcreteProtocolStep.lean` — 13 theorems (CPS1-CPS12+, 0 sorry)
 
 | Theorem | Level | Bug-catching potential | Notes |
 |---------|-------|----------------------|-------|
@@ -1195,5 +1195,97 @@ protocol reachability rather than explicit hypotheses.
 
 ---
 
-> 🔬 Updated by [Lean Squad](https://github.com/dsyme/raft-lean-squad/actions/runs/24664746901)
-> automated formal verification. Current state: **471 theorems, 0 sorry, 29 Lean files**.
+---
+
+## Paper Review
+
+> *This section reviews `formal-verification/paper/paper.tex` as a critical reader.*
+
+### Overall Impression
+
+The paper is well-structured and makes a clear contribution.  The abstract accurately
+describes what was proved and is honest about the human involvement.  The architecture
+description (seven-layer, stdlib-only, 473 theorems, 0 sorry) is consistent with the
+actual Lean artefacts.
+
+### Accuracy Assessment
+
+**File inventory table** (`tab:inventory`): accurate and complete.  All 29 files are
+listed with correct theorem counts (verified against the current Lean sources).
+Total 473 matches the grep-verified count.
+
+**Layer summary table** (`tab:layers`): slightly stale.  The `Layer 2: 119 theorems`
+entry is incorrect; the current count for the 7 Layer-2 files is 139 theorems.  The
+discrepancy arose because TallyVotes (28 theorems) and JointTally (18 theorems) grew
+after the table was written.  The total row is correct (473) because the per-layer
+discrepancies cancel out.  **Recommend updating** Layer 2 count to 139.
+
+**Run count**: The paper consistently says "39 runs" at the time of writing.  Run 40
+(this run) updates documentation only and adds no new theorems, so the proof-result
+claims remain accurate.  However, for factual completeness the run count should be
+updated to 40.
+
+**Cost estimate**: `$280 (39 runs at ~$7 each)` is approximately correct and will be
+`$287` after this run 40.
+
+**Abstract claim check**:
+- "473 theorems across 29 Lean 4 files, stdlib only, 0 sorry" ✅
+- "raftReachable_safe — no two nodes ever apply different log entries at same index" ✅
+- "A5 bridge (validAEStep_raftReachable) proved" ✅
+- "One formulation bug caught" ✅ (RSS3/RSS4)
+- "No implementation bugs found" ✅
+
+### Completeness Assessment
+
+**Positive**:
+- All seven layers described with concrete theorem examples
+- Residual gap (`hqc_preserved`) clearly disclosed in §5.1 and conclusion
+- `hno_overwrite` discharge via CPS1 explained and connected to Rust source
+- Formulation bug section is thorough and honest
+
+**Missing or underdeveloped**:
+- **MC4 / A6 term safety** could be highlighted more prominently.  MC4
+  (`maybeCommit_term`) is the formal proof of Raft §5.4.2 — the "figure 8" problem
+  prevention.  This is arguably the most important result in Layer 7 alongside CPS2,
+  yet it receives less emphasis than CPS2 in the paper's discussion.
+- **CR8** (`CommitRuleValid ↔ hnew_cert`) is mentioned but its significance as a
+  *definitional* proof step (closing an abstract step hypothesis without any proof
+  obligations beyond unfolding definitions) could be better explained to readers
+  unfamiliar with Lean.
+- **RaftTrace discussion**: the paper correctly describes RT1/RT2 as the
+  "two-line proof" — this is an important pedagogical point that could be expanded
+  slightly: it shows that once the invariant machine is set up, the top-level safety
+  result follows trivially.
+
+### Clarity Concerns
+
+- §4.1 (Target Selection) says Layer 3 has "~59 theorems" — the tilde is appropriate
+  given the table inconsistency, but after fixing the Layer 2 count the tilde can be
+  removed for Layer 3 (exact count is 59).
+- The relationship between `validAEStep_raftReachable` (CPS2) and the abstract
+  `RaftReachable.step` hypotheses is clear in §5.1 but could benefit from a
+  one-sentence summary at the start of §4.1.7 connecting the concrete ValidAEStep
+  fields to the five abstract step hypotheses.
+- The "Note on authorship and voice" section (before Introduction) uses "Claude Opus 4.6"
+  but the actual model used is Claude Sonnet 4.6 — this should be corrected.
+
+### Intellectual Honesty
+
+The paper is appropriately honest about what is and is not proved.  The discussion of
+the residual gap (§5.1) clearly states that `hqc_preserved` requires a full election
+model and is not yet proved from concrete reachability.  The `sorry`-count disclosure
+(0 sorry) is accurate.  The correspondence limitations (CORRESPONDENCE.md) are
+acknowledged in §4.3.
+
+### Recommendation
+
+The paper is ready for submission after the following targeted updates:
+1. Fix Layer 2 theorem count in `tab:layers`: 119 → 139
+2. Update run count: 39 → 40
+3. Correct model name: "Claude Opus 4.6" → "Claude Sonnet 4.6"
+4. Add one sentence to the MC4 discussion emphasising A6 term safety significance
+
+---
+
+> 🔬 Updated by [Lean Squad](https://github.com/dsyme/raft-lean-squad/actions/runs/24668849059)
+> automated formal verification. Current state: **473 theorems, 0 sorry, 29 Lean files**.
