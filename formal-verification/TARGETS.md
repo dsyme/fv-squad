@@ -48,7 +48,7 @@ See `CRITIQUE.md §Critical Gap Analysis` for the full analysis.
 | Priority | ID | File | Function | Phase | Notes |
 |----------|----|------|----------|-------|-------|
 | 11 | `progress_set` | `src/tracker/progress_set.rs` | quorum tracking over progress map | 1 | Formalise `ProgressSet::quorum_active` and quorum detection across the voter progress map. |
-| 22 | `raft_log_append` | `src/raft_log.rs` | `RaftLog::append` | 1 | Append correctness and slice invariants for the stable log. |
+| 22 | `raft_log_append` | `src/raft_log.rs` | `RaftLog::append` | 2 ✅ | Informal spec written (Run 44). Delegates to `truncate_and_append` (already in LogUnstable.lean). Key properties: committed-prefix preservation + suffix-exact-match. See `specs/raft_log_append_informal.md`. |
 
 ## Next Steps
 
