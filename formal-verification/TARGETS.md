@@ -62,3 +62,28 @@ The priority order for future runs, given the critique:
 4. **A4+A5: ConcreteTransitions + CommitRule** — discharge the remaining 4 step hypotheses.
 5. **Target 11** (`progress_set`) — lower priority than closing the election model gap.
 6. **Task 8** (Aeneas extraction) — blocked on OCaml/opam in no-new-privileges containers.
+
+---
+
+## A5 Gap Progress (Run 38+)
+
+**`ConcreteProtocolStep.lean`** (new file, this run) provides the A5 bridge:
+
+| File | Theorems | Status |
+|------|---------|--------|
+| `FVSquad/ConcreteProtocolStep.lean` | 13 (CPS1–CPS12 + example) | ✅ proved, 0 sorry |
+
+The file defines `ValidAEStep` — a structure capturing the concrete AppendEntries
+preconditions — and proves that it satisfies all five `RaftReachable.step` hypotheses.
+
+| `step` hypothesis | Discharged by |
+|------------------|--------------|
+| `hlogs'`         | `ValidAEStep.hlogs'_other` |
+| `hno_overwrite`  | CPS1 (`h_committed_le_prev` + CT2) |
+| `hqc_preserved`  | `ValidAEStep.hqc_preserved` (explicit, needs A3) |
+| `hcommitted_mono`| `ValidAEStep.hcommitted_mono` (explicit) |
+| `hnew_cert`      | `ValidAEStep.hnew_cert` (explicit, needs CommitRuleValid) |
+
+**Remaining gap**: the three explicit hypotheses (`hqc_preserved`, `hcommitted_mono`,
+`hnew_cert`) need to be discharged from the election and term model.  A3 (LeaderCompleteness)
+handles `hqc_preserved`.  CommitRule CR8 handles `hnew_cert`.

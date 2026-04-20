@@ -27,3 +27,4 @@ import FVSquad.LeaderCompleteness
 import FVSquad.ConcreteTransitions
 import FVSquad.CommitRule
 import FVSquad.MaybeCommit
+import FVSquad.ConcreteProtocolStep
