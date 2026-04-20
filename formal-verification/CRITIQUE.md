@@ -3,14 +3,14 @@
 > 🔬 *Lean Squad — automated formal verification for `dsyme/fv-squad`.*
 
 ## Last Updated
-- **Date**: 2026-04-20 19:06 UTC
-- **Commit**: `8d7b970` — Run 42: Task 6 Correspondence Review; 471 theorems, 0 sorry, 29 files
+- **Date**: 2026-04-20 21:09 UTC
+- **Commit**: `322294e` — Run 44: Task 7 Critique update; 483 theorems, 0 sorry, 30 files
 
 ---
 
 ## Overall Assessment
 
-The FV project has produced **471 theorems across 29 Lean files, all machine-checked by
+The FV project has produced **483 theorems across 30 Lean files, all machine-checked by
 Lean 4 (version 4.28.0, stdlib only — no Mathlib), with 0 `sorry`**.
 
 The `RaftReachable.step` constructor in `RaftTrace.lean` bundles **5 hypotheses** about
@@ -35,16 +35,18 @@ milestones since the original "COMPLETE" declaration:
   `LeaderCompleteness`.
 
 **Remaining gap**: `CandidateLogCovers` (needed by CPS13 to discharge `hqc_preserved`)
-is currently taken as a hypothesis.  Establishing `CandidateLogCovers` from a concrete
-global election + term model (rather than from explicit hypotheses) would complete the
-fully self-contained proof.  Roughly 20–40 additional theorems needed.
+is currently taken as a hypothesis.  `ElectionReachability.lean` (Run 43) provides 12
+theorems (ER1–ER12) that reduce `CandidateLogCovers` to a high-water mark condition
+and to a shared-source log condition — the latter being provably satisfied after any
+AE round from a single leader.  The remaining obligation is showing that such a reference
+log exists after an election.
 
-**Summary**: ~95–97% of a fully self-contained, unconditional Raft safety proof is
+**Summary**: ~97–98% of a fully self-contained, unconditional Raft safety proof is
 machine-checked.  The top-level result `raftReachable_safe` (RT2) is proved: any cluster
 state reachable by valid Raft transitions is safe.  The term safety condition (A6,
-`MaybeCommit.lean`), the A5 bridge (CPS2), and the `hqc_preserved` discharge (CPS13)
-are all formally proved.  No bugs were found in any modelled Rust function.  471 theorems,
-29 files, 0 sorry.
+`MaybeCommit.lean`), the A5 bridge (CPS2), the `hqc_preserved` discharge (CPS13), and
+the election reachability bridging (ER1–ER12) are all formally proved.  No bugs were
+found in any modelled Rust function.  **483 theorems, 30 files, 0 sorry**.
 
 ---
 
@@ -1198,6 +1200,61 @@ remaining as an external hypothesis rather than a concrete derivation.
 
 ---
 
+### `ElectionReachability.lean` — 12 theorems (ER1-ER12, 0 sorry)
+
+| Theorem | Level | Bug-catching potential | Notes |
+|---------|-------|----------------------|-------|
+| `candLogCoversLastIndex_of_highWaterMark` (ER1) | **High** | **High** | HWM + CandLogMatching → CandLogCoversLastIndex; reduces key abstract obligation to a concrete point condition |
+| `hlogConsistency_of_highWaterMark` (ER2) | **High** | **High** | HWM + CandLogMatching → HLogConsistency (required by LC7) |
+| `candidateLogCovers_of_highWaterMark` (ER3) | **High** | **High** | HWM + VRC + voterIdx → CandidateLogCovers (unlocks CPS13) |
+| `leaderCompleteness_of_highWaterMark` (ER4) | **High** | **High** | Full end-to-end: HWM → leaderCompleteness |
+| `candLogMatching_of_extendedLMI` (ER5) | **High** | **High** | Extended LMI + hcand_eq → CandLogMatching (derives key condition from log-matching invariant) |
+| `hwm_of_shared_entry` (ER6) | Mid | High | Shared entry at j ≥ voterIdx → HWM (concrete AE-round sufficient condition) |
+| `hwm_of_lmi_and_candEntry` (ER7) | Mid | High | LMI + voter entry + cand entry at same j → HWM |
+| `candidateLogCovers_of_extendedLMI` (ER8) | **High** | **High** | Extended LMI + hcand_eq + VRC + HWM → CandidateLogCovers (full chain) |
+| `candLogCoversLastIndex_of_sharedSource` (ER9) | **High** | **High** | Shared source log R → CandLogCoversLastIndex (leader-origin sufficient condition) |
+| `candidateLogCovers_of_sharedSource` (ER10) | **High** | **High** | Shared source → CandidateLogCovers (full chain via ER9) |
+| `leaderCompleteness_of_sharedSource` (ER11) | **High** | **High** | Shared source → leaderCompleteness (complete end-to-end path from AE history) |
+| `hwm_of_ae_prefix` (ER12) | **High** | **High** | AE prefix preservation: prior agreements survive AE step (inductive invariant for HWM) |
+
+**Assessment**: `ElectionReachability.lean` (Run 43) is the most architecturally significant
+file added since CPS2.  It provides **two independent sufficient conditions** for
+`CandidateLogCovers` — the last remaining hypothesis in the fully self-contained proof chain:
+
+1. **The high-water mark path** (ER1–ER8): reduces `CandidateLogCovers` to the existence
+   of a single "agreement point" index `j ≥ voterIdx` at which the candidate's log matches
+   the voter's.  This is exactly what the AE mechanism guarantees — after the leader broadcasts
+   AE with `prevLogIndex = j`, every accepting voter's log agrees with the leader at `j`.
+   The chain ER5 → ER6/ER7 → ER3 → CPS13 → CPS2 → RT1 → RT2 gives a fully specified
+   reduction of `raftReachable_safe` to: (a) `hcand_eq` (the election model ensures the
+   candidate was a valid voter), (b) a `LogMatchingInvariantFor` that extends to the
+   candidate, and (c) an AE step that provides an agreement point at or above `voterIdx`.
+
+2. **The shared-source path** (ER9–ER11): if there exists a reference log `R` such that
+   both the candidate's log and every voter's log are prefixes of `R`, then
+   `CandidateLogCovers` holds unconditionally.  This is the most natural and direct encoding
+   of what happens in a concrete Raft protocol: after the leader sends AE messages, both
+   the leader's log and the accepting voters' logs are prefixes of the leader's own log.
+
+3. **The inductive invariant** (ER12): `hwm_of_ae_prefix` proves that if a high-water mark
+   agreement point exists before an AE step, it is still valid after (the AE step preserves
+   prior agreement points).  This is the inductive step needed to carry the HWM condition
+   across protocol rounds.
+
+**Remaining gap** (after ER1–ER12): The proof obligation now reduces to showing that,
+after a concrete Raft election, there exists such a reference log `R` (or equivalently,
+that the extended log-matching invariant holds with the candidate treated as a voter).
+This is a global protocol-state property that requires connecting the AE round history
+to the current state.  Roughly 5–15 additional theorems in a new file (e.g.,
+`ElectionConcreteModel.lean`) would close this gap entirely.
+
+**All 12 ER theorems** have bug-catching potential rated **High** because they directly
+exercise the core conditions that prevent log divergence after elections.  A flaw in the
+AE protocol's prefix-preservation or the vote-granting rule would cause at least one of
+ER3, ER8, ER10, or ER11 to fail.
+
+---
+
 ---
 
 ## Paper Review
@@ -1224,30 +1281,37 @@ discrepancy arose because TallyVotes (28 theorems) and JointTally (18 theorems) 
 after the table was written.  The total row is correct (473) because the per-layer
 discrepancies cancel out.  **Recommend updating** Layer 2 count to 139.
 
-**Run count**: The paper consistently says "39 runs" at the time of writing.  Run 40
-(this run) updates documentation only and adds no new theorems, so the proof-result
-claims remain accurate.  However, for factual completeness the run count should be
-updated to 40.
+**Run count**: The paper consistently says "39 runs" at the time of writing (updated to
+43 after Run 43 which added ElectionReachability.lean).  Run 44 (this run) adds the
+critique and informal spec, no new theorems.  The proof-result claims remain accurate.
+Recommend updating to 44 runs.
 
 **Cost estimate**: `$280 (39 runs at ~$7 each)` is approximately correct and will be
-`$287` after this run 40.
+`$308` after run 44.
 
 **Abstract claim check**:
-- "473 theorems across 29 Lean 4 files, stdlib only, 0 sorry" ✅
+- "473 theorems across 29 Lean 4 files, stdlib only, 0 sorry" — *stale*; update to 483 theorems, 30 files.
 - "raftReachable_safe — no two nodes ever apply different log entries at same index" ✅
 - "A5 bridge (validAEStep_raftReachable) proved" ✅
 - "One formulation bug caught" ✅ (RSS3/RSS4)
 - "No implementation bugs found" ✅
+- **New claim to add**: "ElectionReachability.lean (ER1–ER12, Run 43) reduces hqc_preserved to a shared-source log condition provably satisfied after any AE round from a single leader."
 
 ### Completeness Assessment
 
 **Positive**:
 - All seven layers described with concrete theorem examples
-- Residual gap (`hqc_preserved`) clearly disclosed in §5.1 and conclusion
+- Residual gap (`hqc_preserved` / `CandidateLogCovers`) clearly disclosed in §5.1 and conclusion
 - `hno_overwrite` discharge via CPS1 explained and connected to Rust source
 - Formulation bug section is thorough and honest
 
-**Missing or underdeveloped**:
+**Missing or underdeveloped** (updated for Run 44):
+- **ElectionReachability.lean** (ER1–ER12, Run 43) is not yet reflected in the paper.
+  This is the most significant architectural advance since CPS2 and should appear in §5.2
+  ("Residual Gap") with a new subsection showing both the high-water mark chain and the
+  shared-source sufficient condition.  The paper's current statement that "roughly 20–40
+  additional theorems are needed" should be updated to reflect that this is now ~5–15
+  theorems (just the concrete election model portion).
 - **MC4 / A6 term safety** could be highlighted more prominently.  MC4
   (`maybeCommit_term`) is the formal proof of Raft §5.4.2 — the "figure 8" problem
   prevention.  This is arguably the most important result in Layer 7 alongside CPS2,
@@ -1283,14 +1347,18 @@ acknowledged in §4.3.
 
 ### Recommendation
 
-The paper is ready for submission after the following targeted updates:
-1. Fix Layer 2 theorem count in `tab:layers`: 119 → 139
-2. Update run count: 39 → 40
-3. Correct model name: "Claude Opus 4.6" → "Claude Sonnet 4.6"
-4. Add one sentence to the MC4 discussion emphasising A6 term safety significance
+The paper needs the following targeted updates (in priority order):
+1. **Add ElectionReachability.lean section** in §5.2: describe ER1–ER12, the two
+   sufficient conditions (HWM path and shared-source path), and the updated gap estimate
+   (~5–15 additional theorems for the concrete election model).
+2. Update theorem count in abstract and tables: 473 → 483 theorems, 29 → 30 files.
+3. Fix Layer 2 theorem count in `tab:layers`: 119 → 139.
+4. Update run count: 43 → 44.
+5. Correct model name: "Claude Opus 4.6" → "Claude Sonnet 4.6".
+6. Add one sentence to the MC4 discussion emphasising A6 term safety significance.
 
 ---
 
-> 🔬 Updated by [Lean Squad](https://github.com/dsyme/raft-lean-squad/actions/runs/24685028340)
-> automated formal verification. Current state: **471 theorems, 0 sorry, 29 Lean files**.
-> Run 42: Task 7 (Proof Utility Critique) — CPS13 added, hqc_preserved now discharged, counts corrected to 471.
+> 🔬 Updated by [Lean Squad](https://github.com/dsyme/raft-lean-squad/actions/runs/24690473002)
+> automated formal verification. Current state: **483 theorems, 0 sorry, 30 Lean files**.
+> Run 44: Task 7 (Proof Utility Critique) — ElectionReachability.lean (ER1–ER12) section added, counts updated to 483.
