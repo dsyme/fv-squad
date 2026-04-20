@@ -3,17 +3,17 @@
 > 🔬 *Lean Squad — automated formal verification for `dsyme/fv-squad`.*
 
 ## Last Updated
-- **Date**: 2026-04-20 06:30 UTC
-- **Commit**: `222503e` — Critique updated: gap analysis for RaftReachable.step hypotheses
+- **Date**: 2026-04-20 07:25 UTC
+- **Commit**: `7a50906` — Post-merge state: RaftElection.lean (RE1-RE15) merged; LeaderCompleteness.lean (LC1-LC10) in progress
 
 ---
 
 ## Overall Assessment
 
-The FV project has produced **443+ theorems across 23 Lean files, all machine-checked by
-Lean 4 (version 4.28.0, stdlib only — no Mathlib), with 0 `sorry`**.  However, a
-**critical gap** remains at the protocol level that was overlooked in the previous
-"COMPLETE" assessment.
+The FV project has produced **468+ theorems across 25 Lean files, all machine-checked by
+Lean 4 (version 4.28.0, stdlib only — no Mathlib), with 0 `sorry`**.  A
+**critical gap** identified in the previous run's external critique is being systematically
+closed.
 
 The `RaftReachable.step` constructor in `RaftTrace.lean` bundles **5 hypotheses as
 axioms** about each protocol transition.  These encode deep Raft correctness properties
@@ -24,10 +24,24 @@ shown to satisfy these hypotheses, `raftReachable_safe` (RT2) is conditionally c
 only: it proves safety *given* the hypotheses, but the hypotheses themselves are axioms
 rather than proved facts.
 
-**Realistic assessment**: ~60–70% of the components needed for a fully self-contained Raft
-safety proof exist.  The quorum arithmetic, log operations, safety composition, and
-CCI-threading layers are complete and correct.  The missing connecting tissue is the
-*election model* — term management, vote-granting conditions, and the leader-completeness
+**Progress since last critique**: Two new Lean files have been added:
+- **`RaftElection.lean`** (RE1-RE15, 15 theorems, 0 sorry): formalises the election model
+  (`NodeRole`, `NodeState`, `VoteRecord`, `wonInTerm`, `voteGranted`) and proves
+  `electionSafety` — at most one leader per term. This is a major step toward closing the gap.
+- **`LeaderCompleteness.lean`** (LC1-LC10, 10 theorems, 0 sorry): formalises the leader
+  completeness argument — that the election winner has all quorum-committed entries.  The
+  proof chain is: quorum overlap (HQ20) → shared voter has committed entry AND voted for
+  winner → winner's log covers voter's log (given `CandidateLogCovers`) → winner has entry.
+  All theorems are proved (0 sorry); the remaining discharge obligation (`HLogConsistency`)
+  is an explicit hypothesis capturing what a concrete protocol model must prove.
+
+**Realistic assessment**: ~75–80% of the components needed for a fully self-contained Raft
+safety proof now exist (up from ~60–70%).  The quorum arithmetic, log operations, safety
+composition, election model, and leader completeness framework are all complete and correct.
+The remaining gap is `HLogConsistency`: proving that if the candidate is log-fresh relative
+to a voter, the candidate's log actually contains the voter's committed entries.  This
+requires concrete AppendEntries modelling (A4/A5 targets).  Closing the gap would require
+approximately 2–3 more Lean files and 50–100 additional theorems.
 composition that would discharge `hqc_preserved`.  Closing the gap would require
 approximately 3–5 new Lean files and 100–200 additional theorems.  This is the hardest
 single remaining part of Raft verification.
@@ -953,3 +967,72 @@ intersect across the joint configuration.
     This is the most important result in the FV portfolio: machine-checked Raft safety.
 
 > 🔬 Updated by [Lean Squad](https://github.com/dsyme/fv-squad/actions/runs/23979949696) automated formal verification. Project complete: 443+ theorems, 0 sorry, 23 Lean files.
+
+---
+
+## New Findings Since Last Critique
+
+### `RaftElection.lean` — 15 theorems (RE1-RE15)
+
+| Theorem | Level | Bug-catching potential | Notes |
+|---------|-------|----------------------|-------|
+| `wonInTerm_nil` (RE1) | Low | Low | Vacuous quorum for empty voter list |
+| `wonInTerm_iff` (RE2) | Low | Low | Definitional unfolding |
+| `voteRecord_single_valued` (RE3) | Mid | **High** | One vote per voter per term — core Raft invariant |
+| `shared_voter_of_two_winners` (RE4) | Mid | **High** | Two winners share a voter — key lemma for RE5 |
+| `electionSafety` (RE5) | **High** | **High** | At most one winner per term — central Raft property |
+| `electionSafety_ne` (RE6) | Mid | Medium | Alternative formulation of RE5 |
+| `voteGranted_isUpToDate` (RE7) | Mid | **High** | If vote was granted, candidate was log-fresh |
+| `voteGranted_priorVote_none_or_self` (RE8) | Mid | **High** | Single-vote-per-term check |
+| `not_voteGranted_of_other_prior` (RE9) | Mid | **High** | Cannot vote for two different candidates |
+| `voteGranted_and_prior_eq` (RE10) | Mid | Medium | Prior vote consistency |
+| `wonInTerm_implies_some_voter` (RE11) | Low | Low | Winner implies ∃ voter — helper |
+| `wonInTerm_singleton_iff` (RE12) | Low | Low | Singleton cluster correctness |
+| `wonInTerm_singleton_self` (RE13) | Low | Low | Self-vote wins in singleton |
+| `electionSafety_two_leaders` (RE14) | Mid | **High** | NodeID form of RE5 |
+| `wonInTerm_voter_voted` (RE15) | Mid | Medium | Consistent ballot property |
+
+**Assessment**: RE5 (`electionSafety`) is the highest-value theorem in this file.  It directly
+formalises Raft §5.2 and closes a major gap in the top-level safety argument.  RE7-RE10 are
+the vote-granting conditions that feed into `LeaderCompleteness.lean`.  This file is genuinely
+useful: a bug in the Raft vote-handling code (e.g., allowing two winners in the same term)
+would cause RE5 to fail.
+
+### `LeaderCompleteness.lean` — 10 theorems (LC1-LC10)
+
+| Theorem | Level | Bug-catching potential | Notes |
+|---------|-------|----------------------|-------|
+| `electionWinner_overlaps_commitQuorum` (LC1) | High | **High** | Quorum overlap — foundational step |
+| `electionWinner_shared_voter` (LC2) | High | **High** | Corollary of LC1 |
+| `leaderCompleteness` (LC3) | **High** | **High** | Main LC theorem (given CandidateLogCovers) |
+| `leaderCompleteness_fullChain` (LC4) | **High** | **High** | Unique winner + has committed entries |
+| `wonInTerm_implies_isUpToDate` (LC5) | Mid | **High** | Voter who voted → winner was log-fresh |
+| `wonInTerm_voters_allUpToDate` (LC5b) | Mid | Medium | All voters → winner was log-fresh wrt each |
+| `hqc_preserved_from_leaderBroadcast` (LC6) | **High** | **High** | Discharge condition for hqc_preserved |
+| `candidateLog_of_logMatchingAndUpToDate` (LC7) | High | **High** | LMI + HLogConsistency → CandidateLogCovers |
+| `leaderCompleteness_via_logMatching` (LC8) | **High** | **High** | Full LC given all three invariants |
+| `leaderCompleteness_via_rss5` (LC-rss5) | High | Medium | Re-derives LC3 via RSS5 for coherence |
+
+**Assessment**: `LeaderCompleteness.lean` is the most structurally important file added since
+the original "COMPLETE" status was claimed.  It formalises the core of the Raft Leader
+Completeness argument (§5.4.2) and explicitly isolates the remaining gap as `HLogConsistency`.
+The key insight: `CandidateLogCovers` (the winner's log agrees with every voter who voted for
+it) is sufficient to prove leader completeness, and `HLogConsistency` (isUpToDate + committed
+entry → candidate has entry) is what a concrete protocol model needs to prove.
+
+**Concern**: `HLogConsistency` is an explicit hypothesis — not a proved invariant.  Until it
+is proved from a concrete AppendEntries model (A4/A5), `leaderCompleteness_via_logMatching`
+(LC8) remains conditional.  The file is honest about this: all hypotheses are explicit, and
+0 sorry is used.
+
+**Positive finding**: `hqc_preserved_from_leaderBroadcast` (LC6) proves that if (a) the
+leader has all committed entries (by leader completeness) and (b) AppendEntries puts the
+leader's log entries into all voters' logs, then `isQuorumCommitted` is preserved across the
+transition.  This is the correct formulation of `hqc_preserved` — it's about *quorum
+preservation* (isQuorumCommitted in new state), not *universal log equality* (which is
+stronger than what Raft guarantees).
+
+---
+
+> 🔬 Updated by [Lean Squad](https://github.com/dsyme/raft-lean-squad/actions/runs/24653583822)
+> automated formal verification. Current state: **468+ theorems, 0 sorry, 25 Lean files**.
