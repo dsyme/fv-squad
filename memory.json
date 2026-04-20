@@ -1,152 +1,45 @@
 {
-  "last_run": "2026-04-21",
-  "run_id": "24663161255",
+  "last_run": "2026-04-20",
+  "run_id": "24664746901",
   "fv_tool": "Lean4 (stdlib only, no Mathlib)",
-  "lean_version": "4.30.0-rc2",
-  "lean_build_note": "lake build PASSED. 0 sorry. 458 theorems across 28 files.",
-  "project_status": "COMPLETE (A5 gap remains)",
+  "lean_version": "4.28.0",
+  "lean_build_note": "lake build PASSED. 0 sorry. 471 theorems across 29 files.",
+  "project_status": "ADVANCED (A5 bridge CPS2 proved; A5 completion ~40-80 more theorems)",
   "targets": [
-    {
-      "id": "limit_size",
-      "phase": 5,
-      "notes": "17 proved. Merged."
-    },
-    {
-      "id": "config_validate",
-      "phase": 5,
-      "notes": "10 proved. Merged."
-    },
-    {
-      "id": "vote_result",
-      "phase": 5,
-      "notes": "21 proved. Merged."
-    },
-    {
-      "id": "joint_vote_result",
-      "phase": 5,
-      "notes": "14 proved. Merged."
-    },
-    {
-      "id": "committed_index",
-      "phase": 5,
-      "notes": "17 proved. Merged."
-    },
-    {
-      "id": "find_conflict",
-      "phase": 5,
-      "notes": "12 proved. Merged."
-    },
-    {
-      "id": "joint_committed_index",
-      "phase": 5,
-      "notes": "10 proved. Merged."
-    },
-    {
-      "id": "maybe_append",
-      "phase": 5,
-      "notes": "18 proved. Merged."
-    },
-    {
-      "id": "inflights",
-      "phase": 5,
-      "notes": "49 proved. Merged."
-    },
-    {
-      "id": "progress",
-      "phase": 5,
-      "notes": "31 proved. Merged."
-    },
-    {
-      "id": "is_up_to_date",
-      "phase": 5,
-      "notes": "18 proved. Merged."
-    },
-    {
-      "id": "log_unstable",
-      "phase": 5,
-      "notes": "37 proved. Merged."
-    },
-    {
-      "id": "tally_votes",
-      "phase": 5,
-      "notes": "28 proved. Merged."
-    },
-    {
-      "id": "has_quorum",
-      "phase": 5,
-      "notes": "22 proved. Merged."
-    },
-    {
-      "id": "quorum_recently_active",
-      "phase": 5,
-      "notes": "15 proved. Merged."
-    },
-    {
-      "id": "safety_composition",
-      "phase": 5,
-      "notes": "9 proved (SC4/SC6/SC9). Merged."
-    },
-    {
-      "id": "joint_tally",
-      "phase": 5,
-      "notes": "14 proved. Merged."
-    },
-    {
-      "id": "joint_safety_composition",
-      "phase": 5,
-      "notes": "10 proved (JSC7). Merged."
-    },
-    {
-      "id": "raft_safety",
-      "phase": 5,
-      "lean_file": "FVSquad/RaftSafety.lean",
-      "notes": "ALL 14 proved (0 sorry). RSS8 proved via CommitCertInvariant. Merged r133."
-    },
-    {
-      "id": "cross_module_composition",
-      "phase": 5,
-      "lean_file": "FVSquad/CrossModuleComposition.lean",
-      "notes": "ALL 7 proved (0 sorry). Merged r129."
-    },
-    {
-      "id": "raft_protocol",
-      "phase": 5,
-      "lean_file": "FVSquad/RaftProtocol.lean",
-      "notes": "ALL 10 proved (0 sorry). Merged r133. RP6+RP8 proved."
-    },
-    {
-      "id": "raft_trace",
-      "phase": 5,
-      "lean_file": "FVSquad/RaftTrace.lean",
-      "notes": "ALL proved (0 sorry). RT0+RT1+RT2. RaftReachable inductive. Merged r133."
-    },
-    {
-      "id": "concrete_transitions",
-      "phase": 5,
-      "lean_file": "FVSquad/ConcreteTransitions.lean",
-      "notes": "ALL 11 proved (0 sorry). CT4+CT5 proved. Imported in FVSquad.lean."
-    },
-    {
-      "id": "commit_rule",
-      "phase": 3,
-      "lean_file": "FVSquad/CommitRule.lean",
-      "notes": "ConcreteProtocolStep.lean added: ValidAEStep structure + CPS1-CPS12 (13 theorems, 0 sorry). Main bridge CPS2 proved. 3 remaining fields need discharge from election model (A1/A2/A3).",
-      "file": "FVSquad/ConcreteProtocolStep.lean"
-    },
-    {
-      "id": "maybe_commit",
-      "phase": 5,
-      "lean_file": "FVSquad/MaybeCommit.lean",
-      "notes": "ALL 12 proved (0 sorry). MC4=A6 term safety. Run 37."
-    }
+    {"id": "limit_size", "phase": 5, "notes": "17 proved. Merged."},
+    {"id": "config_validate", "phase": 5, "notes": "10 proved. Merged."},
+    {"id": "vote_result", "phase": 5, "notes": "21 proved. Merged."},
+    {"id": "joint_vote_result", "phase": 5, "notes": "14 proved. Merged."},
+    {"id": "committed_index", "phase": 5, "notes": "17 proved. Merged."},
+    {"id": "find_conflict", "phase": 5, "notes": "12 proved. Merged."},
+    {"id": "joint_committed_index", "phase": 5, "notes": "10 proved. Merged."},
+    {"id": "maybe_append", "phase": 5, "notes": "18 proved. Merged."},
+    {"id": "inflights", "phase": 5, "notes": "49 proved. Merged."},
+    {"id": "progress", "phase": 5, "notes": "31 proved. Merged."},
+    {"id": "is_up_to_date", "phase": 5, "notes": "18 proved. Merged."},
+    {"id": "log_unstable", "phase": 5, "notes": "37 proved. Merged."},
+    {"id": "tally_votes", "phase": 5, "notes": "28 proved. Merged."},
+    {"id": "has_quorum", "phase": 5, "notes": "22 proved. Merged."},
+    {"id": "quorum_recently_active", "phase": 5, "notes": "15 proved. Merged."},
+    {"id": "safety_composition", "phase": 5, "notes": "9 proved. Merged."},
+    {"id": "joint_tally", "phase": 5, "notes": "14 proved. Merged."},
+    {"id": "joint_safety_composition", "phase": 5, "notes": "10 proved. Merged."},
+    {"id": "raft_safety", "phase": 5, "lean_file": "FVSquad/RaftSafety.lean", "notes": "ALL 14 proved (0 sorry). Merged."},
+    {"id": "cross_module_composition", "phase": 5, "lean_file": "FVSquad/CrossModuleComposition.lean", "notes": "ALL 7 proved (0 sorry). Merged."},
+    {"id": "raft_protocol", "phase": 5, "lean_file": "FVSquad/RaftProtocol.lean", "notes": "ALL 10 proved (0 sorry). Merged."},
+    {"id": "raft_trace", "phase": 5, "lean_file": "FVSquad/RaftTrace.lean", "notes": "ALL proved (0 sorry). RT0+RT1+RT2. Merged."},
+    {"id": "concrete_transitions", "phase": 5, "lean_file": "FVSquad/ConcreteTransitions.lean", "notes": "ALL 11 proved (0 sorry). CT4+CT5 proved. Merged."},
+    {"id": "commit_rule", "phase": 5, "lean_file": "FVSquad/CommitRule.lean", "notes": "ALL 9 proved (0 sorry). CR8: CommitRuleValid = hnew_cert (definitional). Merged."},
+    {"id": "maybe_commit", "phase": 5, "lean_file": "FVSquad/MaybeCommit.lean", "notes": "ALL 12 proved (0 sorry). MC4=A6 term safety. Merged."},
+    {"id": "concrete_protocol_step", "phase": 5, "lean_file": "FVSquad/ConcreteProtocolStep.lean", "notes": "ALL 13 proved (0 sorry). CPS2=A5 bridge (first concrete→abstract connection). Merged r158."}
   ],
-  "total_theorems": 458,
-  "lean_files": 28,
+  "total_theorems": 471,
+  "lean_files": 29,
   "sorry_count": 0,
   "open_prs": [],
   "aeneas_status": "BLOCKED - no-new-privileges container. Confirmed all runs.",
   "ci_workflow": ".github/workflows/lean-ci.yml",
-  "ci_status": "Healthy. Lean 4.28.0. No lake update needed (stdlib only).",
+  "ci_status": "Healthy. Lean 4.28.0. Added source-level sorry counter + proof statistics step. Run 38.",
   "lean_stdlib_notes": {
     "no_lemma_keyword": "In Lean 4.28 stdlib-only, 'lemma' is not a top-level keyword. Use 'theorem' or 'private theorem' instead.",
     "private_theorem": "Use 'private theorem' for module-internal helpers (not 'private lemma').",
@@ -154,25 +47,26 @@
     "no_split_ifs": "split_ifs is Mathlib only. Use by_cases h : P <;> simp [h].",
     "no_push_neg": "push_neg is Mathlib only. Use omega or Nat.lt_of_not_le.",
     "no_le_rfl": "le_rfl does not exist. Use Nat.le_refl _.",
-    "beq_iff_eq": "beq_iff_eq : a == b <-> a = b \u2014 stdlib for LawfulBEq.",
+    "beq_iff_eq": "beq_iff_eq : a == b <-> a = b — stdlib for LawfulBEq.",
     "induction_implicit_vars": "In 'induction h with | step ... =>', implicit vars get ~-named. Use 'rename_i cs_prev cs_new' to name them.",
     "strong_induction": "induction n using Nat.strongRecOn with | ind n ih => ...",
     "if_neg_pattern": "For Prop ifs, use if_pos/if_neg with explicit term not simp; avoid anonymous constructors like <hgt, hterm> in simp args.",
-    "by_cases_and": "by_cases h : P \u2227 Q works fine; use h.1/h.2 to extract components; And.intro p q to construct."
+    "by_cases_and": "by_cases h : P ∧ Q works fine; use h.1/h.2 to extract components; And.intro p q to construct."
   },
   "findings": [
     "SOUNDNESS: Prior RSS3/RSS4 were false as stated (no hypotheses = arbitrary logs). Fixed r130 with LogMatchingInvariantFor/NoRollbackInvariantFor.",
     "No bugs found in implementation code.",
-    "PROJECT COMPLETE: 458 theorems, 0 sorry, 28 Lean files. raftReachable_safe is the top-level unconditional safety theorem.",
-    "A6 term safety: MC4 (maybeCommit_term) formally proves Raft \u00a75.4.2 \u2014 committed only advances when entry term = leader current term."
+    "PROJECT SUBSTANTIALLY COMPLETE: 471 theorems, 0 sorry, 29 Lean files. raftReachable_safe is the top-level unconditional safety theorem.",
+    "A6 term safety: MC4 (maybeCommit_term) formally proves Raft §5.4.2 — committed only advances when entry term = leader current term.",
+    "A5 bridge: CPS2 (validAEStep_raftReachable) is first concrete→abstract connection — ValidAEStep on RaftReachable gives new RaftReachable."
   ],
-  "a5_gap_status": "CT4+CT5 proved with explicit hypotheses (hprev/hcand_eq/hlog_none/hcand_mono). A5 gap: establishing these from a concrete global reachability model. ~50-100 additional theorems needed.",
-  "a6_gap_status": "CLOSED: MaybeCommit.lean MC4 (maybeCommit_term) formally proves A6 term safety condition.",
+  "a5_gap_status": "ADVANCED: CPS2 proves the abstract bridge. Remaining: discharge hqc_preserved/hcommitted_mono/hnew_cert from concrete election+term model. ~40-80 theorems.",
+  "a6_gap_status": "CLOSED: MC4 (maybeCommit_term) formally proves A6 term safety condition.",
   "notes": [
     "Run 35 (24658213506): Added CommitRule.lean (CR1-CR9, 9 theorems, 0 sorry).",
-    "Run 36 (24660841722): Proved CT4+CT5 in ConcreteTransitions. Added import to FVSquad.lean. 437 theorems, 27 files, 0 sorry.",
-    "Run 37 (24661834670): Added MaybeCommit.lean (MC1-MC12, 12 theorems, 0 sorry). A6 term safety. Updated CRITIQUE.md. 458 theorems, 28 files, 0 sorry."
-  ],
-  "theorem_count": 471,
-  "file_count": 29
+    "Run 36 (24660841722): Proved CT4+CT5 in ConcreteTransitions. 437 theorems, 27 files, 0 sorry.",
+    "Run 37 (24661834670): Added MaybeCommit.lean (MC1-MC12, 12 theorems, 0 sorry). A6 term safety. 458 theorems, 28 files, 0 sorry.",
+    "Run 37b (24663161255): Added ConcreteProtocolStep.lean (CPS1-CPS12+, 13 theorems, 0 sorry). CPS2=A5 bridge. 471 theorems, 29 files, 0 sorry.",
+    "Run 38 (24664746901): Task 7+9: Updated CRITIQUE.md (added CPS section, 471 theorems). CI audit + source-level sorry counter added."
+  ]
 }

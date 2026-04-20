@@ -1,52 +1,37 @@
 {
-  "run_id": "24663161255",
-  "workflow_run": "24661834670",
-  "date": "2026-04-20T10:40:00Z",
-  "lean_version": "4.30.0-rc2",
-  "total_theorems": 458,
+  "run_id": "24664746901",
+  "workflow_run": "24664746901",
+  "date": "2026-04-20T11:48:00Z",
+  "lean_version": "4.28.0",
+  "total_theorems": 471,
   "total_sorry": 0,
-  "lean_files": 28,
+  "lean_files": 29,
   "completed_tasks_this_run": [
-    "Task 5 (Proof Assistance - MaybeCommit.lean, MC1-MC12, A6 term safety)",
-    "Task 7 (Proof Utility Critique - CRITIQUE.md updated)"
+    "Task 7 (Proof Utility Critique - CRITIQUE.md updated: ConcreteProtocolStep section + 471 theorem count)",
+    "Task 9 (CI Audit - lean-ci.yml: source-level sorry counter + proof stats step)"
   ],
-  "new_theorems": [
-    "MC1: maybeCommit_ge_committed (monotone)",
-    "MC2: maybeCommit_or",
-    "MC3: maybeCommit_advances_iff",
-    "MC4: maybeCommit_term (A6 term safety \u2014 main result)",
-    "MC5: maybeCommit_no_advance_mismatch",
-    "MC6: maybeCommit_no_advance_le",
-    "MC7: maybeCommit_eq_maxIndex",
-    "MC8: maybeCommit_le_max",
-    "MC9: maybeCommit_idempotent",
-    "MC10: commitTo_ge_committed",
-    "MC11: commitTo_advances_iff",
-    "MC12: maybeCommit_eq_commitTo"
-  ],
-  "pr_created": "feat(fv): MaybeCommit.lean (A6 term safety, MC1-MC12) + CRITIQUE update",
-  "branch": "lean-squad/maybe-commit-task5-7-24661834670",
+  "pr_created": "lean-squad/critique-ci-task7-9-24664746901",
   "targets": {
-    "maybe_commit": {
+    "concrete_protocol_step": {
       "phase": 5,
       "status": "complete",
-      "lean_file": "FVSquad/MaybeCommit.lean",
-      "theorems": 12,
+      "lean_file": "FVSquad/ConcreteProtocolStep.lean",
+      "theorems": 13,
       "sorry_count": 0,
-      "note": "MC1-MC12. MC4 closes A6 term safety. 0 sorry."
+      "note": "CPS1-CPS12+. CPS2=A5 bridge (validAEStep_raftReachable). 0 sorry. Merged r158."
     }
   },
   "remaining_sorries": {},
-  "a5_gap_status": "CT4+CT5 proved with explicit hypotheses. A5 gap: establishing hprev/hcand_eq/hlog_none/hcand_mono from a concrete reachability model.",
+  "a5_gap_status": "ADVANCED: CPS2 proved. Remaining: global election+term model to discharge hqc_preserved/hcommitted_mono/hnew_cert. ~40-80 theorems.",
   "a6_gap_status": "CLOSED: MC4 (maybeCommit_term) proves A6 formally.",
   "aeneas_status": "permanently_blocked_no_new_privileges",
-  "ci_status": "Healthy. Lean 4.28.0. No changes needed.",
-  "toolchain_notes": "no Mathlib, use 'theorem' not 'lemma', stdlib only. For Prop ifs: use if_pos/if_neg with explicit terms, not simp with anonymous constructors.",
+  "ci_status": "Healthy. Lean 4.28.0. Added source-level sorry counter + proof statistics. No failures.",
+  "toolchain_notes": "no Mathlib, use 'theorem' not 'lemma', stdlib only. For Prop ifs: use if_pos/if_neg with explicit terms.",
   "sorry_count": 0,
-  "last_run": "2026-04-21",
-  "last_run_summary": "Run 37: Added MaybeCommit.lean (MC1-MC12, 12 theorems, 0 sorry). MC4 proves A6 term safety (Raft \u00a75.4.2). Updated CRITIQUE.md. 458 theorems, 28 files, 0 sorry.",
+  "last_run": "2026-04-20",
+  "last_run_summary": "Run 38: Task 7 (CRITIQUE.md updated - 471 theorems, ConcreteProtocolStep section) + Task 9 (CI audit + source-level sorry counter).",
   "theorem_count": 471,
   "file_count": 29,
-  "last_pr": "lean-squad/task3-5-concrete-protocol-step-24663161255",
-  "last_task": "Task 3+5: ConcreteProtocolStep.lean (A5 bridge, CPS1-CPS12)"
+  "last_pr": "lean-squad/critique-ci-task7-9-24664746901",
+  "last_task": "Task 7+9: CRITIQUE.md update + CI audit"
 }
