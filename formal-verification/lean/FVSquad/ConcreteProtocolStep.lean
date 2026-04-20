@@ -35,7 +35,7 @@ reachable state.
    - `h_committed_le_prev`: voter's committed ≤ `prevLogIndex` (no rollback)
    - `hcommitted_mono`: committed indices only advance
    - `hnew_cert`: newly committed entries are quorum-certified
-   - `hqc_preserved`: quorum-certified entries are preserved across the step
+   - `hqc_preserved`: quorum-certified entries remain quorum-certified (weak form)
 
 2. **`CPS1`** (`validAEStep_hno_overwrite`) — the committed-entries invariant:
    voter `v`'s committed entries are not overwritten (from `h_committed_le_prev` + CT2).
@@ -72,23 +72,34 @@ reachable state.
 13. **`CPS12`** (`ae_step_no_rollback`) — no committed-entry rollback in entire cluster:
     for all voters, committed entries are not overwritten by the step.
 
+14. **`CPS13`** (`validAEStep_hqc_preserved_from_lc`) — **discharge `hqc_preserved` from LC**:
+    given `CandidateLogCovers` (leader completeness), the `hqc_preserved` condition of
+    `ValidAEStep` follows from the AE step structure.  This is the key theorem connecting
+    leader completeness to the `RaftReachable` reachability model.
+
 ## Relationship to the A5 Gap
 
 `RaftReachable.step` bundles five abstract hypotheses.  This file shows they are
 satisfied by a concrete AE step when:
 
-| `step` hypothesis  | Comes from (`ValidAEStep` field)                              |
-|--------------------|---------------------------------------------------------------|
-| `hlogs'`           | `hlogs'_other`: other voters' logs unchanged                  |
-| `hno_overwrite`    | `h_committed_le_prev` + CT2 (`applyAE_preserves_prefix`)     |
-| `hqc_preserved`    | `hqc_preserved`: explicit hypothesis (needs leader-completeness proof) |
-| `hcommitted_mono`  | `hcommitted_mono`: explicit hypothesis                        |
-| `hnew_cert`        | `hnew_cert`: explicit hypothesis (CommitRuleValid / CR8)      |
+| `step` hypothesis  | Comes from (`ValidAEStep` field)                                |
+|--------------------|-----------------------------------------------------------------|
+| `hlogs'`           | `hlogs'_other`: other voters' logs unchanged                    |
+| `hno_overwrite`    | `h_committed_le_prev` + CT2 (`applyAE_preserves_prefix`)       |
+| `hqc_preserved`    | CPS13: from `CandidateLogCovers` + `hcand_eq` + `hlogs'_other` |
+| `hcommitted_mono`  | `hcommitted_mono`: explicit hypothesis                          |
+| `hnew_cert`        | `hnew_cert`: explicit hypothesis (CommitRuleValid / CR8)        |
 
-The three explicit hypotheses (`hqc_preserved`, `hcommitted_mono`, `hnew_cert`) are the
-remaining A5 gap: they need to be discharged from a concrete term-and-election model.
+**CPS13 closes `hqc_preserved`**: given that the leader has all quorum-certified entries
+(`CandidateLogCovers`, from `LeaderCompleteness.lean`) and the AE step only updates voter
+`v`'s log with entries from the leader's log, the quorum-certification of any previously
+committed entry is preserved — either because the voter's log was unchanged (other voters
+and indices below `prevLogIndex`) or because voter `v` now has the leader's entry (indices
+above `prevLogIndex`).
+
+The remaining two explicit hypotheses (`hcommitted_mono`, `hnew_cert`) still need to be
+discharged from a concrete term-and-election model.
 `CommitRule.lean` (CR8) discharges `hnew_cert` when `CommitRuleValid` holds.
-`LeaderCompleteness.lean` (LC8) discharges `hqc_preserved` via LMI + HLogConsistency.
 
 ## Theorem Table
 
@@ -106,6 +117,7 @@ remaining A5 gap: they need to be discharged from a concrete term-and-election m
 | CPS10 | `twoStep_raftReachable`              | ✅ proved  | Two consecutive valid AE steps → RaftReachable                  |
 | CPS11 | `validAEStep_committed_invariant`    | ✅ proved  | Non-v voters' committed indices unchanged if only v was stepped |
 | CPS12 | `ae_step_no_rollback`                | ✅ proved  | No voter loses any committed entry across the step             |
+| CPS13 | `validAEStep_hqc_preserved_from_lc`  | ✅ proved  | **CandidateLogCovers → hqc_preserved** (closes hqc_preserved gap) |
 -/
 
 namespace FVSquad.ConcreteProtocolStep
@@ -114,6 +126,7 @@ open FVSquad.RaftSafety
 open FVSquad.RaftTrace
 open FVSquad.ConcreteTransitions
 open FVSquad.LeaderCompleteness
+open FVSquad.RaftElection
 
 /-! ## ValidAEStep structure -/
 
@@ -158,13 +171,14 @@ structure ValidAEStep (E : Type) [DecidableEq E] (cs : ClusterState E) (lead v :
   hnew_cert : ∀ w k e, cs'.committed w ≥ k → cs.committed w < k →
       cs'.logs w k = some e →
       isQuorumCommitted cs'.voters cs'.logs k e
-  /-- Quorum-certified entries in the old state are preserved in ALL voters' logs.
-      This is the formal consequence of leader completeness: before sending AE,
-      the leader has all quorum-certified entries; it only appends entries from its
-      own log; so those entries remain in the cluster after the step.
-      `LeaderCompleteness.lean` LC8 discharges this when LMI + HLogConsistency hold. -/
+  /-- Quorum-certified entries in the old state remain quorum-certified in the new state.
+      This is the formal consequence of leader completeness + AE broadcast: before sending AE,
+      the leader has all quorum-certified entries; it only appends entries from its own log;
+      so quorum certification is preserved after the step.
+      `LeaderCompleteness.lean` LC3 + `hasQuorum_monotone` discharges this condition
+      when `CandidateLogCovers` holds (see `validAEStep_hqc_preserved_from_lc`, CPS13). -/
   hqc_preserved : ∀ k e, isQuorumCommitted cs.voters cs.logs k e →
-      ∀ w, cs'.logs w k = cs.logs w k
+      isQuorumCommitted cs'.voters cs'.logs k e
 
 /-! ## CPS1: No overwrite of committed entries -/
 
@@ -389,7 +403,7 @@ theorem validAEStep_committed_mono_of_local (E : Type) [DecidableEq E]
         cs'.logs w k = some e →
         isQuorumCommitted cs'.voters cs'.logs k e)
     (hqc_preserved : ∀ k e, isQuorumCommitted cs.voters cs.logs k e →
-        ∀ w, cs'.logs w k = cs.logs w k) :
+        isQuorumCommitted cs'.voters cs'.logs k e) :
     ValidAEStep E cs lead v msg cs' where
   hvoters := hvoters
   hlogs'_other := hlogs'_other
@@ -444,6 +458,71 @@ theorem validAEStep_committed_invariant (E : Type) [DecidableEq E]
     (hother_eq : cs'.committed _w = cs.committed _w) :
     cs'.committed _w = cs.committed _w :=
   hother_eq
+
+/-! ## CPS13: Discharge hqc_preserved from CandidateLogCovers -/
+
+/-- **CPS13** — Given leader completeness (`CandidateLogCovers`), the `hqc_preserved`
+    condition of `ValidAEStep` is automatically satisfied.
+
+    **Statement**: if the leader has all quorum-committed entries (`CandidateLogCovers`)
+    and `hstep` is a `ValidAEStep`, then any quorum-committed entry in the old cluster
+    state is still quorum-committed in the new state.
+
+    **Proof**:
+    1. By `leaderCompleteness` (LC3), the leader has `e` at `k` (`cs.logs lead k = some e`).
+    2. For each voter `w`:
+       - If `w ≠ v`: their log is unchanged (`hlogs'_other`), so `cs'.logs w k = cs.logs w k`.
+       - If `w = v` and `k ≤ prevLogIndex`: the prefix is unchanged (`validAEStep_prefix_unchanged`).
+       - If `w = v` and `k > prevLogIndex`: `cs'.logs v k = cs.logs lead k = some e` (`hcand_eq`).
+    3. In all cases, wherever `cs.logs w k = some e`, so does `cs'.logs w k = some e`.
+    4. By `hasQuorum_monotone`, `isQuorumCommitted cs'.voters cs'.logs k e` follows.
+
+    **Significance**: this theorem closes the `hqc_preserved` gap in `ValidAEStep`.
+    Combined with `validAEStep_raftReachable`, it means: if the leader satisfies
+    `CandidateLogCovers` and the step satisfies the other `ValidAEStep` conditions,
+    the step preserves `RaftReachable`.
+
+    **Remaining gap**: `CandidateLogCovers` itself requires `HLogConsistency` (LC7),
+    which in turn needs the full log-matching invariant from a concrete protocol model.
+    However, this theorem reduces the abstract `hqc_preserved` obligation to the
+    concrete `CandidateLogCovers` predicate, which is closer to the protocol level. -/
+theorem validAEStep_hqc_preserved_from_lc [DecidableEq E]
+    {cs cs' : ClusterState E} {lead v : Nat} {msg : AppendEntriesMsg E}
+    (hstep : ValidAEStep E cs lead v msg cs')
+    (hd : Nat) (tl : List Nat)
+    (hvoters : cs.voters = hd :: tl)
+    (record : VoteRecord) (term : Nat)
+    (hwin : wonInTerm (hd :: tl) record term lead = true)
+    (hcovers : CandidateLogCovers E (hd :: tl) record term lead cs.logs (cs.logs lead)) :
+    ∀ k e, isQuorumCommitted cs.voters cs.logs k e →
+        isQuorumCommitted cs'.voters cs'.logs k e := by
+  intro k e hqc
+  -- Step 1: leader has e at k by leader completeness (LC3)
+  have hleader_has : cs.logs lead k = some e :=
+    leaderCompleteness hd tl record term lead cs.logs (cs.logs lead) k e hwin
+      (hvoters ▸ hqc) hcovers
+  -- Step 2: rewrite voter sets
+  have hv' : cs'.voters = hd :: tl := hstep.hvoters.trans hvoters
+  rw [hv']
+  rw [hvoters] at hqc
+  unfold isQuorumCommitted at hqc ⊢
+  -- Step 3: hasQuorum_monotone — wherever s holds, t holds
+  apply hasQuorum_monotone (hd :: tl) (fun w => decide (cs.logs w k = some e))
+  · -- Show: cs.logs w k = some e → cs'.logs w k = some e, for every w
+    intro w hw
+    simp only [decide_eq_true_eq] at hw ⊢
+    by_cases hwv : w = v
+    · subst hwv
+      by_cases hkle : k ≤ msg.prevLogIndex
+      · -- k ≤ prevLogIndex: voter v's log unchanged at prefix indices (CT2/CPS4)
+        rw [validAEStep_prefix_unchanged E hstep k hkle]; exact hw
+      · -- k > prevLogIndex: voter v's new log = leader's log at k (hcand_eq)
+        have hkgt : k > msg.prevLogIndex := Nat.lt_of_not_le hkle
+        rw [congrFun hstep.hlogs'_v k, hstep.hcand_eq k hkgt]
+        exact hleader_has
+    · -- w ≠ v: log unchanged (hlogs'_other)
+      rw [congrFun (hstep.hlogs'_other w hwv) k]; exact hw
+  · exact hqc
 
 /-! ## Evaluation examples -/
 

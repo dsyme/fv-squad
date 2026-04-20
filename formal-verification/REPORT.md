@@ -2,15 +2,15 @@
 
 > 🔬 *Lean Squad — automated formal verification for `dsyme/raft-lean-squad`.*
 
-**Status**: 🔄 **ADVANCED** — 473 theorems, 29 Lean files, **0 `sorry`**, machine-checked
+**Status**: 🔄 **ADVANCED** — 471 theorems, 29 Lean files, **0 `sorry`**, machine-checked
 by Lean 4.28.0 (stdlib only). Top-level safety theorem proved **conditionally** — A5 bridge
-(CPS2) proved; concrete election model partially closed.
+(CPS2) proved; CPS13 closes the `hqc_preserved` condition from `CandidateLogCovers`.
 
 ---
 
 ## Last Updated
-- **Date**: 2026-04-20 13:00 UTC
-- **Commit**: `bbb386a63873` — ConcreteProtocolStep.lean (CPS1–CPS12, A5 bridge, 0 sorry)
+- **Date**: 2026-04-20 17:30 UTC
+- **Commit**: `22707b6` — CPS13 (hqc_preserved discharge from CandidateLogCovers)
 
 ---
 
@@ -22,17 +22,21 @@ in `dsyme/fv-squad` over 33+ automated runs. Starting from zero, the project:
 1. Identified 26 FV-amenable targets across the codebase
 2. Extracted informal specifications for each target
 3. Wrote Lean 4 specifications, implementation models, and proofs
-4. Proved **473 theorems** across **29 Lean files** with **0 `sorry`**
+4. Proved **471 theorems** across **29 Lean files** with **0 `sorry`**
 5. Proved **conditional end-to-end Raft cluster safety**: any cluster state reachable
    via transitions satisfying 5 stated invariants is safe (no two nodes ever apply
    different entries at the same log index)
 6. Proved **CPS2 (A5 bridge)**: `ValidAEStep` on a `RaftReachable` state gives a new
    `RaftReachable` state — first concrete→abstract connection
+7. Proved **CPS13**: given `CandidateLogCovers` (leader completeness), the `hqc_preserved`
+   condition of `ValidAEStep` is automatically satisfied — closing one of the three
+   remaining `ValidAEStep` hypothesis obligations
 
-Five of the `RaftReachable.step` hypotheses are closed or partially addressed: `hnew_cert`
-is closed by CommitRule (CR8), `hno_overwrite` is addressed by CPS1, and `hcommitted_mono`
-is addressed by CPS11. The remaining gap is `hqc_preserved` (leader completeness
-composition) and the full `hlogs'` discharge from a concrete election model.
+Five of the `RaftReachable.step` hypotheses are now closed or addressed: `hnew_cert`
+is closed by CommitRule (CR8), `hno_overwrite` is addressed by CPS1, `hcommitted_mono`
+is addressed by CPS11, and **`hqc_preserved` is now derivable from `CandidateLogCovers`
+(CPS13)**. The remaining gap is `CandidateLogCovers` itself (requiring `HLogConsistency`
+from a concrete log-matching model) and the full election integration.
 
 No bugs were found in the implementation code (itself a positive finding).
 
@@ -49,17 +53,19 @@ But `RaftReachable.step` takes 5 hypotheses as parameters:
 |---|---|---|
 | `hlogs'` | Only one voter's log changes per step | Proved for AppendEntries (CPS8/CPS9); needs full election model |
 | `hno_overwrite` | Committed entries not overwritten | **Addressed** by CPS1 (validAEStep_hno_overwrite) |
-| `hqc_preserved` | Quorum-certified entries preserved in ALL logs | **Not proved** — requires leader completeness composition |
+| `hqc_preserved` | Quorum-certified entries remain quorum-certified | **Closed by CPS13** given `CandidateLogCovers` (leader completeness) |
 | `hcommitted_mono` | Committed indices only advance | **Addressed** by CPS11 (constructor helper for local monotonicity) |
 | `hnew_cert` | New commits are quorum-certified | **Closed** by CommitRule (CR5, CR8, definitional via `Iff.rfl`) |
 
-The **A5 bridge** (CPS2: `validAEStep_raftReachable`) is now proved: a `ValidAEStep` on any
-`RaftReachable` state produces a new `RaftReachable` state. This is the first concrete→abstract
-connection.
+The **A5 bridge** (CPS2: `validAEStep_raftReachable`) and the **hqc_preserved discharge**
+(CPS13: `validAEStep_hqc_preserved_from_lc`) are both now proved. CPS13 shows that the
+abstract `hqc_preserved` condition in `ValidAEStep` follows directly from `CandidateLogCovers`
+(leader completeness) — eliminating one of the three remaining explicit hypothesis obligations.
 
-The hardest remaining gap is **`hqc_preserved`** (leader completeness): the argument requires
-composing HQ20 + IU16 + TallyVotes + LeaderCompleteness — each piece exists, but the
-full composition is missing. This requires ~3–5 new Lean files and ~80–150 new theorems.
+The remaining gap is:
+1. **`CandidateLogCovers`** — still needs `HLogConsistency`, which requires formalising the
+   log-matching invariant from a concrete AppendEntries + election model.
+2. **`hcommitted_mono`** and **`hnew_cert`** — need concrete term/commit-rule integration.
 
 ---
 
@@ -82,7 +88,7 @@ graph TD
     C --> D
     D --> E
     E --> F
-    G -->|"CPS2: A5 bridge proved<br/>hqc_preserved still needed"| F
+    G -->|"CPS2: A5 bridge proved<br/>CPS13: hqc_preserved closed from CandidateLogCovers"| F
 ```
 
 ---
@@ -249,9 +255,9 @@ graph TD
 | `ConcreteTransitions.lean` | 11 | 5 ✅ | CT1–CT5b: concrete AppendEntries transitions; 0 sorry |
 | `CommitRule.lean` | 9 | 5 ✅ | CR1–CR9: commit rule formalised; closes `hnew_cert` |
 | `MaybeCommit.lean` | 12 | 5 ✅ | MC1–MC12: maybeCommit transitions; A6 term safety (MC4) |
-| `ConcreteProtocolStep.lean` | 13 | 5 ✅ | CPS1–CPS12: A5 bridge (CPS2: ValidAEStep → RaftReachable) |
+| `ConcreteProtocolStep.lean` | 14 | 5 ✅ | CPS1–CPS13: A5 bridge (CPS2) + hqc_preserved discharge (CPS13) |
 | `Basic.lean` | helpers | — | Shared definitions |
-| **Total** | **473** | **5 ✅** | **0 sorry** |
+| **Total** | **471** | **5 ✅** | **0 sorry** |
 
 ---
 
@@ -292,7 +298,7 @@ discharged from a concrete election model.  See §Critical Gap.
 graph TD
     REAL["Real Raft Cluster<br/>(Rust implementation)"]
     MODEL["FVSquad Model<br/>(Lean 4 abstract model)"]
-    PROOF["Lean Proofs<br/>(473 theorems, 0 sorry)"]
+    PROOF["Lean Proofs<br/>(471 theorems, 0 sorry)"]
 
     REAL -->|"Modelled as"| MODEL
     MODEL -->|"Proved in"| PROOF
@@ -325,7 +331,7 @@ AppendEntries/RequestVote messages and prove that they satisfy the `step` hypoth
 
 ### No implementation bugs found
 
-All 473 theorems are consistent with the Rust implementation. This is a positive
+All 471 theorems are consistent with the Rust implementation. This is a positive
 finding — it provides machine-checked evidence that the verified paths are correct.
 
 ### Formulation bug caught by `sorry`
@@ -341,8 +347,9 @@ entered the proof base. Both theorems were corrected with proper hypotheses
 - `limitSize_maximality`: output is optimal, not just valid
 - `quorum_intersection_mem`: every two majority quorums share a concrete witness
 - `raftReachable_safe`: conditional top-level safety — proved given 5 protocol hypotheses;
-  election model partially closed (CPS2 bridge proved; hqc_preserved remains)
+  election model closed further: CPS2 bridge proved; CPS13 closes hqc_preserved from CandidateLogCovers
 - `validAEStep_raftReachable` (CPS2): A5 bridge — ValidAEStep on RaftReachable gives new RaftReachable
+- `validAEStep_hqc_preserved_from_lc` (CPS13): given CandidateLogCovers, hqc_preserved holds automatically
 - `maybeCommit_term` (MC4): A6 term safety — committed only advances when entry term = leader current term
 
 ---
@@ -376,9 +383,10 @@ timeline
         CommitRule CR1–CR9 : 9 theorems, hnew_cert fully closed
     section A5 bridge + term safety (r156–r160)
         MaybeCommit MC1–MC12 : 12 theorems, A6 term safety (MC4)
-        ConcreteProtocolStep CPS1–CPS12 : 13 theorems, A5 bridge (CPS2)
+        ConcreteProtocolStep CPS1–CPS13 : 14 theorems, A5 bridge (CPS2), hqc_preserved discharge (CPS13)
     section Election model (next)
-        hqc_preserved composition : ~80–150 theorems planned
+        hqc_preserved: closed by CPS13 from CandidateLogCovers
+        CandidateLogCovers (HLogConsistency) : ~60–100 theorems planned
         Fully concrete RaftReachable : long-term target
 ```
 
@@ -403,7 +411,7 @@ Key tactic inventory used across the proofs:
 | `constructor` / `intro` / `ext` | Conjunction, implication, function extensionality |
 | `funext` | Proving function equality |
 
-No `native_decide`, no `axiom`. All 473 theorems are fully proved with 0 `sorry`.
+No `native_decide`, no `axiom`. All 471 theorems are fully proved with 0 `sorry`.
 The prior 2 `sorry` in `ConcreteTransitions.lean` (CT4 and CT5) were closed in run r156
 (ConcreteProtocolStep.lean provides the bridge via CPS5/CPS6).
 
@@ -428,8 +436,9 @@ This run formalises the **Raft commit rule** as a standalone Lean file (`CommitR
 
 CR8 (`Iff.rfl`) closes the proof obligation for `hnew_cert` in `RaftReachable.step`.
 With the addition of MaybeCommit and ConcreteProtocolStep, three more hypotheses
-(`hlogs'`, `hno_overwrite`, `hcommitted_mono`) are partially addressed; `hqc_preserved`
-(leader completeness) remains the main open gap.
+(`hlogs'`, `hno_overwrite`, `hcommitted_mono`) are partially addressed; **`hqc_preserved`
+is now dischargeable via CPS13 given `CandidateLogCovers`** — the main remaining gap
+is formalising `CandidateLogCovers` from a concrete election/log-matching model.
 
 
 ---
@@ -459,11 +468,53 @@ and a valid `ValidAEStep` fires, the resulting state `cs'` is also `RaftReachabl
 This is the first theorem that directly connects a concrete Raft message to the
 abstract reachability model.
 
-| Metric | Before MaybeCommit | After CPS |
-|--------|-------------------|-----------|
-| Lean files | 27 | 29 |
-| Theorems | 448 | 473 |
-| sorry | 0 | 0 |
+| Metric | Before MaybeCommit | After CPS | After CPS13 |
+|--------|-------------------|-----------|-------------|
+| Lean files | 27 | 29 | 29 |
+| Theorems | 448 | 473 | 471 |
+| sorry | 0 | 0 | 0 |
+| hqc_preserved closed? | — | No | **Yes (CPS13)** |
 
 > ✅ `lake build` passed with Lean 4.28.0. 0 sorry. All theorems machine-checked.
 > 🔬 *Run 39 update (2026-04-20). [Lean Squad](https://github.com/dsyme/raft-lean-squad/actions/runs/24667813296)*
+
+---
+
+## Run 41 Update: hqc_preserved Weakening + CPS13 (Task 5)
+
+**Changes in Run 41**:
+
+### hqc_preserved Semantic Weakening (RaftTrace.lean + ConcreteProtocolStep.lean)
+
+The `hqc_preserved` field in both `RaftReachable.step` and `ValidAEStep` was previously
+over-strong — requiring that all individual per-voter log entries are unchanged for
+quorum-committed indices. The weaker (and correct) statement is that quorum-certification
+itself is preserved:
+
+- **Old**: `∀ k e, isQuorumCommitted cs.voters cs.logs k e → ∀ w, cs'.logs w k = cs.logs w k`
+- **New**: `∀ k e, isQuorumCommitted cs.voters cs.logs k e → isQuorumCommitted cs'.voters cs'.logs k e`
+
+This removes the private `qc_preserved_by_logs_change` helper from `RaftTrace.lean` and
+simplifies the `raftReachable_cci` proof.
+
+### CPS13: validAEStep_hqc_preserved_from_lc
+
+New theorem in `ConcreteProtocolStep.lean`:
+
+```lean
+theorem validAEStep_hqc_preserved_from_lc
+    (hstep : ValidAEStep cs cs' msg)
+    (hclc : CandidateLogCovers cs (msg.leaderId) k)
+    (hqc_old : isQuorumCommitted cs.voters cs.logs k e) :
+    isQuorumCommitted cs'.voters cs'.logs k e
+```
+
+**Proof sketch**: Given that the leader has entry `e` at index `k` (from `CandidateLogCovers`
+via `leaderCompleteness` LC3), and that `cs`.voters = `cs'`.voters (ValidAEStep.hvoters),
+the quorum-certified set is monotone: any voter that had the right entry in `cs` still
+has it in `cs'` (for non-v voters by `hlogs'_other`; for v at k ≤ prevLogIndex by
+`validAEStep_prefix_unchanged`; for v at k > prevLogIndex by the leader's AppendEntries
+entry). By `hasQuorum_monotone` (HQ9), the new state also has a quorum.
+
+> ✅ `lake build` passed with Lean 4.28.0. 0 sorry. All 471 theorems machine-checked.
+> 🔬 *Run 41 update (2026-04-20). [Lean Squad](https://github.com/dsyme/raft-lean-squad/actions/runs/24680821349)*

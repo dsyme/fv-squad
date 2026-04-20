@@ -43,7 +43,7 @@ RaftReachable.step  → one Raft step applied to a reachable state,
                        with hypotheses ensuring CCI is preserved:
   hlogs'         : only voter v's log changes
   hno_overwrite  : v's old committed entries are not overwritten
-  hqc_preserved  : quorum-certified entries preserved in ALL logs
+  hqc_preserved  : quorum-certified entries remain quorum-certified in new state
   hcommitted_mono: committed indices only advance (monotone)
   hnew_cert      : new committed entries are quorum-certified in new state
 ```
@@ -99,10 +99,10 @@ def initialCluster {E : Type} (voters : List Nat) : ClusterState E :=
     - **`hlogs'`**: only voter `v`'s log changes (one node processes AppendEntries).
     - **`hno_overwrite`**: old committed entries of voter `v` are not overwritten.
       (Corresponds to the `conflict > committed` Rust panic guard in `maybe_append`.)
-    - **`hqc_preserved`**: any quorum-certified entry in the old state is preserved
-      in **all** voters' logs in the new state.  This is the formal consequence of
-      leader completeness: the leader has all quorum-certified entries and only
-      appends entries from its own log.
+    - **`hqc_preserved`**: any quorum-certified entry in the old state remains
+      quorum-certified in the new state.  This is the formal consequence of leader
+      completeness: the leader has all quorum-certified entries and only appends
+      entries from its own log, so the quorum certification is preserved.
     - **`hcommitted_mono`**: committed indices only advance (monotonicity).
     - **`hnew_cert`**: any entry newly committed by any voter in the new state is
       quorum-certified in the new log state.  Captures the commit rule: a node only
@@ -121,10 +121,11 @@ inductive RaftReachable [DecidableEq E] : ClusterState E → Prop where
       (hlogs' : ∀ w, w ≠ v → cs'.logs w = cs.logs w)
       -- Voter v's old committed entries are not overwritten
       (hno_overwrite : ∀ k, cs.committed v ≥ k → cs'.logs v k = cs.logs v k)
-      -- Any quorum-certified entry in the old state is preserved in ALL voters' logs
-      -- (consequence of leader completeness: leaders only send entries they have)
+      -- Any quorum-certified entry in the old state remains quorum-certified in the new state
+      -- (consequence of leader completeness + AE: the leader has all QC entries and broadcasts
+      -- them; the weak form is sufficient for CommitCertInvariant preservation)
       (hqc_preserved : ∀ k e, isQuorumCommitted cs.voters cs.logs k e →
-          ∀ w, cs'.logs w k = cs.logs w k)
+          isQuorumCommitted cs'.voters cs'.logs k e)
       -- Committed indices only advance (monotone)
       (hcommitted_mono : ∀ w, cs'.committed w ≥ cs.committed w)
       -- Newly committed entries are quorum-certified in the new cluster state
@@ -153,20 +154,6 @@ theorem initialCluster_cci {E : Type} [DecidableEq E] (voters : List Nat) :
 
 /-! ## RT1: All reachable states satisfy CommitCertInvariant -/
 
-/-- Helper: if all voters' logs agree at index `k` between old and new cluster
-    state, and the old state is quorum-certified at `(k, e)`, then so is the new. -/
-private theorem qc_preserved_by_logs_change [DecidableEq E]
-    (voters : List Nat) (logs logs' : VoterLogs E) (k : Nat) (e : E)
-    (hpreserved : ∀ w, logs' w k = logs w k)
-    (hqc : isQuorumCommitted voters logs k e) :
-    isQuorumCommitted voters logs' k e := by
-  show hasQuorum voters (fun w => decide (logs' w k = some e)) = true
-  have hfn : (fun w => decide (logs' w k = some e)) =
-             (fun w => decide (logs w k = some e)) :=
-    funext fun w => by rw [hpreserved w]
-  rw [hfn]
-  exact hqc
-
 /-- **RT1** — Every `RaftReachable` cluster state satisfies `CommitCertInvariant`.
 
     **Proof**: by induction on the `RaftReachable` derivation.
@@ -180,7 +167,7 @@ private theorem qc_preserved_by_logs_change [DecidableEq E]
       - If `k ≤ cs.committed w` (**old committed**): the log at `k` is unchanged
         (`hno_overwrite` for `w = v`, `hlogs'` for `w ≠ v`), so the inductive
         hypothesis `ih` gives `isQuorumCommitted cs.voters cs.logs k e`, and
-        `hqc_preserved` translates this to `isQuorumCommitted cs'.voters cs'.logs k e`.
+        `hqc_preserved` directly translates this to `isQuorumCommitted cs'.voters cs'.logs k e`.
 
     **Significance**: this proof shows that `CommitCertInvariant` is an inductive
     invariant of the `RaftReachable` protocol model. -/
@@ -210,12 +197,8 @@ theorem raftReachable_cci [DecidableEq E] (cs : ClusterState E)
       -- Apply the inductive hypothesis to the old state
       have hqc_old : isQuorumCommitted cs_prev.voters cs_prev.logs k e :=
         ih w k e hold hlog_old
-      -- Translate to new state: hqc_preserved says all logs are unchanged at k
-      have hpreserved : ∀ w', cs_new.logs w' k = cs_prev.logs w' k :=
-        hqc_preserved k e hqc_old
-      -- hvoters : cs_prev.voters = cs_new.voters; rewrite in hqc_old
-      exact qc_preserved_by_logs_change cs_new.voters cs_prev.logs cs_new.logs k e
-              hpreserved (hvoters ▸ hqc_old)
+      -- hqc_preserved (weak) directly lifts the commitment to the new state
+      exact hqc_preserved k e hqc_old
 
 /-! ## RT2: All reachable states are cluster-safe -/
 
