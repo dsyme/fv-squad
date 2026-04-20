@@ -3,8 +3,8 @@
   "theorem_count": 483,
   "lean_file_count": 30,
   "sorry_count": 0,
-  "last_run": 43,
-  "hqc_preserved_gap": "ER1-ER12 proved in ElectionReachability.lean. Remaining: derive CandLogMatching from LMI + vote condition, and HWM from voterLog + isUpToDate at vote time. ER5+ER7+ER3 chain is ready once these are available.",
+  "last_run": 44,
+  "hqc_preserved_gap": "ER1-ER12 proved in ElectionReachability.lean. Two sufficient conditions available: (1) HWM path: ER5+ER7+ER3 chain; (2) Shared-source path: ER9+ER10 (most direct). Remaining: show shared-source log exists after concrete Raft election.",
   "aeneas_status": "permanently_blocked_no_new_privileges",
   "toolchain_notes": "no Mathlib, use 'theorem' not 'lemma', stdlib only. lakefile.toml has globs=[FVSquad.+*]",
   "notes": [
@@ -13,7 +13,8 @@
     "Run 40: MaybeCommit.lean proved. MC4 discharges A6.",
     "Run 41: RaftElection.lean (RE1-RE15) formalizes election safety; LeaderCompleteness.lean (LC1-LC7) defines CandidateLogCovers chain.",
     "Run 42: CORRESPONDENCE.md (11 missing sections) + CRITIQUE.md updated (CPS13, hqc_preserved, counts).",
-    "Run 43: Added FVSquad/ElectionReachability.lean with ER1-ER12 (12 theorems). lakefile.toml now has globs=[FVSquad.+*]. Remaining gap: derive HWM and CandLogMatching from concrete election protocol state."
+    "Run 43: Added FVSquad/ElectionReachability.lean with ER1-ER12 (12 theorems). lakefile.toml now has globs=[FVSquad.+*]. Remaining gap: derive HWM and CandLogMatching from concrete election protocol state.",
+    "Run 44: Task 2 (Informal Spec): raft_log_append_informal.md written. Task 7 (Critique): CRITIQUE.md updated with ER1-ER12 section (12 theorems, all High bug-catching potential), counts updated to 483/30/0. TARGETS.md: raft_log_append advanced to Phase 2."
   ],
   "run_history": [
     {"run": 38, "result": "ConcreteProtocolStep.lean (CPS1-CPS13). 13 theorems."},
@@ -21,12 +22,17 @@
     {"run": 40, "result": "MaybeCommit.lean (MC1-MC4). 4 theorems."},
     {"run": 41, "result": "RaftElection.lean + LeaderCompleteness.lean. 30 theorems."},
     {"run": 42, "result": "CORRESPONDENCE.md (11 sections) + CRITIQUE.md updates. No new proofs."},
-    {"run": 43, "result": "ElectionReachability.lean (ER1-ER12, 12 theorems). lakefile globs. TARGETS.md/RESEARCH.md updated. PR: lean-squad-run43-election-reachability."}
+    {"run": 43, "result": "ElectionReachability.lean (ER1-ER12, 12 theorems). lakefile globs. TARGETS.md/RESEARCH.md updated. PR: lean-squad-run43-election-reachability."},
+    {"run": 44, "result": "Task 2: raft_log_append_informal.md (Phase 2). Task 7: CRITIQUE.md + ElectionReachability section (ER1-ER12), counts 471->483, 29->30 files."}
   ],
   "next_steps": [
-    "1. Derive HWM from voterLog + isUpToDate check at vote time",
-    "2. Derive CandLogMatching from log-matching invariant (LMI) + vote condition",
-    "3. Close hqc_preserved end-to-end using ER5+ER7+ER3",
-    "4. Target 11 (progress_set) - lower priority"
+    "1. Task 3 (Lean Spec): Write FVSquad/RaftLogAppend.lean formal spec using raft_log_append_informal.md. Thin wrapper on LogUnstable truncate_and_append. Key theorems: committed-prefix-preserved, suffix-exact-match, last_index-return.",
+    "2. Task 5 (Proof): Prove ER-based theorems in new ElectionConcreteModel.lean showing shared-source log exists after election (5-15 theorems to close gap).",
+    "3. Task 11 (Paper): Update paper.tex with ElectionReachability section, theorem counts 483/30, run count 44."
+  ],
+  "informal_specs_written": [
+    "config_validate", "inflights", "log_unstable", "quorum_recently_active",
+    "find_conflict", "is_up_to_date", "maybe_append", "tally_votes",
+    "has_quorum", "limit_size", "progress", "raft_log_append"
   ]
 }
