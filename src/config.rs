@@ -216,3 +216,54 @@ impl Config {
         Ok(())
     }
 }
+
+// Task 8 Route B — config_validate correspondence test
+// Mirrors formal-verification/tests/config_validate/cases.json
+// and FVSquad/ConfigValidateCorrespondence.lean exactly.
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn base() -> Config {
+        Config {
+            id: 1,
+            ..Config::default()
+        }
+    }
+
+    #[test]
+    fn test_config_validate_correspondence() {
+        // (description, cfg, expected_ok)
+        let cases: Vec<(&str, Config, bool)> = vec![
+            ("case 1: valid default",
+                base(), true),
+            ("case 2: id=0",
+                Config { id: 0, ..base() }, false),
+            ("case 3: heartbeat_tick=0",
+                Config { heartbeat_tick: 0, ..base() }, false),
+            ("case 4: election_tick=heartbeat_tick (2)",
+                Config { election_tick: 2, ..base() }, false),
+            ("case 5: election_tick<heartbeat_tick (1<2)",
+                Config { election_tick: 1, ..base() }, false),
+            ("case 6: min_election_tick < election_tick (10<20)",
+                Config { min_election_tick: 10, ..base() }, false),
+            ("case 7: min_election_tick = election_tick (20) → valid",
+                Config { min_election_tick: 20, ..base() }, true),
+            ("case 8: min=max election tick (both 20)",
+                Config { min_election_tick: 20, max_election_tick: 20, ..base() }, false),
+            ("case 9: max_inflight_msgs=0",
+                Config { max_inflight_msgs: 0, ..base() }, false),
+            ("case 10: LeaseBased without check_quorum",
+                Config { read_only_option: ReadOnlyOption::LeaseBased, ..base() }, false),
+            ("case 11: LeaseBased with check_quorum=true → valid",
+                Config { read_only_option: ReadOnlyOption::LeaseBased, check_quorum: true, ..base() }, true),
+            ("case 12: max_uncommitted_size < max_size_per_msg (50 < 100)",
+                Config { max_size_per_msg: 100, max_uncommitted_size: 50, ..base() }, false),
+        ];
+
+        for (desc, cfg, expected_ok) in cases {
+            let got = cfg.validate().is_ok();
+            assert_eq!(got, expected_ok, "{desc}: validate().is_ok()={got}, want {expected_ok}");
+        }
+    }
+}

@@ -1,0 +1,12 @@
+[
+  {"id": 1, "sizes": [], "budget": 100, "expected_len": 0, "note": "empty list unchanged"},
+  {"id": 2, "sizes": [100], "budget": 0, "expected_len": 1, "note": "singleton always kept"},
+  {"id": 3, "sizes": [100,100,100,100,100], "budget": 500, "expected_len": 5, "note": "all fit at budget=500"},
+  {"id": 4, "sizes": [100,100,100,100,100], "budget": 400, "expected_len": 4, "note": "5th entry pushes to 500>400"},
+  {"id": 5, "sizes": [100,100,100,100,100], "budget": 220, "expected_len": 2, "note": "3rd pushes to 300>220"},
+  {"id": 6, "sizes": [100,100,100,100,100], "budget": 100, "expected_len": 1, "note": "2nd pushes to 200>100"},
+  {"id": 7, "sizes": [100,100,100,100,100], "budget": 0, "expected_len": 1, "note": "first always kept even at budget 0"},
+  {"id": 8, "sizes": [200,100,100], "budget": 350, "expected_len": 2, "note": "3rd pushes 400>350"},
+  {"id": 9, "sizes": [200,100,100], "budget": 200, "expected_len": 1, "note": "2nd pushes 300>200"},
+  {"id": 10, "sizes": [100,100,100], "budget": null, "expected_len": 3, "note": "no-limit: all kept"}
+]

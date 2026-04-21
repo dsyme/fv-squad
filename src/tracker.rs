@@ -386,3 +386,61 @@ impl ProgressTracker {
         }
     }
 }
+
+// Task 8 Route B — tally_votes correspondence test.
+// Mirrors formal-verification/tests/tally_votes/cases.json
+// and FVSquad/TallyVotesCorrespondence.lean exactly.
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::quorum::VoteResult;
+
+    fn make_tracker(voter_ids: &[u64], yes_ids: &[u64], no_ids: &[u64]) -> ProgressTracker {
+        let mut t = ProgressTracker::new(voter_ids.len());
+        t.conf = Configuration::new(voter_ids.iter().copied(), std::iter::empty());
+        for &id in yes_ids {
+            t.record_vote(id, true);
+        }
+        for &id in no_ids {
+            t.record_vote(id, false);
+        }
+        t
+    }
+
+    #[test]
+    fn test_tally_votes_correspondence() {
+        // (voters, yes_ids, no_ids, expected_granted, expected_rejected, expected_result)
+        let cases: &[(&[u64], &[u64], &[u64], usize, usize, VoteResult)] = &[
+            // Case 1: empty voters → (0, 0, Won)
+            (&[], &[], &[], 0, 0, VoteResult::Won),
+            // Case 2: [1], yes=[1] → (1, 0, Won)
+            (&[1], &[1], &[], 1, 0, VoteResult::Won),
+            // Case 3: [1], no=[1] → (0, 1, Lost)
+            (&[1], &[], &[1], 0, 1, VoteResult::Lost),
+            // Case 4: [1], no votes → (0, 0, Pending)
+            (&[1], &[], &[], 0, 0, VoteResult::Pending),
+            // Case 5: [1,2,3], yes=[1,2], no=[3] → (2, 1, Won)
+            (&[1, 2, 3], &[1, 2], &[3], 2, 1, VoteResult::Won),
+            // Case 6: [1,2,3], yes=[1], no=[2], missing=3 → (1, 1, Pending)
+            (&[1, 2, 3], &[1], &[2], 1, 1, VoteResult::Pending),
+            // Case 7: [1,2,3], no=[1,2], missing=3 → (0, 2, Lost)
+            (&[1, 2, 3], &[], &[1, 2], 0, 2, VoteResult::Lost),
+            // Case 8: [1,2,3], all yes → (3, 0, Won)
+            (&[1, 2, 3], &[1, 2, 3], &[], 3, 0, VoteResult::Won),
+            // Case 9: [1..5], yes=[1,2,3], no=[4,5] → (3, 2, Won)
+            (&[1, 2, 3, 4, 5], &[1, 2, 3], &[4, 5], 3, 2, VoteResult::Won),
+            // Case 10: [1..5], yes=[1], no=[2,3,4,5] → (1, 4, Lost)
+            (&[1, 2, 3, 4, 5], &[1], &[2, 3, 4, 5], 1, 4, VoteResult::Lost),
+        ];
+
+        for (i, &(voters, yes_ids, no_ids, exp_granted, exp_rejected, exp_result)) in
+            cases.iter().enumerate()
+        {
+            let t = make_tracker(voters, yes_ids, no_ids);
+            let (granted, rejected, result) = t.tally_votes();
+            assert_eq!(granted, exp_granted, "case {}: granted", i + 1);
+            assert_eq!(rejected, exp_rejected, "case {}: rejected", i + 1);
+            assert_eq!(result, exp_result, "case {}: result", i + 1);
+        }
+    }
+}

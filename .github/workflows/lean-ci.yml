@@ -4,11 +4,15 @@ on:
   pull_request:
     paths:
       - 'formal-verification/lean/**'
+      - 'formal-verification/tests/**'
+      - 'src/**'
   push:
     branches:
       - main
     paths:
       - 'formal-verification/lean/**'
+      - 'formal-verification/tests/**'
+      - 'src/**'
   workflow_dispatch:
 
 jobs:
@@ -102,3 +106,30 @@ jobs:
         with:
           name: lake-build-log
           path: /tmp/lake_build.log
+
+  correspondence-tests:
+    name: Rust Correspondence Tests
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install Rust stable
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Cache Cargo registry and build artefacts
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cargo/registry/index
+            ~/.cargo/registry/cache
+            ~/.cargo/git/db
+            target
+          key: ${{ runner.os }}-cargo-correspondence-${{ hashFiles('Cargo.lock') }}
+          restore-keys: ${{ runner.os }}-cargo-correspondence-
+
+      - name: Run correspondence tests
+        run: |
+          echo "=== Running Rust correspondence tests ==="
+          cargo test correspondence --features protobuf-codec 2>&1
+          echo "=== Correspondence tests done ==="

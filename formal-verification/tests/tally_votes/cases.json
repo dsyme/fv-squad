@@ -1,0 +1,12 @@
+[
+  {"id": 1, "voters": [], "yes_ids": [], "no_ids": [], "granted": 0, "rejected": 0, "result": "Won"},
+  {"id": 2, "voters": [1], "yes_ids": [1], "no_ids": [], "granted": 1, "rejected": 0, "result": "Won"},
+  {"id": 3, "voters": [1], "yes_ids": [], "no_ids": [1], "granted": 0, "rejected": 1, "result": "Lost"},
+  {"id": 4, "voters": [1], "yes_ids": [], "no_ids": [], "granted": 0, "rejected": 0, "result": "Pending"},
+  {"id": 5, "voters": [1,2,3], "yes_ids": [1,2], "no_ids": [3], "granted": 2, "rejected": 1, "result": "Won"},
+  {"id": 6, "voters": [1,2,3], "yes_ids": [1], "no_ids": [2], "granted": 1, "rejected": 1, "result": "Pending"},
+  {"id": 7, "voters": [1,2,3], "yes_ids": [], "no_ids": [1,2], "granted": 0, "rejected": 2, "result": "Lost"},
+  {"id": 8, "voters": [1,2,3], "yes_ids": [1,2,3], "no_ids": [], "granted": 3, "rejected": 0, "result": "Won"},
+  {"id": 9, "voters": [1,2,3,4,5], "yes_ids": [1,2,3], "no_ids": [4,5], "granted": 3, "rejected": 2, "result": "Won"},
+  {"id": 10, "voters": [1,2,3,4,5], "yes_ids": [1], "no_ids": [2,3,4,5], "granted": 1, "rejected": 4, "result": "Lost"}
+]

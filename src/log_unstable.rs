@@ -482,4 +482,78 @@ mod test {
             assert_eq!(u.entries_size, entries_size);
         }
     }
+
+    /// Task 8 Route B — log_unstable correspondence test.
+    /// Mirrors formal-verification/tests/log_unstable/cases.json
+    /// and FVSquad/LogUnstableCorrespondence.lean exactly.
+    #[test]
+    fn test_log_unstable_correspondence() {
+        let entries_size_of = |es: &[Entry]| es.iter().map(entry_approximate_size).sum::<usize>();
+
+        // u_entries: offset=5, entries=[term10@5, term20@6, term30@7], no snapshot
+        let u_entries = Unstable {
+            offset: 5,
+            entries: vec![new_entry(5, 10), new_entry(6, 20), new_entry(7, 30)],
+            entries_size: {
+                let es = vec![new_entry(5, 10), new_entry(6, 20), new_entry(7, 30)];
+                entries_size_of(&es)
+            },
+            snapshot: None,
+            logger: crate::default_logger(),
+        };
+
+        // u_snap: offset=5, no entries, snapshot at (index=4, term=9)
+        let u_snap = Unstable {
+            offset: 5,
+            entries: vec![],
+            entries_size: 0,
+            snapshot: Some(new_snapshot(4, 9)),
+            logger: crate::default_logger(),
+        };
+
+        // u_empty: offset=5, no entries, no snapshot
+        let u_empty = Unstable {
+            offset: 5,
+            entries: vec![],
+            entries_size: 0,
+            snapshot: None,
+            logger: crate::default_logger(),
+        };
+
+        // Case 1: maybeFirstIndex with entries only → None
+        assert_eq!(u_entries.maybe_first_index(), None, "case 1");
+
+        // Case 2: maybeFirstIndex with snapshot at index 4 → Some(5)
+        assert_eq!(u_snap.maybe_first_index(), Some(5), "case 2");
+
+        // Case 3: maybeLastIndex with entries at offset 5 → Some(7)
+        assert_eq!(u_entries.maybe_last_index(), Some(7), "case 3");
+
+        // Case 4: maybeLastIndex, empty, no snapshot → None
+        assert_eq!(u_empty.maybe_last_index(), None, "case 4");
+
+        // Case 5: maybeLastIndex with snapshot (snap_index=4) → Some(4)
+        assert_eq!(u_snap.maybe_last_index(), Some(4), "case 5");
+
+        // Case 6: maybeTerm at index 5 (first entry) → Some(10)
+        assert_eq!(u_entries.maybe_term(5), Some(10), "case 6");
+
+        // Case 7: maybeTerm at index 6 → Some(20)
+        assert_eq!(u_entries.maybe_term(6), Some(20), "case 7");
+
+        // Case 8: maybeTerm at index 7 → Some(30)
+        assert_eq!(u_entries.maybe_term(7), Some(30), "case 8");
+
+        // Case 9: maybeTerm at index 8 (beyond last) → None
+        assert_eq!(u_entries.maybe_term(8), None, "case 9");
+
+        // Case 10: maybeTerm before offset, no snapshot → None
+        assert_eq!(u_entries.maybe_term(4), None, "case 10");
+
+        // Case 11: maybeTerm at snap index 4 → Some(9)
+        assert_eq!(u_snap.maybe_term(4), Some(9), "case 11");
+
+        // Case 12: maybeTerm before snap index → None
+        assert_eq!(u_snap.maybe_term(3), None, "case 12");
+    }
 }
