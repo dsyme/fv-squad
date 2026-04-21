@@ -239,13 +239,47 @@ theorem RO7_advance_noop_if_absent
     exact h ((by simpa using heq : x = ctx) ▸ hx)
   simp [hfind]
 
+private theorem ro8_aux_mem_take
+    (l : List Nat) (ctx : Nat) (i : Nat)
+    (hi : l.findIdx? (· == ctx) = some i) :
+    ctx ∈ l.take (i + 1) := by
+  induction l generalizing i with
+  | nil => simp at hi
+  | cons x xs ih =>
+    simp only [List.findIdx?_cons] at hi
+    by_cases hcond : (x == ctx) = true
+    · rw [if_pos hcond] at hi
+      simp only [Option.some.injEq] at hi; subst hi
+      simp only [List.take_succ_cons, List.take_zero, List.mem_cons, List.not_mem_nil, or_false]
+      exact (beq_iff_eq.mp hcond).symm
+    · rw [if_neg hcond] at hi
+      cases h_xs : xs.findIdx? (· == ctx) with
+      | none => simp [h_xs] at hi
+      | some j =>
+        simp only [h_xs, Option.map_some, Option.some.injEq] at hi
+        subst hi
+        rw [List.take_succ_cons]
+        exact List.mem_cons.mpr (Or.inr (ih j h_xs))
+
 /-- **RO8** After `advance ctx`, `ctx` is not in the resulting queue.
-    Requires no-duplicates invariant maintained by `addRequest`. -/
+    Requires the no-duplicates invariant on `ro.queue` (maintained by `addRequest`). -/
 theorem RO8_advance_removes_ctx
     (ro : ReadOnly) (ctx : Ctx)
-    (h : ctx ∈ ro.queue) :
+    (h : ctx ∈ ro.queue)
+    (hnd : ro.queue.Nodup) :
     ctx ∉ (advance ro ctx).2.queue := by
-  sorry  -- Requires NoDuplicates invariant; to be proved in Task 5
+  obtain ⟨i, hi⟩ : ∃ i, ro.queue.findIdx? (· == ctx) = some i := by
+    cases h' : ro.queue.findIdx? (· == ctx) with
+    | some i => exact ⟨i, rfl⟩
+    | none =>
+      rw [List.findIdx?_eq_none_iff] at h'
+      exact absurd (h' ctx h) (by simp)
+  simp only [advance, hi]
+  intro hmem
+  have hmem_take := ro8_aux_mem_take ro.queue ctx i hi
+  rw [← List.take_append_drop (i + 1) ro.queue] at hnd
+  rw [List.nodup_append] at hnd
+  exact absurd rfl (hnd.2.2 ctx hmem_take ctx hmem)
 
 /-- **RO9** Empty `ReadOnly` satisfies `QueuePendingInv`. -/
 theorem RO9_inv_empty : QueuePendingInv { pending := [], queue := [] } := by
@@ -287,6 +321,21 @@ theorem RO12_pendingReadCount_zero_iff
     (ro : ReadOnly) :
     pendingReadCount ro = 0 ↔ ro.queue = [] := by
   simp [pendingReadCount]
+
+/-- **RO13** `addRequest` preserves `Nodup` on the queue.
+    Combined with `RO8`, this ensures the NoDuplicates invariant holds inductively. -/
+theorem RO13_addRequest_preserves_nodup
+    (ro : ReadOnly) (ctx : Ctx) (index : Nat) (selfId : Nat)
+    (hinv : QueuePendingInv ro)
+    (hnd : ro.queue.Nodup)
+    (hfresh : amember ctx ro.pending = false) :
+    (addRequest ro ctx index selfId).queue.Nodup := by
+  rw [RO2_addRequest_extends_queue _ _ _ _ hfresh, List.nodup_append]
+  refine ⟨hnd, by simp, fun a ha c hc => ?_⟩
+  simp only [List.mem_singleton] at hc
+  rw [hc]
+  intro heq
+  exact absurd (hinv.1 ctx (heq ▸ ha)) (by simp [hfresh])
 
 -- ═══════════════════════════════════════════════════════════
 -- #guard correspondence tests

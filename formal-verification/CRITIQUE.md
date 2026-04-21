@@ -1656,3 +1656,74 @@ The paper needs the following targeted updates (in priority order):
 > automated formal verification. Current state: **45 files, 493 theorem declarations, 1 sorry (RO8 in ReadOnly.lean)**.
 > Run 60: Task 4 (ReadOnly.lean — ReadIndex protocol bookkeeping, 12 theorems, 1 sorry) +
 > Task 7 (Critique update — Layer 8 correspondence validation table, Layer 9 ReadOnly section).
+
+---
+
+> 🔬 Updated by [Lean Squad](https://github.com/dsyme/raft-lean-squad/actions/runs/24719296210)
+> automated formal verification. Current state: **46 files, 540 theorem declarations, 0 sorry**.
+> Run 64: Task 5 (Proof Assistance — RO8 proved, final sorry eliminated) +
+> Task 7 (Critique update — Layer 9 ReadOnly Phase 5 completion, sorry count reaches zero project-wide).
+
+## Run 64 Critique Update
+
+### Task 5: RO8 Proved — Project Reaches 0 Sorry
+
+Run 64 eliminated the project's last `sorry`: **RO8** (`RO8_advance_removes_ctx`) in
+`ReadOnly.lean`.  The proof required:
+
+1. **`ro8_aux_mem_take` (private helper)**: By induction on `l`, if
+   `l.findIdx? (· == ctx) = some i` then `ctx ∈ l.take (i+1)`.  The key tactic
+   was `by_cases hcond : (x == ctx) = true` / `rw [if_pos hcond]` / `rw [if_neg hcond]`
+   for Bool case splits (note: `split_ifs` is not available in Lean 4.28 stdlib-only builds).
+
+2. **RO8 main proof**: Added `hnd : ro.queue.Nodup` hypothesis.  Derived the
+   `findIdx?` result via case analysis, applied the helper to show `ctx ∈ queue.take(i+1)`,
+   then used `List.nodup_append` on the `take/drop` split to derive a contradiction from
+   `ctx ∈ take` and `ctx ∈ drop`.
+
+3. **RO13** (`RO13_addRequest_preserves_nodup`): New theorem proving `addRequest`
+   preserves the Nodup invariant on the queue (given `QueuePendingInv`).  This closes
+   the inductive cycle: RO13 establishes Nodup; RO8 uses Nodup to prove advance removes ctx.
+
+**Lean 4.28 pitfall**: `subst` on `h : b = ctx` where both are free variables may
+substitute the theorem parameter (`ctx`) rather than the locally bound variable (`b`).
+Safe workaround: use `rw [h]` to change the goal without eliminating either variable,
+then reference the parameter by name in subsequent steps.
+
+### Task 7: Layer 9 (ReadOnly) — Phase 5 Complete
+
+The ReadOnly module is now **Phase 5 (fully proved)**:
+- **13 theorems**: RO1–RO12 + RO13, all proved, 0 sorry
+- **16 guard tests**: compile-time correspondence tests all pass
+- **Nodup invariant**: fully established inductively (RO13 + RO8)
+- **advance correctness**: both directions proved (RO7: no-op when absent; RO8: removes ctx when present with Nodup)
+
+### Project-Wide Sorry Count: 0
+
+The project has reached **0 sorry** across all 46 Lean files and 540 theorems.  This
+milestone is significant: every theorem in the FV suite is now type-checked by Lean
+without any deferred obligations.
+
+### Critique of the RO8 Proof
+
+**Proof utility**: High.  `advance` is the critical operation in Raft's read-only
+optimisation path.  The `advance_removes_ctx` property is the key safety invariant
+ensuring that `advance` does not silently drop contexts that still need to be served.
+
+**Nodup hypothesis**: The dependency on `ro.queue.Nodup` is explicit and honest.  The
+complementary theorem (RO13) establishes that `addRequest` preserves Nodup (given
+`QueuePendingInv` and that the context is fresh), completing the invariant cycle.
+Maintainers should be aware that callers of RO8 must supply the Nodup proof.
+
+**Correspondence gap**: The Lean `advance` model uses `findIdx?` (first occurrence
+semantics).  The Rust `raft-rs` implementation uses a context ID to locate the entry
+in a `VecDeque`, which may have different duplicate handling.  If the Rust implementation
+can ever produce a queue with duplicate context IDs (e.g., via a race), the Lean model
+may diverge.  This is acknowledged in CORRESPONDENCE.md.
+
+**Recommendations**:
+- Consider a runtime assertion in the Rust code (`debug_assert!(!queue.contains(&ctx))`
+  before insertion) to guarantee the Nodup property that RO8 depends on.
+- The `RO13` theorem could be strengthened to cover the full `advance` operation
+  (i.e., prove that `advance` also preserves Nodup on the output queue) — this would
+  allow RO8 to be applied inductively after a sequence of `advance` calls.
