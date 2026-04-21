@@ -7,8 +7,8 @@ correspondence level, known divergences, and the impact on any proofs that rely 
 definition.
 
 ## Last Updated
-- **Date**: 2026-04-21 01:19 UTC
-- **Commit**: `1b8ab37` — Run 49: Task 8 (find_conflict correspondence tests) + Task 5 (AEBroadcastInvariant.lean, 10 theorems, 0 sorry)
+- **Date**: 2026-04-21 02:00 UTC
+- **Commit**: `1aa1c89` — Run 50: Task 6 (ElectionReachability correspondence section; ABI6–ABI8 stale-sorry fix) + Task 4→5 (RaftLogAppend P6/P7: ra_batch_term, ra_beyond_batch_none proved)
 
 ---
 
@@ -1365,11 +1365,11 @@ is honest; the proofs show *that* leader completeness implies `hqc_preserved`, a
 
 ---
 
-## `FVSquad/RaftLogAppend.lean` — RaftLog::append (14 theorems, 0 sorry)
+## `FVSquad/RaftLogAppend.lean` — RaftLog::append (19 theorems, 0 sorry)
 
 **Lean file**: `formal-verification/lean/FVSquad/RaftLogAppend.lean`
 **Rust source**: [`src/raft_log.rs#L382`](../src/raft_log.rs#L382)
-**Phase**: 5 ✅ (14 theorems, 0 sorry)
+**Phase**: 5 ✅ (19 theorems, 0 sorry)
 
 Formalises `RaftLog::append` from `src/raft_log.rs` (line 382).  Imports and reuses
 `FVSquad/LogUnstable.lean` for the `Unstable`, `truncateAndAppend`, and `maybeTerm`
@@ -1385,6 +1385,8 @@ definitions.
 | `raftLogAppend` | `RaftLog::append` | `src/raft_log.rs#L382` | Abstraction | Success path only; see divergences |
 | `taa_maybeTerm_before` (RA-PFIX1) | `Unstable::truncate_and_append` monotonicity | `src/raft_log.rs#L382` | Exact | Monotonicity property of `truncateAndAppend` |
 | `ra_committed_prefix_preserved` (RA-PFIX3) | Intent of `if after < committed { fatal!() }` guard | `src/raft_log.rs#L393` | Exact | Machine-checked proof that the panic guard achieves its stated purpose |
+| `ra_batch_term` (P6 / RA-BATCH) | Batch placement postcondition of `RaftLog::append` | `src/raft_log.rs#L382` | Abstraction | For `k ∈ [first.1, first.1 + batch.length)`, `maybeTerm (raftLogAppend rl batch).unstable k = batch[k-first.1]?.map (.2)` |
+| `ra_beyond_batch_none` (P7 / RA-BEYOND) | Beyond-batch erasure postcondition | `src/raft_log.rs#L382` | Abstraction | For `k ≥ first.1 + batch.length`, `maybeTerm (raftLogAppend rl batch).unstable k = none` |
 
 ### Known divergences (Abstraction-level)
 
@@ -1416,6 +1418,12 @@ The 14 theorems provide complete postcondition coverage for the success path of
 - **RA-PFIX3** (`ra_committed_prefix_preserved`): proves that the panic guard (`committed < first.1`)
   guarantees committed entries are never modified.  This is the machine-checked proof that
   the Rust `fatal!` guard achieves its stated safety purpose.
+- **P6** (`ra_batch_term`): proves that every index in the appended batch range contains
+  the expected term from the batch.  This is the primary batch-placement postcondition.
+- **P7** (`ra_beyond_batch_none`): proves that every index beyond the batch is `none`
+  after append.  This guarantees that old stale entries past the new batch extent are
+  erased.  Together with P6, this gives complete coverage of the unstable segment after
+  `raftLogAppend`.
 
 **Assessment**: Abstraction-level (success path only).  All divergences are documented and
 conservative.  No proved theorem is invalidated by the omission of the panic path — the
@@ -1488,6 +1496,57 @@ is a tractable next step (~10–20 theorems in `AEBroadcastInvariant.lean`).
 
 ---
 
+## `FVSquad/ElectionReachability.lean` — Election Reachability Bridges (12 theorems, 0 sorry)
+
+**Lean file**: `formal-verification/lean/FVSquad/ElectionReachability.lean`
+**Rust source**: `src/raft.rs` (election logic), `src/raft_log.rs` (AE prefix handling)
+**Phase**: 5 ✅ (12 theorems, 0 sorry)
+**New in Run 43.**
+
+Bridges the abstract `CandLogMatching` / `CandLogCoversLastIndex` chain (from
+`LeaderCompleteness.lean`) to concrete sufficient conditions expressible in terms of
+Raft's AE mechanism.  The central abstraction is the *high-water mark* (HWM): for each
+voter `w`, the existence of a single index `j ≥ (voterLog w).index` at which the
+candidate's and voter's logs agree suffices to derive `CandidateLogCovers`.
+
+### Theorem mapping
+
+| ID   | Lean name | Rust counterpart | Correspondence | Notes |
+|------|-----------|-----------------|----------------|-------|
+| ER1 | `candLogCoversLastIndex_of_highWaterMark` | AE index propagation | Abstract | HWM + CandLogMatching → CandLogCoversLastIndex |
+| ER2 | `hlogConsistency_of_highWaterMark` | AE consistency | Abstract | HWM → HLogConsistency |
+| ER3 | `candidateLogCovers_of_highWaterMark` | Election quorum | Abstract | HWM + VRC + voterIdx → CandidateLogCovers |
+| ER4 | `leaderCompleteness_of_highWaterMark` | Leader completeness | Abstract | Full chain: HWM → leaderCompleteness |
+| ER5 | `candLogMatching_of_extendedLMI` | Log Matching Invariant | Abstract | Extended LMI (candidate as extra voter) → CandLogMatching |
+| ER6 | `hwm_of_shared_entry` | AE single-entry agreement | Abstract | Shared entry at j ≥ voterIdx → HWM |
+| ER7 | `hwm_of_lmi_and_candEntry` | LMI + candidate entry | Abstract | LMI + voter entry + candidate entry at j → HWM |
+| ER8 | `candidateLogCovers_of_extendedLMI` | Extended LMI chain | Abstract | Extended LMI + hcand_eq + VRC + HWM → CandidateLogCovers |
+| ER9 | `candLogCoversLastIndex_of_sharedSource` | Shared-leader AE | Abstract | Reference log R (shared prefix) → CandLogCoversLastIndex |
+| ER10 | `candidateLogCovers_of_sharedSource` | Shared-leader AE | Abstract | Reference log R → CandidateLogCovers (full chain) |
+| ER11 | `leaderCompleteness_of_sharedSource` | Leader completeness | Abstract | Reference log R → leaderCompleteness (end-to-end) |
+| ER12 | `hwm_of_ae_prefix` | AE prefix preservation | Abstract | AE prefix step preserves prior HWM agreements |
+
+### Correspondence assessment
+
+All 12 theorems are at **abstraction** level — they reason about pure mathematical
+properties of log functions, not about the Lean/Rust implementation of `RaftLog`.
+
+**Key design choices:**
+- `voterLog w` is treated as an abstract function `Nat → LogId`; no concrete Rust `RaftLog`
+  struct is used here.
+- The "reference log" R in ER9–ER11 models the state of the leader's log after a
+  broadcast round; it is a pure sequence, not a `RaftLog`.
+- `ValidAEStep` (from `ConcreteProtocolStep.lean`) is the concrete hook; ER files sit
+  one level above it.
+
+**Relation to the main proof chain**: ER9 (`candLogCoversLastIndex_of_sharedSource`) plus
+`AEBroadcastInvariant.lean` (ABI7) closes the largest remaining gap: concrete
+`ValidAEStep` steps → hae → ECM6 → `hqc_preserved` → CPS13 → `RaftReachable.step`.
+
+**No mismatches found.**
+
+---
+
 ## `FVSquad/AEBroadcastInvariant.lean` — AE Broadcast Inductive Invariant (10 theorems, 0 sorry)
 
 **New in Run 49.** This file closes the gap identified in `ElectionConcreteModel.lean`: ECM6
@@ -1503,15 +1562,12 @@ takes `hae` as an abstract hypothesis. This file derives `hae` inductively from 
 | `haeCovered_extend` (ABI3) | — | — | Abstract | One AE step extends covered voter set |
 | `haeCovered_nil` (ABI4) | — | — | Abstract | Empty covered set (base case) |
 | `haeCovered_induction` (ABI5) | — | — | Abstract | Induction schema over broadcast sequence |
-| `hae_of_broadcast` (ABI6) | Full AE broadcast | — | Abstract | **`sorry`** — needs a concrete broadcast type |
-| `hae_of_two_voter_broadcast` (ABI6b) | Two-voter case | — | Abstract | **`sorry`** — specific case |
-| `hqc_preserved_of_broadcast` (ABI7) | — | — | Abstract | **`sorry`** — composes ABI6 + ECM6 |
-| `hae_broadcast_invariant_schema` (ABI8) | — | — | Abstract | **`sorry`** — schema only |
+| `hae_of_broadcast` (ABI6) | Full AE broadcast | — | Abstract | ✅ proved — broadcast list of `ValidAEStep`s → hae |
+| `hae_of_two_voter_broadcast` (ABI6b) | Two-voter case | — | Abstract | ✅ proved — specific two-voter case |
+| `hqc_preserved_of_broadcast` (ABI7) | — | — | Abstract | ✅ proved — composes ABI6 + ECM6 |
+| `hae_broadcast_invariant_schema` (ABI8) | — | — | Abstract | ✅ proved — schema theorem |
 
-**Theorems fully proved (0 sorry)**: ABI1, ABI1b, ABI2, ABI3, ABI4, ABI5.
-**Theorems with sorry**: ABI6, ABI6b, ABI7, ABI8 (4 sorry — require a concrete broadcast type to be defined first).
-
-**Known gap**: ABI6 and ABI7 need a definition of the concrete broadcast sequence (a list of `ValidAEStep`s, one per voter) before the proof can be completed. This is the primary remaining gap in the ECM6 chain.
+**All 10 theorems proved (0 sorry)**: ABI1–ABI8 including ABI6b.
 
 **No mismatches found.**
 
@@ -1519,25 +1575,23 @@ takes `hae` as an abstract hypothesis. This file derives `hae` inductively from 
 
 ## Known Mismatches
 
-No known mismatches as of this update.  All 32 Lean models are at *abstraction* or *exact*
+No known mismatches as of this update.  All 34 Lean files are at *abstraction* or *exact*
 level.  The honest residual gaps are:
 
-1. **`hae` hypothesis partially derived** — AEBroadcastInvariant.lean (Run 49) proves the
-   single-voter and preservation steps (ABI1–ABI5, 0 sorry). The full broadcast induction
-   (ABI6–ABI7) still uses `sorry` pending a concrete broadcast-sequence type definition.
-   ECM6 proves `hqc_preserved` conditional on `hae`; the gap is now much smaller.
-2. **`RaftReachable.step` hypotheses are abstract** — They precisely capture what
+1. **`RaftReachable.step` hypotheses are abstract** — They precisely capture what
    preserves `CommitCertInvariant` but do not yet correspond to concrete Raft protocol
    transitions end-to-end. `ConcreteProtocolStep.lean` (CPS2) provides the A5 bridge
    (`ValidAEStep → RaftReachable`), and ECM6 provides `hqc_preserved` conditional on `hae`.
-3. **A6 term safety not yet connected to `RaftReachable.step`** — `MaybeCommit.lean`
+   `ElectionReachability.lean` (ER9–ER11) provides the shared-source bridge; the remaining
+   obligation is to show a concrete Raft election history produces a shared-source log.
+2. **A6 term safety not yet connected to `RaftReachable.step`** — `MaybeCommit.lean`
    (MC4) formally proves A6, and `CommitRule.lean` (CR8) bridges the commit rule to
    `hnew_cert`. Connecting MC4 directly into the `RaftReachable.step` chain remains
    future work.
-4. **Panic paths omitted** — `RaftLogAppend.lean` covers the success path of `RaftLog::append`
+3. **Panic paths omitted** — `RaftLogAppend.lean` covers the success path of `RaftLog::append`
    only.  The `fatal!()` panic on `ents[0].index - 1 < committed` is not modelled.
 
 These are all documented modelling choices, not semantic errors. No proved theorem is
 invalidated by these gaps.
 
-> 🔬 Updated by [Lean Squad](https://github.com/dsyme/raft-lean-squad/actions/runs/24698399972) automated formal verification. Run 49: Task 8 (find_conflict correspondence tests, 17 #guard assertions) + Task 5 (AEBroadcastInvariant.lean, 10 theorems: ABI1–ABI5 proved 0 sorry; ABI6–ABI8 with sorry pending broadcast type). 34 Lean files, 515 theorems (preliminary count).
+> 🔬 Updated by [Lean Squad](https://github.com/dsyme/raft-lean-squad/actions/runs/24699525834) automated formal verification. Run 50: Task 6 (Correspondence review — added ElectionReachability.lean section (12 theorems, ER1–ER12, all proved 0 sorry); fixed stale ABI6–ABI8 sorry annotations; updated Known Mismatches) + Task 4→5 (RaftLogAppend P6/P7: ra_batch_term and ra_beyond_batch_none proved, +5 theorems → 19 total). 34 Lean files, ~520 theorems, 2 sorry (FindConflictCorrespondence.lean).
