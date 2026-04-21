@@ -2013,8 +2013,90 @@ The 14 `#guard` tests cover:
 
 ---
 
-## Last Updated
-- **Date**: 2026-04-21 17:19 UTC
-- **Commit**: `865b8cbf96a6a2b696ea95c782c3ca3b58c11a0f`
+## `FVSquad/FindConflictByTerm.lean` — FindConflictByTerm (10 theorems, 0 sorry)
 
-> 🔬 Updated by [Lean Squad](https://github.com/dsyme/raft-lean-squad/actions/runs/24736307285) automated formal verification. Run 66: Task 6 Correspondence Review — added ReadOnly.lean (13T, 0 sorry) and ReadOnlyCorrespondence.lean (14 #guard) sections. Task 2: new informal spec for find_conflict_by_term. 46 Lean files, 542 theorems, 0 sorry.
+**New in Run 67.** Formal specification and proof of `RaftLog::find_conflict_by_term`
+from `src/raft_log.rs` (lines 218–257). This function implements the fast-reject hint
+mechanism: when a follower rejects an AppendEntries with `(conflict_index, conflict_term)`,
+the leader scans backwards from `conflict_index` to find the largest position in its log
+whose term is ≤ `conflict_term`, enabling the follower to skip an entire diverging term
+in one round trip.
+
+### Target: `find_conflict_by_term` — `src/raft_log.rs#L218-L257`
+
+Rust source: [`src/raft_log.rs#L218-L257`](../src/raft_log.rs)
+Informal spec: [`formal-verification/specs/find_conflict_by_term_informal.md`](specs/find_conflict_by_term_informal.md)
+
+#### Lean definitions
+
+| Lean name | Rust name | Rust location | Correspondence | Notes |
+|-----------|-----------|---------------|----------------|-------|
+| `LogNonDecreasing` | *(invariant)* | `raft_log.rs` | Exact | `∀ i, logTerm i ≤ logTerm (i+1)`; Raft log monotonicity |
+| `LogDummyZero` | *(invariant)* | `raft_log.rs` | Exact | `logTerm 0 = 0`; dummy entry at index 0 |
+| `findConflictByTerm` | inner scan of `find_conflict_by_term` | `raft_log.rs#L218` | Abstraction | Pure backward scan; storage errors abstracted away |
+| `findConflictByTermFull` | `RaftLog::find_conflict_by_term` | `raft_log.rs#L218` | Abstraction | Adds out-of-range early-return guard (`index > last_index → (index, none)`) |
+
+#### Known divergences (Abstraction-level)
+
+1. **Log representation**: `logTerm : Nat → Nat` models the log as a total function from
+   index to term. The Rust `RaftLog` stores entries in `Vec<Entry>` plus an `unstable` buffer.
+   The Lean model abstracts away storage layout entirely.
+2. **Storage errors**: The Rust function returns `(index, None)` when `logTerm` returns
+   `Err(_)` (storage failure). The Lean model treats `logTerm` as infallible. The `Err` path
+   is therefore not modelled — only the success path is covered.
+3. **Out-of-range guard**: When `index > last_index`, the Rust returns `(index, None)` early.
+   This is captured by `findConflictByTermFull` but not by `findConflictByTerm` itself.
+4. **Type widths**: Indices and terms are `Nat` in Lean vs `u64` in Rust. Overflow is not
+   modelled — in practice, index values are far below `u64::MAX`.
+5. **Index 0 assumption**: The Lean model assumes `LogDummyZero` (term at index 0 is 0)
+   to guarantee termination. The Rust implementation has the same implicit assumption
+   (the dummy entry at index 0 always exists with term 0).
+
+#### Proved theorems (FCB1–FCB9 + helper)
+
+| Theorem | Statement | Tactic |
+|---------|-----------|--------|
+| `logNonDecreasing_le` | `LogNonDecreasing + i ≤ j → logTerm i ≤ logTerm j` | `induction` + `omega` |
+| FCB1 | Result index ≤ input index | `induction` |
+| FCB2 | Result term ≤ `term` (given `LogDummyZero`) | `induction` + `omega` |
+| FCB3 | Maximality: any `i ≤ index` with `logTerm i ≤ term` satisfies `i ≤ result_index` | `induction` |
+| FCB4 | If `logTerm index ≤ term`, then result = `(index, some ...)` | `simp` |
+| FCB5 | If `index > lastIndex`, `findConflictByTermFull` returns `(index, none)` | `simp` |
+| FCB6 | `findConflictByTerm` always returns `some` (no `none` inner path) | `induction` |
+| FCB7 | In-range: `findConflictByTermFull` delegates to `findConflictByTerm` | `simp` |
+| FCB8 | Base case: `findConflictByTerm logTerm 0 term = (0, some (logTerm 0))` | `simp` |
+| FCB9 | Under `LogNonDecreasing`, result is the maximum `i ≤ index` with `logTerm i ≤ term` | `induction` |
+
+**FCB3 (maximality)** is the core correctness theorem: the scan returns the **largest**
+index with qualifying term. Proved by induction on `index` without any monotonicity
+assumption — the structural backward-scan definition suffices.
+
+**FCB9** strengthens FCB3 under `LogNonDecreasing`: it proves the result is the *global*
+maximum (not just any lower bound), using `logNonDecreasing_le` to show that if any
+`i > result` had `logTerm i ≤ term`, the scan would have stopped there.
+
+#### Impact on proofs
+
+The `find_conflict_by_term` function is invoked in the `handle_append_response` fast-reject
+path. FCB9 establishes that the leader's backward scan correctly identifies the maximum
+skip position given the follower's hint — a key step toward proving that the optimised
+AppendEntries protocol converges in O(conflicting terms) rounds rather than O(conflicting
+entries). No correspondence test file has been written for this target yet.
+
+**Assessment**: The Lean model is a sound abstraction of the success path. Storage errors
+and the `Err` early-return path are the only unmodelled branches. These are unreachable
+under normal operation (storage failure is a fatal condition). No mismatches found.
+
+### Validation evidence
+
+- **Lean side**: 10 proved theorems in `FVSquad/FindConflictByTerm.lean` (lake build ✅, 0 sorry).
+- **Rust side**: No dedicated Rust correspondence test yet (Route B not yet applied to this target).
+- **Correspondence test status**: ⬜ Not yet — planned as a next step.
+
+---
+
+## Last Updated
+- **Date**: 2026-04-21 22:30 UTC
+- **Commit**: `e069d2e`
+
+> 🔬 Updated by [Lean Squad](https://github.com/dsyme/raft-lean-squad/actions/runs/24749616887) automated formal verification. Run 68: Task 6 Correspondence Review — added `FindConflictByTerm.lean` (10T, 0 sorry) section. Task 10: REPORT.md updated (548T/47F/0sorry, Runs 63-67). 47 Lean files, 548 theorems, 0 sorry.

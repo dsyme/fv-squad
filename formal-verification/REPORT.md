@@ -2,17 +2,17 @@
 
 > 🔬 *Lean Squad — automated formal verification for `dsyme/raft-lean-squad`.*
 
-**Status**: 🔄 **ADVANCED** — 538 theorems, 46 Lean files, **1 `sorry`**, machine-checked
+**Status**: 🔄 **ADVANCED** — 548 theorems, 47 Lean files, **0 `sorry`**, machine-checked
 by Lean 4.28.0 (stdlib only). Top-level safety theorem proved **conditionally**. Eight-layer
 proof architecture complete. Layer 8 (correspondence validation): 12 files, 167+ `#guard`
-assertions, 12 Rust tests. Layer 9 (ReadOnly): 12 theorems, 1 sorry (RO8 requires
-NoDuplicates), informal spec written.
+assertions, 12 Rust tests. Layer 9 (ReadOnly): 13 theorems, **0 sorry**, fully proved.
+Layer 10 (FindConflictByTerm): 10 theorems, 0 sorry, backward-scan fast-reject algorithm.
 
 ---
 
 ## Last Updated
-- **Date**: 2026-04-21 10:08 UTC
-- **Commit**: `30800ef` — Runs 51–62: 0-sorry milestone, ReadOnly Phase 4, ReadOnly correspondence
+- **Date**: 2026-04-21 22:30 UTC
+- **Commit**: `e069d2e` — Runs 63–67: RO8 proved, ReadOnly complete (13T/0sorry), FindConflictByTerm (10T)
 
 ---
 
@@ -760,10 +760,10 @@ Total: **12 correspondence files, 167+ `#guard` assertions, 12 Rust test functio
 changes to `src/**` and `formal-verification/tests/**`. Run 61 added `timeout-minutes`
 (60 min for `build`, 30 min for `correspondence-tests`).
 
-### Layer 9: ReadOnly Phase 4 (Runs 60–62)
+### Layer 9: ReadOnly Phase 5 (Runs 60–64)
 
 `ReadOnly.lean` models the leader-side ReadIndex bookkeeping from `src/read_only.rs`
-(Raft §6.4). Twelve theorems (RO1–RO12):
+(Raft §6.4). Thirteen theorems (RO1–RO13), all fully proved with 0 sorry:
 
 | Theorem | Statement | Status |
 |---------|-----------|--------|
@@ -774,29 +774,87 @@ changes to `src/**` and `formal-verification/tests/**`. Run 61 added `timeout-mi
 | RO5 | `recvAck` returns none iff ctx absent | ✅ proved |
 | RO6 | `recvAck` adds id to ack set | ✅ proved |
 | RO7 | `advance` is no-op when ctx absent | ✅ proved |
-| RO8 | After `advance`, ctx not in queue | 🔄 sorry (NoDuplicates needed) |
+| RO8 | After `advance`, ctx not in pending or queue | ✅ proved (private helper `ro8_aux_mem_take`) |
 | RO9 | Empty ReadOnly satisfies QueuePendingInv | ✅ proved |
 | RO10 | `addRequest` preserves QueuePendingInv | ✅ proved |
 | RO11 | Successful `addRequest` increments count | ✅ proved |
 | RO12 | `pendingReadCount` zero iff queue empty | ✅ proved |
+| RO13 | `addRequest` preserves `Nodup` on queue | ✅ proved |
 
-RO8 requires formalising a NoDuplicates invariant on `ro.queue`. The informal spec
-(`formal-verification/specs/read_only_informal.md`) was completed in Run 61, documenting
-the ReadIndex linearisability protocol and identifying this gap.
+RO8 was the final sorry in the project at Run 62. It was proved in Run 64 using a private
+helper `ro8_aux_mem_take` proved by induction with Bool case splits, showing that
+`findIdx? (·==ctx) = some i → ctx ∈ take(i+1)`, then combined with `List.nodup_append`
+to derive a contradiction.
+
+RO13 establishes that `addRequest` preserves the `Nodup` (no-duplicates) invariant on
+`ro.queue` — the key property needed for RO8's proof context.
 
 `ReadOnlyCorrespondence.lean` (Run 62) provides 14 `#guard` tests matching the 15-case
 Rust test `test_read_only_correspondence`. All cases pass. The correspondence level is
 **exact**: the Lean model reproduces all observable behaviour of the Rust implementation
 modulo the documented abstractions (Vec<u8> ctx → Nat, HashSet → List, logger elided).
 
-| Metric | Run 50 | Run 62 |
+| Metric | Run 50 | Run 67 |
 |--------|--------|--------|
-| Lean files | 34 | **46** |
-| Theorems | 522 | **538** |
-| sorry | 2 | **1** (RO8) |
+| Lean files | 34 | **47** |
+| Theorems | 522 | **548** |
+| sorry | 2 | **0** ✅ |
 | Correspondence files | 1 | **12** |
 | #guard assertions | 17 | **167+** |
 | Rust test functions | 1 | **12** |
 
-> 🔄 `lake build` passed with Lean 4.28.0. 1 sorry remains: `RO8_advance_removes_ctx` (requires NoDuplicates). 538 theorems machine-checked.
+> ✅ `lake build` passed with Lean 4.28.0. **0 sorry**. 548 theorems machine-checked.
 > 🔬 *Runs 51–62 update (2026-04-21 10:08 UTC). [Lean Squad](https://github.com/dsyme/raft-lean-squad/actions/runs/24716554131)*
+
+---
+
+## Runs 63–67 Update: ReadOnly Complete, FindConflictByTerm
+
+### 🏆 Milestone: ReadOnly fully proved (Run 64)
+
+Run 64 (PR #189) proved `RO8_advance_removes_ctx` — the last sorry in the codebase. The
+proof required the private helper `ro8_aux_mem_take` and Bool case-split tactics. Run 64
+also added `RO13_addRequest_preserves_nodup`, which proves the `Nodup` invariant is preserved
+by `addRequest`, completing the inductively-invariant pair (QueuePendingInv + Nodup).
+
+### Layer 10: FindConflictByTerm (Run 67)
+
+`FindConflictByTerm.lean` models `RaftLog::find_conflict_by_term` from `src/raft_log.rs`
+(lines 218–257). This function scans the leader's log backwards from a hint `(index, term)`
+to find the largest position whose term is ≤ term, enabling the follower to skip over an
+entire diverging suffix in one reject/retry cycle rather than probing one entry at a time.
+
+Ten theorems (FCB1–FCB9 + `logNonDecreasing_le`), all proved with 0 sorry:
+
+| Theorem | Statement | Key tactic |
+|---------|-----------|------------|
+| FCB1 | Result index ≤ input index | `induction` |
+| FCB2 | Result term ≤ `term` argument (given `LogDummyZero`) | `induction` + `omega` |
+| FCB3 | Maximality: if `logTerm(i) ≤ term` and `i ≤ index`, then `i ≤ result` | `induction` |
+| FCB4 | Identity: if `logTerm(index) ≤ term`, result = (index, some ...) | `simp` |
+| FCB5 | Out-of-range: `index > lastIndex → result = (index, none)` | `simp` |
+| FCB6 | Always returns `Some` (no `none` path in the inner scan) | `induction` |
+| FCB7 | In-range delegates to the inner scan | `simp` |
+| FCB8 | Base case: when `index = 0`, result is `(0, some (logTerm 0))` | `simp` |
+| FCB9 | Maximality under `LogNonDecreasing`: all earlier matching positions are covered | `induction` |
+| `logNonDecreasing_le` | `LogNonDecreasing` + `i ≤ j → logTerm i ≤ logTerm j` | `induction` + `omega` |
+
+**FCB3 (maximality)** is the most structurally interesting: it proves by induction on
+`index` that for any `i ≤ index` with `logTerm(i) ≤ term`, the result index is ≥ `i`.
+No monotonicity assumption is needed — only the backward-scan definition structure.
+
+**FCB6** confirms the model always returns `Some` (the Err/None path in the real Rust
+is an out-of-range guard that has no equivalent in the idealised log model).
+
+**FCB9** combines FCB3 with `logNonDecreasing_le` to prove that under the full
+`LogNonDecreasing` invariant, the result is the maximum index with term ≤ the target
+term — the key correctness property of the fast-reject optimisation.
+
+| Metric | Run 62 | Run 67 |
+|--------|--------|--------|
+| Lean files | 46 | **47** |
+| Theorems | 538 | **548** |
+| sorry | 1 | **0** ✅ |
+
+> ✅ `lake build` passed with Lean 4.28.0. **0 sorry**. 548 theorems machine-checked.
+> 🔬 *Runs 63–67 update (2026-04-21 22:30 UTC). [Lean Squad](https://github.com/dsyme/raft-lean-squad/actions/runs/24749616887)*
