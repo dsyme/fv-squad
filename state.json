@@ -1,18 +1,18 @@
 {
   "lean_version": "4.28.0",
-  "theorem_count": 493,
+  "theorem_count": 538,
   "lean_file_count": 45,
   "sorry_count": 1,
-  "last_run": "Run 61 (2026-04-21): Task 2 \u2014 read_only_informal.md. Task 9 \u2014 CI timeout-minutes added. PR: lean-squad/run-61-task2-task9-24715452114.",
+  "last_run": "Run 62 (2026-04-21): Task 8 Route B \u2014 ReadOnlyCorrespondence.lean (14 #guard) + Task 10: REPORT.md updated (538T/46F/1sorry). PR: lean-squad/run-62-task8-task10-24716554131.",
   "hqc_preserved_gap": "CLOSED via AEBroadcastInvariant.lean (ABI8). Remaining: connect broadcast model to full election lifecycle.",
   "aeneas_status": "permanently_blocked_no_new_privileges",
-  "toolchain_notes": "no Mathlib, use theorem not lemma. lakefile.toml globs=[FVSquad.+*]. LogUnstable/IsUpToDate have NO namespace. List.getElem?_take is simp lemma. ReadOnly has namespace FVSquad.ReadOnly. alookup/aupdate/amember are NOT private in ReadOnly.lean.",
+  "toolchain_notes": "no Mathlib, use theorem not lemma. lakefile.toml globs=[FVSquad.+*]. LogUnstable/IsUpToDate NO namespace. ReadOnly has namespace FVSquad.ReadOnly. RO8 sorry=NoDuplicates needed.",
   "notes": [
-    "Run 56: Task 8 Route B catch-up: 5 new correspondence files (LimitSize, ConfigValidate, Inflights, LogUnstable, TallyVotes). 44 lean files total, 0 sorry. 11 total correspondence test functions, ~149 #guard assertions total. Task 9: lean-ci.yml now has correspondence-tests job (cargo test correspondence). CI triggers expanded to src/** + formal-verification/tests/**.",
     "Run 58: Task 11+9: Paper updated (524T, 44F, L7+L8 sections, 57 runs). CI already comprehensive.",
     "Run 59: Task 6: CORRESPONDENCE.md updated with 5 new sections for Runs 56-57 correspondence files. Task 11: Paper run count updated 57\u219258.",
     "Run 60: Task 4: ReadOnly.lean added \u2014 ReadOnly struct from src/read_only.rs. 12 theorems (RO1-RO12): 11 proved (including RO4/RO5/RO7/RO10/RO11/RO12), 1 sorry (RO8: needs NoDuplicates invariant). 16 #guard tests. Task 7: CRITIQUE.md updated with Layer 8 (correspondence validation table), Layer 9 (ReadOnly section), updated header/overall assessment.",
-    "Run 61: Task 2: read_only_informal.md written (ReadIndex \u00a76.4, all 5 ops, QueuePendingInv, NoDuplicates gap, 12T table). Task 9: CI timeout-minutes added (60/30 min). TARGETS.md updated (read_only Phase 4, raft_log_append Phase 5 corrected, Next Steps updated)."
+    "Run 61: Task 2: read_only_informal.md written (ReadIndex \u00a76.4, all 5 ops, QueuePendingInv, NoDuplicates gap, 12T table). Task 9: CI timeout-minutes added (60/30 min). TARGETS.md updated (read_only Phase 4, raft_log_append Phase 5 corrected, Next Steps updated).",
+    "Run 62: Task 8 Route B: ReadOnlyCorrespondence.lean (14 #guard, exact correspondence). Task 10: REPORT.md updated (538T/46F/1sorry, Runs 51-62 section, Layer 8 table, 0-sorry milestone noted). 12 correspondence test targets total."
   ],
   "run_history": [
     {
@@ -62,14 +62,31 @@
       "sorry_count_after": 1,
       "lean_file_count_after": 45,
       "pr_branch": "lean-squad/run-61-task2-task9-24715452114"
+    },
+    {
+      "run": 62,
+      "date": "2026-04-21",
+      "tasks": [
+        "Task 8 Route B (ReadOnly correspondence)",
+        "Task 10 (Project Report)"
+      ],
+      "changes": [
+        "Added ReadOnlyCorrespondence.lean: 14 #guard tests (exact correspondence)",
+        "Added test_read_only_correspondence to src/read_only.rs (15 cases, all pass)",
+        "Added formal-verification/tests/read_only/README.md",
+        "Updated REPORT.md: header 522T/34F/2sorry -> 538T/46F/1sorry, Executive Summary updated, Runs 51-62 section added"
+      ],
+      "sorry_count_after": 1,
+      "lean_file_count_after": 46,
+      "pr_branch": "lean-squad/run-62-task8-task10-24716554131"
     }
   ],
   "next_steps": [
-    "Formalise NoDuplicates invariant for ReadOnly.queue and prove RO8_advance_removes_ctx",
+    "Prove RO8 by formalising NoDuplicates queue invariant for ReadOnly",
     "Add ReadOnly Phase 5: RO13 (advance preserves QueuePendingInv), RO14 (FIFO delivery order)",
     "progress_set Target 11: informal spec + Lean spec for ProgressSet::quorum_active",
-    "Update REPORT.md with Runs 56-61 (ReadOnly Phase 4, correspondence catch-up)",
-    "Update paper.tex with updated theorem counts and ReadOnly section"
+    "Update paper.tex with Runs 51-62 results (ReadOnly, correspondence catch-up, 538T)",
+    "Connect AEBroadcastInvariant to full Raft election lifecycle"
   ],
   "correspondence_test_targets": [
     {
@@ -137,6 +154,14 @@
       "guard_count": 17,
       "status": "complete",
       "level": "exact"
+    },
+    {
+      "name": "read_only",
+      "lean_file": "FVSquad/ReadOnlyCorrespondence.lean",
+      "rust_test": "read_only::tests::test_read_only_correspondence",
+      "guard_count": 14,
+      "status": "complete",
+      "correspondence_level": "exact"
     }
   ],
   "informal_specs_written": [
@@ -154,7 +179,7 @@
     "raft_log_append",
     "read_only"
   ],
-  "lean_files": 45,
+  "lean_files": 46,
   "last_run_date": "2026-04-21",
   "ci_status": {
     "lean_ci_yml": "Has 'correspondence-tests' job (cargo test correspondence), trigger paths include src/** and formal-verification/tests/**",
@@ -237,7 +262,7 @@
       "name": "read_only",
       "file": "formal-verification/lean/FVSquad/ReadOnly.lean",
       "phase": 4,
-      "notes": "Run 60: 12 theorems (RO1-RO12), 11 proved, 1 sorry (RO8: NoDuplicates). 16 #guard tests. Models ReadOnly struct from src/read_only.rs."
+      "notes": "Run 60: 12 theorems (RO1-RO12), 11 proved, 1 sorry (RO8: NoDuplicates). 16 #guard. Run 62: ReadOnlyCorrespondence.lean added (14 #guard, exact correspondence)."
     }
   ]
 }
