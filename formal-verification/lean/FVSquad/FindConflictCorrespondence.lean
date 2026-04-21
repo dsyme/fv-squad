@@ -158,16 +158,57 @@ def IndexInjective (stored : List (Nat × Nat)) : Prop :=
   ∀ i j, i < stored.length → j < stored.length →
          stored[i]!.1 = stored[j]!.1 → i = j
 
+-- Private helpers for makeLog_some
+
+/-- Derive `IndexInjective` for the tail from the cons list. -/
+private theorem indexInj_tail (hd : Nat × Nat) (tl : List (Nat × Nat))
+    (hinj : IndexInjective (hd :: tl)) : IndexInjective tl := by
+  intro i j hi hj heq
+  have key : (hd :: tl)[i+1]!.1 = (hd :: tl)[j+1]!.1 := by
+    have h1 : (hd :: tl)[i+1]! = tl[i]! := by simp
+    have h2 : (hd :: tl)[j+1]! = tl[j]! := by simp
+    rw [h1, h2]; exact heq
+  have := hinj (i+1) (j+1) (by simp; omega) (by simp; omega) key
+  omega
+
+/-- If `(idx, term) ∈ tl` and `hd.1 = idx`, derive `False` via `IndexInjective`.
+    In other words, two positions with the same first component cannot both exist. -/
+private theorem no_double_idx (hd : Nat × Nat) (tl : List (Nat × Nat)) (idx term : Nat)
+    (hmem_tl : (idx, term) ∈ tl) (heq : hd.1 = idx)
+    (hinj : IndexInjective (hd :: tl)) : False := by
+  obtain ⟨⟨j, hj⟩, hgj⟩ := List.mem_iff_get.mp hmem_tl
+  have htlj : tl[j]! = (idx, term) := by
+    rw [getElem!_pos tl j hj, show tl[j] = tl.get ⟨j, hj⟩ from rfl, hgj]
+  have h0 : (hd :: tl)[0]!.1 = idx := by simp [heq]
+  have h1 : (hd :: tl)[j+1]!.1 = idx := by
+    have : (hd :: tl)[j+1]! = tl[j]! := by simp
+    rw [this, htlj]
+  exact absurd (hinj 0 (j+1) (by simp) (by simp; omega) (h0.trans h1.symm)) (by omega)
+
 /-- `makeLog` is faithful: if index `idx` appears in `stored`, `makeLog stored idx`
     returns `some` of the corresponding term (assuming index-injectivity).
     The 17 `#guard` checks above are executable evidence for specific cases.
-    The general proof requires induction with `List.get`/`List.getElem!` to bridge
-    the positional `IndexInjective` definition to membership, which is left as a
-    future proof engineering task (`sorry` guarded). -/
+    Proved by induction using `List.mem_iff_get` to bridge positional `IndexInjective`
+    to membership, via the `indexInj_tail` and `no_double_idx` helpers. -/
 theorem makeLog_some (stored : List (Nat × Nat)) (idx term : Nat)
     (hmem : (idx, term) ∈ stored) (hinj : IndexInjective stored) :
     makeLog stored idx = some term := by
-  sorry
+  simp only [makeLog]
+  suffices h : stored.find? (fun p => p.1 == idx) = some (idx, term) by simp [h]
+  induction stored with
+  | nil => simp at hmem
+  | cons hd tl ih =>
+    simp only [List.mem_cons] at hmem
+    simp only [List.find?]
+    by_cases heq : hd.1 == idx
+    · simp [heq]
+      rcases hmem with rfl | hmem_tl
+      · rfl
+      · exact absurd (no_double_idx hd tl idx term hmem_tl (beq_iff_eq.mp heq) hinj) id
+    · simp [heq]
+      rcases hmem with rfl | hmem_tl
+      · simp at heq
+      · exact ih hmem_tl (indexInj_tail hd tl hinj)
 
 /-- `makeLog` returns `none` for indices not in `stored`. -/
 theorem makeLog_none (stored : List (Nat × Nat)) (idx : Nat)

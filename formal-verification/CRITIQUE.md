@@ -3,16 +3,16 @@
 > 🔬 *Lean Squad — automated formal verification for `dsyme/fv-squad`.*
 
 ## Last Updated
-- **Date**: 2026-04-21 02:12 UTC
-- **Commit**: `349032e` — Run 51: Task 7 Critique update; 522 theorems, 2 sorry, 34 files
+- **Date**: 2026-04-21 03:48 UTC
+- **Commit**: `c2b81af` — Run 55: Task 5 (makeLog_some proved, 0 sorry) + Task 7 Critique update; 526 theorems, 0 sorry, 37 files
 
 ---
 
 ## Overall Assessment
 
-The FV project has produced **522 theorems across 34 Lean files, machine-checked by
-Lean 4 (version 4.28.0, stdlib only — no Mathlib), with 2 `sorry`** (both in
-`FindConflictCorrespondence.lean` — helper lemmas for the `makeLog` encoding function).
+The FV project has produced **526 theorems across 37 Lean files, machine-checked by
+Lean 4 (version 4.28.0, stdlib only — no Mathlib), with 0 `sorry`** — the last
+remaining sorry (`makeLog_some` in `FindConflictCorrespondence.lean`) was proved in Run 55.
 
 The `RaftReachable.step` constructor in `RaftTrace.lean` bundles **5 hypotheses** about
 each protocol transition.  These encode deep Raft correctness properties.  The key
@@ -54,7 +54,7 @@ closed by `AEBroadcastInvariant.lean` (ABI1–ABI10, 0 sorry): after a full AE b
 round, `hqc_preserved` holds unconditionally.  The `RaftLogAppend.lean` now proves P4–P7
 (prefix, batch placement, and beyond-batch-none).  Correspondence testing for `find_conflict`
 (17 `#guard` tests, Route B) is complete.  No bugs were found in any modelled Rust function.
-**522 theorems, 34 files, 2 sorry** (both trivial helper lemmas in FindConflictCorrespondence).
+**526 theorems, 37 files, 0 sorry** — the project has no remaining `sorry` obligations.
 
 ---
 
@@ -766,15 +766,17 @@ The resolved gap list:
    safety for `maybe_commit`; the remaining work is connecting this to the election model.
 3. **`jointCommittedIndex` empty-config divergence**: Lean returns `0`, Rust returns `u64::MAX`.
    The `outgoing ≠ []` precondition is implicit but not enforced by type.
-4. **`makeLog_some` / `makeLog_none` sorry** (FindConflictCorrespondence.lean): two helper lemma
-   proofs pending; close with `List.findSome?` induction.
+4. ~~**`makeLog_some` / `makeLog_none` sorry** (FindConflictCorrespondence.lean)~~ **✅ CLOSED (Run 55)**:
+   `makeLog_some` proved using `indexInj_tail` + `no_double_idx` helpers with `List.mem_iff_get`
+   and `getElem!_pos`; `makeLog_none` was already proved. **0 sorry remain.**
 
-**Resolved since prior critique** (Runs 49–50):
+**Resolved since prior critique** (Runs 49–55):
 - `AEBroadcastInvariant.lean`: ABI1–ABI10 proved; broadcast induction gap closed (ABI6).
 - `hqc_preserved_of_broadcast` (ABI8): full broadcast → `hqc_preserved` without needing the election model.
 - `FindConflictCorrespondence.lean`: 17 `#guard` correspondence tests all pass.
 - `ra_batch_term` (P6): batch placement and term correctness for `RaftLog::append`.
 - `ra_beyond_batch_none` (P7): no spurious trailing entries after `raftLogAppend`.
+- `makeLog_some` (Run 55): proved via `indexInj_tail` + `no_double_idx` helpers. **0 sorry remain.**
 
 ---
 
@@ -1409,24 +1411,30 @@ since it only *adds* agreement, never removes it).
 
 ---
 
-### `FindConflictCorrespondence.lean` — 2 theorems + 17 `#guard` tests (2 sorry)
+### `FindConflictCorrespondence.lean` — 4 theorems + 17 `#guard` tests (0 sorry)
 
 | Item | Level | Bug-catching potential | Notes |
 |------|-------|----------------------|-------|
-| `makeLog_some` (theorem, sorry) | Low | Low | Helper: `makeLog stored idx` returns the stored term when `(idx, t)` ∈ `stored`; proof pending inductive argument |
-| `makeLog_none` (theorem, sorry) | Low | Low | Helper: `makeLog stored idx` returns `none` when `idx ∉ dom(stored)`; proof pending |
+| `makeLog_some` (theorem, ✅ proved Run 55) | Low | Low | Helper: `makeLog stored idx` returns the stored term when `(idx, t)` ∈ `stored`; proved via `indexInj_tail` + `no_double_idx` using `List.mem_iff_get` + `getElem!_pos` |
+| `makeLog_none` (theorem, ✅ proved) | Low | Low | Helper: `makeLog stored idx` returns `none` when `idx ∉ dom(stored)`; proved by induction |
+| `indexInj_tail` (private helper, ✅ proved Run 55) | Low | Low | Derives `IndexInjective` for the tail from a cons list; key inductive step |
+| `no_double_idx` (private helper, ✅ proved Run 55) | Low | Low | Two positions with the same first component cannot coexist; derives contradiction via `IndexInjective` |
 | 17 `#guard` assertions | Mid | **High** | Compile-time correspondence tests: `findConflict (makeLog stored) entries = expected` for 17 concrete cases; all pass |
 
-**Assessment**: The file's primary value is the 17 `#guard` tests, not the two helper
+**Assessment**: The file's primary value is the 17 `#guard` tests, not the helper
 theorems.  The `#guard` tests demonstrate that the Lean `findConflict` model agrees with
 the Rust `RaftLog::find_conflict` implementation on all 17 correspondence cases (empty
 entries, all-match, suffix conflict, new entries beyond log, etc.).  This is Task 8 Route B
 evidence — direct behavioural correspondence without needing Aeneas extraction.
 
-**The 2 `sorry`** are low-risk: they guard `makeLog_some` and `makeLog_none`, which are
-used only as lemmas *about* `makeLog` (not invoked in the `#guard` tests themselves).
-The `#guard` tests are decidable by `native_decide` and pass regardless.  A future run
-should close these with `List.findSome?` induction.
+**Run 55 achievement**: The `makeLog_some` theorem was the last remaining `sorry` in the
+entire project.  The proof uses:
+- `List.mem_iff_get` to convert membership `(idx, term) ∈ stored` to `∃ i : Fin stored.length, stored.get i = (idx, term)`
+- `getElem!_pos tl j hj : tl[j]! = tl[j]` and `tl[j] = tl.get ⟨j, hj⟩ := rfl`
+- `indexInj_tail` to propagate `IndexInjective` to the tail during induction
+- `no_double_idx` to derive `False` when `hd.1 = idx` and `(idx, term) ∈ tl` simultaneously
+
+This closes the last sorry: **the entire project is now 0 sorry**.
 
 **Gaps**: The 17 cases cover the main behaviours but do not exercise:
 - Logs with more than ~5 entries (performance limitation of `#guard`)
@@ -1545,6 +1553,6 @@ The paper needs the following targeted updates (in priority order):
 
 ---
 
-> 🔬 Updated by [Lean Squad](https://github.com/dsyme/raft-lean-squad/actions/runs/24700413995)
-> automated formal verification. Current state: **522 theorems, 2 sorry, 34 Lean files**.
-> Run 51: Task 7 (Proof Utility Critique) — AEBroadcastInvariant.lean (10T), FindConflictCorrespondence.lean (2T+17 guards), RaftLogAppend P6/P7 sections added; counts updated to 522.
+> 🔬 Updated by [Lean Squad](https://github.com/dsyme/raft-lean-squad/actions/runs/24702950218)
+> automated formal verification. Current state: **526 theorems, 0 sorry, 37 Lean files**.
+> Run 55: Task 5 (Proof Assistance — `makeLog_some` proved, 0 sorry achieved) + Task 7 (Critique update).
