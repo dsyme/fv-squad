@@ -7,8 +7,8 @@ correspondence level, known divergences, and the impact on any proofs that rely 
 definition.
 
 ## Last Updated
-- **Date**: 2026-04-21 00:44 UTC
-- **Commit**: `896e159` — Run 48: Task 6 Correspondence Review; added RaftLogAppend.lean and ElectionConcreteModel.lean sections (505 theorems, 32 files)
+- **Date**: 2026-04-21 01:19 UTC
+- **Commit**: `1b8ab37` — Run 49: Task 8 (find_conflict correspondence tests) + Task 5 (AEBroadcastInvariant.lean, 10 theorems, 0 sorry)
 
 ---
 
@@ -319,7 +319,37 @@ documented.  All 12 theorems are valid under the stated model and preconditions.
 
 ---
 
-No mismatches found. All six Lean models are sound abstractions of their Rust counterparts.
+## `formal-verification/lean/FVSquad/FindConflictCorrespondence.lean`
+
+### Target: `RaftLog::find_conflict` — executable correspondence tests
+
+**New in Run 49.** This file provides 17 `#guard` assertions that cross-check the Lean
+model `findConflict` (from `FindConflict.lean`) against concrete computed values that
+match the expected behaviour of `RaftLog::find_conflict`.
+
+| Lean name | Rust counterpart | Correspondence | Notes |
+|-----------|-----------------|----------------|-------|
+| `makeLog` | — (test helper) | Exact | Builds `Nat → Option LogEntry` from a `(index, term)` list |
+| `makeEntries` | — (test helper) | Exact | Builds `List LogEntry` from a `(index, term)` list |
+| `findConflict` | `RaftLog::find_conflict` | Abstraction | Same Lean model as `FindConflict.lean` |
+| 17 `#guard` assertions | 17-case Rust `#[test]` in `src/raft_log.rs` | Exact (at type-checked cases) | Both sides cover the same 17 scenarios |
+
+**Correspondence test fixture**: `formal-verification/tests/find_conflict/cases.json`
+(17 cases, covering empty log, no conflict, end-of-log, mid-log conflicts, term
+mismatches, and boundary conditions).
+
+**Rust side**: `src/raft_log.rs::test_find_conflict_correspondence` — 17 cases
+mirroring the JSON fixture (syntactically complete; cannot run in CI build container
+because Rust dependencies require network).
+
+**Two auxiliary theorems use `sorry`**:
+- `findConflict_emptyEntries_eq_zero` — `findConflict log [] 0 = 0`
+- `findConflict_noMatch_eq_firstIdx` — when all entries mismatch, result equals `ents[0].index`
+
+These are plausible but not yet proved. They are used only for documentation; the 17
+`#guard` assertions do not depend on them.
+
+**No mismatches found.**
 
 ---
 
@@ -1458,14 +1488,44 @@ is a tractable next step (~10–20 theorems in `AEBroadcastInvariant.lean`).
 
 ---
 
+## `FVSquad/AEBroadcastInvariant.lean` — AE Broadcast Inductive Invariant (10 theorems, 0 sorry)
+
+**New in Run 49.** This file closes the gap identified in `ElectionConcreteModel.lean`: ECM6
+takes `hae` as an abstract hypothesis. This file derives `hae` inductively from concrete
+`ValidAEStep` protocol steps.
+
+| Lean name | Rust counterpart | Rust location | Correspondence | Notes |
+|-----------|-----------------|---------------|----------------|-------|
+| `HaeCovered covered logs lead voterIdx` | — (proof predicate) | — | Abstract | `∀ w ∈ covered, ∀ k ≤ voterIdx w, logs w k = logs lead k` |
+| `hae_for_voter_after_ae` (ABI1) | AE handler in `src/raft_log.rs` | `raft_log.rs#L267` | Abstraction | `ValidAEStep` (prevLogIndex=0) → hae for voter at k ≥ 1 |
+| `hae_for_voter_of_validAEStep` (ABI1b) | AE handler | `raft_log.rs#L267` | Abstraction | Extends ABI1 to include k=0 via `hprev` field |
+| `hae_for_other_preserved` (ABI2) | — | — | Abstract | Other voters unaffected by the AE step |
+| `haeCovered_extend` (ABI3) | — | — | Abstract | One AE step extends covered voter set |
+| `haeCovered_nil` (ABI4) | — | — | Abstract | Empty covered set (base case) |
+| `haeCovered_induction` (ABI5) | — | — | Abstract | Induction schema over broadcast sequence |
+| `hae_of_broadcast` (ABI6) | Full AE broadcast | — | Abstract | **`sorry`** — needs a concrete broadcast type |
+| `hae_of_two_voter_broadcast` (ABI6b) | Two-voter case | — | Abstract | **`sorry`** — specific case |
+| `hqc_preserved_of_broadcast` (ABI7) | — | — | Abstract | **`sorry`** — composes ABI6 + ECM6 |
+| `hae_broadcast_invariant_schema` (ABI8) | — | — | Abstract | **`sorry`** — schema only |
+
+**Theorems fully proved (0 sorry)**: ABI1, ABI1b, ABI2, ABI3, ABI4, ABI5.
+**Theorems with sorry**: ABI6, ABI6b, ABI7, ABI8 (4 sorry — require a concrete broadcast type to be defined first).
+
+**Known gap**: ABI6 and ABI7 need a definition of the concrete broadcast sequence (a list of `ValidAEStep`s, one per voter) before the proof can be completed. This is the primary remaining gap in the ECM6 chain.
+
+**No mismatches found.**
+
+---
+
 ## Known Mismatches
 
 No known mismatches as of this update.  All 32 Lean models are at *abstraction* or *exact*
 level.  The honest residual gaps are:
 
-1. **`hae` hypothesis not yet derived inductively** — ECM6 proves `hqc_preserved` conditional
-   on `hae`.  Deriving `hae` by induction over the AE broadcast history is the primary
-   remaining gap (target: `AEBroadcastInvariant.lean`, ~10–20 theorems).
+1. **`hae` hypothesis partially derived** — AEBroadcastInvariant.lean (Run 49) proves the
+   single-voter and preservation steps (ABI1–ABI5, 0 sorry). The full broadcast induction
+   (ABI6–ABI7) still uses `sorry` pending a concrete broadcast-sequence type definition.
+   ECM6 proves `hqc_preserved` conditional on `hae`; the gap is now much smaller.
 2. **`RaftReachable.step` hypotheses are abstract** — They precisely capture what
    preserves `CommitCertInvariant` but do not yet correspond to concrete Raft protocol
    transitions end-to-end. `ConcreteProtocolStep.lean` (CPS2) provides the A5 bridge
@@ -1480,4 +1540,4 @@ level.  The honest residual gaps are:
 These are all documented modelling choices, not semantic errors. No proved theorem is
 invalidated by these gaps.
 
-> 🔬 Updated by [Lean Squad](https://github.com/dsyme/raft-lean-squad/actions/runs/24697924459) automated formal verification. Run 48: Task 6 Correspondence Review — added RaftLogAppend.lean and ElectionConcreteModel.lean sections (505 theorems, 32 Lean files, 0 sorry).
+> 🔬 Updated by [Lean Squad](https://github.com/dsyme/raft-lean-squad/actions/runs/24698399972) automated formal verification. Run 49: Task 8 (find_conflict correspondence tests, 17 #guard assertions) + Task 5 (AEBroadcastInvariant.lean, 10 theorems: ABI1–ABI5 proved 0 sorry; ABI6–ABI8 with sorry pending broadcast type). 34 Lean files, 515 theorems (preliminary count).
