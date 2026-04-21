@@ -1,0 +1,50 @@
+[
+  {
+    "id": 1, "voters": [], "set_ids": [], "expected": true,
+    "note": "Empty voters → always true"
+  },
+  {
+    "id": 2, "voters": [1], "set_ids": [1], "expected": true,
+    "note": "Singleton voter in set → quorum met (1 ≥ majority(1)=1)"
+  },
+  {
+    "id": 3, "voters": [1], "set_ids": [], "expected": false,
+    "note": "Singleton voter not in set → quorum not met (0 < 1)"
+  },
+  {
+    "id": 4, "voters": [1, 2, 3], "set_ids": [1, 2], "expected": true,
+    "note": "2 in set ≥ majority(3)=2 → true"
+  },
+  {
+    "id": 5, "voters": [1, 2, 3], "set_ids": [1], "expected": false,
+    "note": "1 in set < majority(3)=2 → false"
+  },
+  {
+    "id": 6, "voters": [1, 2, 3], "set_ids": [1, 2, 3], "expected": true,
+    "note": "All voters present → true"
+  },
+  {
+    "id": 7, "voters": [1, 2, 3], "set_ids": [], "expected": false,
+    "note": "No voters present → false"
+  },
+  {
+    "id": 8, "voters": [1, 2, 3, 4, 5], "set_ids": [1, 2, 3], "expected": true,
+    "note": "3 in set = majority(5)=3 → true (at threshold)"
+  },
+  {
+    "id": 9, "voters": [1, 2, 3, 4, 5], "set_ids": [1, 2], "expected": false,
+    "note": "2 in set < majority(5)=3 → false"
+  },
+  {
+    "id": 10, "voters": [1, 2, 3, 4, 5], "set_ids": [1, 2, 3, 4], "expected": true,
+    "note": "4 in set ≥ majority(5)=3 → true"
+  },
+  {
+    "id": 11, "voters": [1, 2, 3, 4, 5], "set_ids": [1, 2, 4, 5], "expected": true,
+    "note": "Non-consecutive IDs; 4 present ≥ 3 → true"
+  },
+  {
+    "id": 12, "voters": [1, 2, 3, 4, 5], "set_ids": [5], "expected": false,
+    "note": "Only voter 5 present; 1 < majority(5)=3 → false"
+  }
+]

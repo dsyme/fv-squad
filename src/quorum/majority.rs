@@ -390,4 +390,118 @@ mod tests {
             );
         }
     }
+
+    // ---------------------------------------------------------------------------
+    // Task 8 Route B — vote_result correspondence test
+    //
+    // These 12 cases mirror FVSquad/VoteResultCorrespondence.lean exactly.
+    // Each case specifies voters, yes-voters, no-voters, and the expected VoteResult.
+    // Voters absent from both lists contribute None (missing) to the check function.
+    // ---------------------------------------------------------------------------
+    #[test]
+    fn test_vote_result_correspondence() {
+        use crate::quorum::VoteResult;
+        // (voters, yes_ids, no_ids, expected)
+        // Mirrors formal-verification/tests/vote_result/cases.json exactly.
+        let cases: &[(&[u64], &[u64], &[u64], VoteResult)] = &[
+            // Case 1: empty voters → Won (convention)
+            (&[], &[], &[], VoteResult::Won),
+            // Case 2: single voter yes → Won
+            (&[1], &[1], &[], VoteResult::Won),
+            // Case 3: single voter no → Lost
+            (&[1], &[], &[1], VoteResult::Lost),
+            // Case 4: single voter missing → Pending (yes=0 < q=1; yes+missing=1 ≥ 1)
+            (&[1], &[], &[], VoteResult::Pending),
+            // Case 5: 3 voters, 2 yes, 1 no → Won (yes=2 ≥ majority(3)=2)
+            (&[1, 2, 3], &[1, 2], &[3], VoteResult::Won),
+            // Case 6: 3 voters, 1 yes, 1 no, 1 missing → Pending (1+1=2 ≥ 2)
+            (&[1, 2, 3], &[1], &[2], VoteResult::Pending),
+            // Case 7: 3 voters, 0 yes, 1 missing, 2 no → Lost (0+1=1 < 2)
+            (&[1, 2, 3], &[], &[1, 2], VoteResult::Lost),
+            // Case 8: 3 voters, all yes → Won
+            (&[1, 2, 3], &[1, 2, 3], &[], VoteResult::Won),
+            // Case 9: 3 voters, all no → Lost
+            (&[1, 2, 3], &[], &[1, 2, 3], VoteResult::Lost),
+            // Case 10: 5 voters, 3 yes → Won (yes=3=majority(5)=3)
+            (&[1, 2, 3, 4, 5], &[1, 2, 3], &[4, 5], VoteResult::Won),
+            // Case 11: 5 voters, 2 yes, 1 missing, 2 no → Pending (2+1=3 ≥ 3)
+            (&[1, 2, 3, 4, 5], &[1, 2], &[4, 5], VoteResult::Pending),
+            // Case 12: 5 voters, 2 yes, 3 no → Lost (2+0=2 < 3)
+            (&[1, 2, 3, 4, 5], &[1, 2], &[3, 4, 5], VoteResult::Lost),
+        ];
+
+        for (i, &(voter_ids, yes_ids, no_ids, expected)) in cases.iter().enumerate() {
+            let voters: HashSet<u64> = voter_ids.iter().copied().collect();
+            let cfg = Configuration::new(voters);
+            let result = cfg.vote_result(|id| {
+                if yes_ids.iter().any(|&y| y == id) {
+                    Some(true)
+                } else if no_ids.iter().any(|&n| n == id) {
+                    Some(false)
+                } else {
+                    None
+                }
+            });
+            assert_eq!(
+                result,
+                expected,
+                "case {}: vote_result voters={voter_ids:?} yes={yes_ids:?} no={no_ids:?} \
+                 = {result:?}, want {expected:?}",
+                i + 1
+            );
+        }
+    }
+
+    // ---------------------------------------------------------------------------
+    // Task 8 Route B — has_quorum correspondence test
+    //
+    // These 12 cases mirror FVSquad/HasQuorumCorrespondence.lean exactly.
+    // `has_quorum` is modelled as `vote_result(check) == Won` where
+    // check(id) = Some(true) if id ∈ set, else None.
+    // ---------------------------------------------------------------------------
+    #[test]
+    fn test_has_quorum_correspondence() {
+        // (voters, set_ids, expected)
+        // Mirrors formal-verification/tests/has_quorum/cases.json exactly.
+        let cases: &[(&[u64], &[u64], bool)] = &[
+            // Case 1: empty voters → true
+            (&[], &[], true),
+            // Case 2: single voter in set → true
+            (&[1], &[1], true),
+            // Case 3: single voter not in set → false
+            (&[1], &[], false),
+            // Case 4: 3 voters, 2 in set → true (2 ≥ majority(3)=2)
+            (&[1, 2, 3], &[1, 2], true),
+            // Case 5: 3 voters, 1 in set → false (1 < 2)
+            (&[1, 2, 3], &[1], false),
+            // Case 6: 3 voters, all in set → true
+            (&[1, 2, 3], &[1, 2, 3], true),
+            // Case 7: 3 voters, none in set → false
+            (&[1, 2, 3], &[], false),
+            // Case 8: 5 voters, 3 in set → true (3=majority(5)=3)
+            (&[1, 2, 3, 4, 5], &[1, 2, 3], true),
+            // Case 9: 5 voters, 2 in set → false (2 < 3)
+            (&[1, 2, 3, 4, 5], &[1, 2], false),
+            // Case 10: 5 voters, 4 in set → true
+            (&[1, 2, 3, 4, 5], &[1, 2, 3, 4], true),
+            // Case 11: 5 voters, non-consecutive 4 in set → true
+            (&[1, 2, 3, 4, 5], &[1, 2, 4, 5], true),
+            // Case 12: 5 voters, 1 in set → false (1 < 3)
+            (&[1, 2, 3, 4, 5], &[5], false),
+        ];
+
+        for (i, &(voter_ids, set_ids, expected)) in cases.iter().enumerate() {
+            let voters: HashSet<u64> = voter_ids.iter().copied().collect();
+            let cfg = Configuration::new(voters);
+            let set: HashSet<u64> = set_ids.iter().copied().collect();
+            let result = cfg.vote_result(|id| set.get(&id).map(|_| true)) == crate::quorum::VoteResult::Won;
+            assert_eq!(
+                result,
+                expected,
+                "case {}: has_quorum voters={voter_ids:?} set={set_ids:?} \
+                 = {result}, want {expected}",
+                i + 1
+            );
+        }
+    }
 }

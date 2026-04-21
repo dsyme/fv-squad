@@ -1,0 +1,50 @@
+[
+  {
+    "id": 1, "voters": [], "yes_ids": [], "no_ids": [], "expected": "Won",
+    "note": "Empty voters → Won by convention"
+  },
+  {
+    "id": 2, "voters": [1], "yes_ids": [1], "no_ids": [], "expected": "Won",
+    "note": "Single voter yes → Won"
+  },
+  {
+    "id": 3, "voters": [1], "yes_ids": [], "no_ids": [1], "expected": "Lost",
+    "note": "Single voter no → Lost"
+  },
+  {
+    "id": 4, "voters": [1], "yes_ids": [], "no_ids": [], "expected": "Pending",
+    "note": "Single voter missing → Pending"
+  },
+  {
+    "id": 5, "voters": [1, 2, 3], "yes_ids": [1, 2], "no_ids": [3], "expected": "Won",
+    "note": "2 yes ≥ majority(3)=2 → Won"
+  },
+  {
+    "id": 6, "voters": [1, 2, 3], "yes_ids": [1], "no_ids": [2], "expected": "Pending",
+    "note": "1 yes + 1 missing = 2 ≥ majority(3)=2 → Pending"
+  },
+  {
+    "id": 7, "voters": [1, 2, 3], "yes_ids": [], "no_ids": [1, 2], "expected": "Lost",
+    "note": "0 yes + 1 missing = 1 < majority(3)=2 → Lost"
+  },
+  {
+    "id": 8, "voters": [1, 2, 3], "yes_ids": [1, 2, 3], "no_ids": [], "expected": "Won",
+    "note": "All yes → Won"
+  },
+  {
+    "id": 9, "voters": [1, 2, 3], "yes_ids": [], "no_ids": [1, 2, 3], "expected": "Lost",
+    "note": "All no → Lost"
+  },
+  {
+    "id": 10, "voters": [1, 2, 3, 4, 5], "yes_ids": [1, 2, 3], "no_ids": [4, 5], "expected": "Won",
+    "note": "3 yes = majority(5)=3 → Won (at threshold)"
+  },
+  {
+    "id": 11, "voters": [1, 2, 3, 4, 5], "yes_ids": [1, 2], "no_ids": [4, 5], "expected": "Pending",
+    "note": "2 yes + 1 missing = 3 ≥ majority(5)=3, but 2 < 3 → Pending"
+  },
+  {
+    "id": 12, "voters": [1, 2, 3, 4, 5], "yes_ids": [1, 2], "no_ids": [3, 4, 5], "expected": "Lost",
+    "note": "2 yes + 0 missing = 2 < majority(5)=3 → Lost"
+  }
+]

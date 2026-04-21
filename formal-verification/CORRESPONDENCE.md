@@ -1697,4 +1697,70 @@ level.  The honest residual gaps are:
 These are all documented modelling choices, not semantic errors. No proved theorem is
 invalidated by these gaps.
 
-> 🔬 Updated by [Lean Squad](https://github.com/dsyme/raft-lean-squad/actions/runs/24701759513) automated formal verification. Run 53: Task 8 Route B (IsUpToDateCorrespondence.lean: 12 #guard tests; CommittedIndexCorrespondence.lean: 8 #guard tests). 37 Lean files, 522+ theorems, 1 sorry (FindConflictCorrespondence.lean makeLog_some).
+---
+
+## `FVSquad/VoteResultCorrespondence.lean` — VoteResult Correspondence Tests (12 `#guard`, 0 sorry)
+
+**New in Run 55.** Task 8 Route B correspondence test for `Configuration::vote_result`
+(`src/quorum/majority.rs:189`).
+
+| Lean name | Rust counterpart | Rust location | Correspondence | Notes |
+|-----------|-----------------|---------------|----------------|-------|
+| `checkFn yes_ids no_ids` | closure in test | `majority.rs` | Exact | Maps yes/no lists to `Nat → Option Bool` |
+| `voteResult voters checkFn` | `Configuration::vote_result` | `majority.rs#L189` | Exact | Same algorithm: empty→Won, count yes/missing vs majority |
+
+### Validation evidence
+
+- **Lean side**: 12 `#guard` tests in `FVSquad/VoteResultCorrespondence.lean` (lake build ✅)
+- **Rust side**: `test_vote_result_correspondence` in `src/quorum/majority.rs` (12 cases, `cargo test ✅`)
+- **Fixture**: `formal-verification/tests/vote_result/cases.json`
+
+### Correspondence level: **Exact**
+
+The Lean `voteResult` algorithm matches the Rust `Configuration::vote_result` algorithm precisely:
+- Empty voters → `Won` (both sides)
+- `yesCount` / `missingCount` = yes and missing counters in Rust
+- `majority n = n / 2 + 1` = `crate::majority(n)` in Rust
+- Three-way outcome (Won/Pending/Lost) = Lean `VoteResult` inductive type
+
+**No mismatches found.**
+
+---
+
+## `FVSquad/HasQuorumCorrespondence.lean` — HasQuorum Correspondence Tests (12 `#guard`, 0 sorry)
+
+**New in Run 55.** Task 8 Route B correspondence test for `ProgressTracker::has_quorum`
+(`src/tracker.rs:357`).
+
+| Lean name | Rust counterpart | Rust location | Correspondence | Notes |
+|-----------|-----------------|---------------|----------------|-------|
+| `inSetFn set_ids` | `potential_quorum.get(&id).map(|_| true)` | `tracker.rs#L358` | Exact | Membership predicate |
+| `hasQuorum voters (inSetFn set_ids)` | `vote_result(check) == VoteResult::Won` | `tracker.rs#L357` | Exact | Same logic via `Configuration::vote_result` |
+
+### Validation evidence
+
+- **Lean side**: 12 `#guard` tests in `FVSquad/HasQuorumCorrespondence.lean` (lake build ✅)
+- **Rust side**: `test_has_quorum_correspondence` in `src/quorum/majority.rs` (12 cases, `cargo test ✅`)
+- **Fixture**: `formal-verification/tests/has_quorum/cases.json`
+
+### Correspondence level: **Exact**
+
+The Lean `hasQuorum` model matches the Rust `has_quorum` logic exactly:
+- Rust tests majority-quorum case (`incoming` config only) = Lean `hasQuorum` on a single voter list
+- `potential_quorum.get(&id).map(|_| true)` = `if inSetFn set_ids v then some true else none`
+- `== VoteResult::Won` = `overlapCount voters inSet ≥ majority voters.length`
+
+**Modelling note**: The Rust `has_quorum` uses `JointConfig::vote_result` (incoming + outgoing),
+but the Lean model covers only the majority (incoming) case. The Rust test correspondingly
+tests `Configuration::vote_result` directly. This is documented as an abstraction — the
+joint-quorum composition is proved separately in `JointVote.lean`.
+
+**No mismatches found.**
+
+---
+
+## Last Updated
+- **Date**: 2026-04-21 03:56 UTC
+- **Commit**: `c2b81af`
+
+> 🔬 Updated by [Lean Squad](https://github.com/dsyme/raft-lean-squad/actions/runs/24703148371) automated formal verification. Run 55: Task 8 Route B (VoteResultCorrespondence.lean: 12 #guard; HasQuorumCorrespondence.lean: 12 #guard). 39 Lean files, 522 theorems, 1 sorry (FindConflictCorrespondence.lean makeLog_some).
