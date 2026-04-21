@@ -160,17 +160,32 @@ def IndexInjective (stored : List (Nat × Nat)) : Prop :=
 
 /-- `makeLog` is faithful: if index `idx` appears in `stored`, `makeLog stored idx`
     returns `some` of the corresponding term (assuming index-injectivity).
-    (Proof omitted; the 17 `#guard` checks above are the executable evidence.) -/
+    The 17 `#guard` checks above are executable evidence for specific cases.
+    The general proof requires induction with `List.get`/`List.getElem!` to bridge
+    the positional `IndexInjective` definition to membership, which is left as a
+    future proof engineering task (`sorry` guarded). -/
 theorem makeLog_some (stored : List (Nat × Nat)) (idx term : Nat)
     (hmem : (idx, term) ∈ stored) (hinj : IndexInjective stored) :
     makeLog stored idx = some term := by
   sorry
 
-/-- `makeLog` returns `none` for indices not in `stored`.
-    (Proof omitted; the 17 `#guard` checks above are the executable evidence.) -/
+/-- `makeLog` returns `none` for indices not in `stored`. -/
 theorem makeLog_none (stored : List (Nat × Nat)) (idx : Nat)
     (habs : ∀ t, (idx, t) ∉ stored) :
     makeLog stored idx = none := by
-  sorry
+  induction stored with
+  | nil => simp [makeLog]
+  | cons hd tl ih =>
+    have hne : hd.1 ≠ idx := by
+      intro h
+      apply habs hd.2
+      simp only [List.mem_cons]
+      exact Or.inl (Prod.ext h.symm rfl)
+    have hbf : (hd.1 == idx) = false := by
+      cases h : (hd.1 == idx)
+      · rfl
+      · exact absurd (eq_of_beq h) hne
+    simp only [makeLog, List.find?, hbf]
+    exact ih fun t ht => habs t (List.mem_cons_of_mem hd ht)
 
 end FVSquad.FindConflictCorrespondence

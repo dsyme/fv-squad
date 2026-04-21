@@ -1,0 +1,105 @@
+{
+  "description": "Correspondence test cases for RaftLog::maybe_append (Rust) vs maybeAppend (Lean 4 model)",
+  "target": "FVSquad.MaybeAppend.maybeAppend",
+  "rust_target": "raft_log::RaftLog::maybe_append",
+  "lean_file": "formal-verification/lean/FVSquad/MaybeAppendCorrespondence.lean",
+  "rust_test": "src/raft_log.rs :: test_maybe_append_correspondence",
+  "cases": [
+    {
+      "id": 1,
+      "description": "Non-match: wrong prevTerm at prevIdx=1 → returns None",
+      "stored": [[1,1],[2,2],[3,3]],
+      "prev_idx": 1,
+      "prev_term": 5,
+      "leader_commit": 0,
+      "entries": [],
+      "expected_result": null,
+      "expected_committed": 0,
+      "log_checks": {}
+    },
+    {
+      "id": 2,
+      "description": "Match, empty entries, leaderCommit=0 → no conflict, committed unchanged",
+      "stored": [[1,1],[2,2],[3,3]],
+      "prev_idx": 3,
+      "prev_term": 3,
+      "leader_commit": 0,
+      "entries": [],
+      "expected_result": [0, 3],
+      "expected_committed": 0,
+      "log_checks": {"3": 3}
+    },
+    {
+      "id": 3,
+      "description": "Match, empty entries, leaderCommit=2 → committed advances to 2",
+      "stored": [[1,1],[2,2],[3,3]],
+      "prev_idx": 3,
+      "prev_term": 3,
+      "leader_commit": 2,
+      "entries": [],
+      "expected_result": [0, 3],
+      "expected_committed": 2,
+      "log_checks": {"2": 2}
+    },
+    {
+      "id": 4,
+      "description": "Match, all provided entries match → conflict=0, committed advances",
+      "stored": [[1,1],[2,2],[3,3]],
+      "prev_idx": 1,
+      "prev_term": 1,
+      "leader_commit": 2,
+      "entries": [[2,2],[3,3]],
+      "expected_result": [0, 3],
+      "expected_committed": 2,
+      "log_checks": {"2": 2, "3": 3}
+    },
+    {
+      "id": 5,
+      "description": "Match, new entries beyond log → conflict=4, log extended, committed=5",
+      "stored": [[1,1],[2,2],[3,3]],
+      "prev_idx": 3,
+      "prev_term": 3,
+      "leader_commit": 5,
+      "entries": [[4,4],[5,5]],
+      "expected_result": [4, 5],
+      "expected_committed": 5,
+      "log_checks": {"3": 3, "4": 4, "5": 5}
+    },
+    {
+      "id": 6,
+      "description": "Match, partial match then conflict → index 3 overwritten with term 5",
+      "stored": [[1,1],[2,2],[3,3]],
+      "prev_idx": 1,
+      "prev_term": 1,
+      "leader_commit": 0,
+      "entries": [[2,2],[3,5]],
+      "expected_result": [3, 3],
+      "expected_committed": 0,
+      "log_checks": {"2": 2, "3": 5}
+    },
+    {
+      "id": 7,
+      "description": "Singleton log, one new entry beyond log",
+      "stored": [[1,1]],
+      "prev_idx": 1,
+      "prev_term": 1,
+      "leader_commit": 0,
+      "entries": [[2,2]],
+      "expected_result": [2, 2],
+      "expected_committed": 0,
+      "log_checks": {"1": 1, "2": 2}
+    },
+    {
+      "id": 8,
+      "description": "Conflict at last stored entry (term mismatch) → index 3 overwritten",
+      "stored": [[1,1],[2,2],[3,3]],
+      "prev_idx": 2,
+      "prev_term": 2,
+      "leader_commit": 0,
+      "entries": [[3,5]],
+      "expected_result": [3, 3],
+      "expected_committed": 0,
+      "log_checks": {"2": 2, "3": 5}
+    }
+  ]
+}

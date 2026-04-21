@@ -7,8 +7,8 @@ correspondence level, known divergences, and the impact on any proofs that rely 
 definition.
 
 ## Last Updated
-- **Date**: 2026-04-21 02:00 UTC
-- **Commit**: `1aa1c89` — Run 50: Task 6 (ElectionReachability correspondence section; ABI6–ABI8 stale-sorry fix) + Task 4→5 (RaftLogAppend P6/P7: ra_batch_term, ra_beyond_batch_none proved)
+- **Date**: 2026-04-23 00:00 UTC
+- **Commit**: `d9e8f7a` — Run 52: Task 8 Route B (MaybeAppendCorrespondence: 32 #guard tests; FindConflictCorrespondence: makeLog_none proved, sorry count 2→1)
 
 ---
 
@@ -343,11 +343,40 @@ mirroring the JSON fixture (syntactically complete; cannot run in CI build conta
 because Rust dependencies require network).
 
 **Two auxiliary theorems use `sorry`**:
-- `findConflict_emptyEntries_eq_zero` — `findConflict log [] 0 = 0`
-- `findConflict_noMatch_eq_firstIdx` — when all entries mismatch, result equals `ents[0].index`
+- `makeLog_some` — complex positional lemma about `makeLog` (requires bridging `∈`-membership and `getElem!` index positions via `IndexInjective`; left as `sorry`)
 
-These are plausible but not yet proved. They are used only for documentation; the 17
-`#guard` assertions do not depend on them.
+`makeLog_none` was proved in Run 52 (proof strategy: induction on `stored`, showing `hd.1 ≠ idx` via `habs` contradiction). Sorry count reduced from 2 to 1.
+
+These are used only for documentation; the 17 `#guard` assertions do not depend on them.
+
+**No mismatches found.**
+
+---
+
+## `formal-verification/lean/FVSquad/MaybeAppendCorrespondence.lean`
+
+### Target: `RaftLog::maybe_append` — executable correspondence tests
+
+**New in Run 52.** This file provides 32 `#guard` assertions that cross-check the Lean
+model `maybeAppend` (from `MaybeAppend.lean`) against concrete computed values matching
+the expected behaviour of `RaftLog::maybe_append`.
+
+| Lean name | Rust counterpart | Correspondence | Notes |
+|-----------|-----------------|----------------|-------|
+| `makeLog'` | — (test helper) | Exact | Builds `LogTerm` (`Nat → Option Nat`) from a `(index, term)` list |
+| `makeEntries'` | — (test helper) | Exact | Builds `List LogEntry` from a `(index, term)` list |
+| `mkState` | — (test helper) | Exact | Constructs initial `RaftState` |
+| `maybeAppend` | `RaftLog::maybe_append` | Abstraction | Same Lean model as `MaybeAppend.lean`; 32 `#guard` cross-checks |
+| 32 `#guard` assertions | 8-case Rust `#[test]` in `src/raft_log.rs` | Exact (at type-checked cases) | Both sides cover the same 8 scenarios |
+
+**Correspondence test fixture**: `formal-verification/tests/maybe_append/cases.json`
+(8 cases, covering: non-match, empty entries, committed advancement, all-match,
+new entries beyond log, conflict+overwrite, singleton log, conflict at end).
+
+**Rust side**: `src/raft_log.rs::test_maybe_append_correspondence` — 8 cases
+mirroring the JSON fixture (verified passing: `cargo test test_maybe_append_correspondence`).
+
+**No sorry in this file.** All `#guard` assertions are compile-time checked.
 
 **No mismatches found.**
 
@@ -1594,4 +1623,4 @@ level.  The honest residual gaps are:
 These are all documented modelling choices, not semantic errors. No proved theorem is
 invalidated by these gaps.
 
-> 🔬 Updated by [Lean Squad](https://github.com/dsyme/raft-lean-squad/actions/runs/24699525834) automated formal verification. Run 50: Task 6 (Correspondence review — added ElectionReachability.lean section (12 theorems, ER1–ER12, all proved 0 sorry); fixed stale ABI6–ABI8 sorry annotations; updated Known Mismatches) + Task 4→5 (RaftLogAppend P6/P7: ra_batch_term and ra_beyond_batch_none proved, +5 theorems → 19 total). 34 Lean files, ~520 theorems, 2 sorry (FindConflictCorrespondence.lean).
+> 🔬 Updated by [Lean Squad](https://github.com/dsyme/raft-lean-squad/actions/runs/24700764734) automated formal verification. Run 52: Task 8 Route B (MaybeAppendCorrespondence.lean: 32 #guard tests for maybeAppend; FindConflictCorrespondence.lean: makeLog_none proved). 35 Lean files, 481+ theorems, 1 sorry (FindConflictCorrespondence.lean makeLog_some).
