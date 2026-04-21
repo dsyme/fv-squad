@@ -2,17 +2,17 @@
 
 > 🔬 *Lean Squad — automated formal verification for `dsyme/raft-lean-squad`.*
 
-**Status**: 🔄 **ADVANCED** — 548 theorems, 47 Lean files, **0 `sorry`**, machine-checked
-by Lean 4.28.0 (stdlib only). Top-level safety theorem proved **conditionally**. Eight-layer
-proof architecture complete. Layer 8 (correspondence validation): 12 files, 167+ `#guard`
-assertions, 12 Rust tests. Layer 9 (ReadOnly): 13 theorems, **0 sorry**, fully proved.
+**Status**: 🔄 **ADVANCED** — 548 theorems, 48 Lean files, **0 `sorry`**, machine-checked
+by Lean 4.28.0 (stdlib only). Top-level safety theorem proved **conditionally**. Ten-layer
+proof architecture complete. Layer 8 (correspondence validation): 13 files, 204 `#guard`
+assertions, 13 Rust tests. Layer 9 (ReadOnly): 13 theorems, **0 sorry**, fully proved.
 Layer 10 (FindConflictByTerm): 10 theorems, 0 sorry, backward-scan fast-reject algorithm.
 
 ---
 
 ## Last Updated
-- **Date**: 2026-04-21 22:30 UTC
-- **Commit**: `e069d2e` — Runs 63–67: RO8 proved, ReadOnly complete (13T/0sorry), FindConflictByTerm (10T)
+- **Date**: 2026-04-21 23:45 UTC
+- **Commit**: `3eda358` — Run 70: REPORT.md + paper.tex updated (548T/48F/204 #guard/0sorry)
 
 ---
 
@@ -42,7 +42,7 @@ in `dsyme/fv-squad` over 62+ automated runs. Starting from zero, the project:
     sequence — ABI5 (haeCovered_induction) proves that after sequentially applying `ValidAEStep`
     to every voter with `prevLogIndex=0`, the log-agreement hypothesis holds for all voters
 12. Achieved **0 sorry** milestone (Run 55) before adding Layer 9 ReadOnly work
-13. Added **Layer 8: 12 correspondence validation files** (167+ `#guard` + 12 Rust tests)
+13. Added **Layer 8: 13 correspondence validation files** (204 `#guard` + 13 Rust tests)
 14. Added **Layer 9: ReadOnly.lean** (12 theorems, 11 proved, RO8 sorry pending NoDuplicates)
 
 All five `RaftReachable.step` hypotheses are now addressed: `hnew_cert` closed by CR8,
@@ -738,7 +738,7 @@ files with `#guard` compile-time assertions, plus matching Rust test functions.
 
 | Target | File | #guard | Rust test | Level |
 |--------|------|--------|-----------|-------|
-| `find_conflict` | `FindConflictCorrespondence.lean` | 17 | `test_find_conflict_correspondence` | exact |
+| `find_conflict` | `FindConflictCorrespondence.lean` | 27 | `test_find_conflict_correspondence` | exact |
 | `maybe_append` | `MaybeAppendCorrespondence.lean` | 35 | `test_maybe_append_correspondence` | exact |
 | `is_up_to_date` | `IsUpToDateCorrespondence.lean` | 14 | `test_is_up_to_date_correspondence` | exact |
 | `committed_index` | `CommittedIndexCorrespondence.lean` | 13 | `test_committed_index_correspondence` | abstraction |
@@ -749,9 +749,10 @@ files with `#guard` compile-time assertions, plus matching Rust test functions.
 | `tally_votes` | `TallyVotesCorrespondence.lean` | 12 | `test_tally_votes_correspondence` | exact |
 | `vote_result` | `VoteResultCorrespondence.lean` | 17 | `test_vote_result_correspondence` | exact |
 | `has_quorum` | `HasQuorumCorrespondence.lean` | 17 | `test_has_quorum_correspondence` | exact |
-| `read_only` | `ReadOnlyCorrespondence.lean` | 14 | `test_read_only_correspondence` | exact |
+| `read_only` | `ReadOnlyCorrespondence.lean` | 16 | `test_read_only_correspondence` | exact |
+| `find_conflict_by_term` | `FindConflictByTermCorrespondence.lean` | 19 | `test_find_conflict_by_term_correspondence` | abstraction |
 
-Total: **12 correspondence files, 167+ `#guard` assertions, 12 Rust test functions**.
+Total: **13 correspondence files, 204 `#guard` assertions, 13 Rust test functions**.
 
 ### Layer 8: CI Integration (Run 56)
 
@@ -800,8 +801,8 @@ modulo the documented abstractions (Vec<u8> ctx → Nat, HashSet → List, logge
 | Theorems | 522 | **548** |
 | sorry | 2 | **0** ✅ |
 | Correspondence files | 1 | **12** |
-| #guard assertions | 17 | **167+** |
-| Rust test functions | 1 | **12** |
+| #guard assertions | 17 | **204** |
+| Rust test functions | 1 | **13** |
 
 > ✅ `lake build` passed with Lean 4.28.0. **0 sorry**. 548 theorems machine-checked.
 > 🔬 *Runs 51–62 update (2026-04-21 10:08 UTC). [Lean Squad](https://github.com/dsyme/raft-lean-squad/actions/runs/24716554131)*
@@ -858,3 +859,33 @@ term — the key correctness property of the fast-reject optimisation.
 
 > ✅ `lake build` passed with Lean 4.28.0. **0 sorry**. 548 theorems machine-checked.
 > 🔬 *Runs 63–67 update (2026-04-21 22:30 UTC). [Lean Squad](https://github.com/dsyme/raft-lean-squad/actions/runs/24749616887)*
+
+---
+
+## Runs 68–70 Update: FindConflictByTerm Correspondence + Paper and Report Refresh
+
+### Layer 8 Complete (Run 69): FindConflictByTermCorrespondence
+
+`FindConflictByTermCorrespondence.lean` (Run 69) adds 19 compile-time `#guard` assertions
+for the backward-scan fast-reject algorithm modelled in `FindConflictByTerm.lean`, and
+a matching Rust test `test_find_conflict_by_term_correspondence` in `src/raft_log.rs`.
+This completes Layer 8 at **13 correspondence-test files, 204 `#guard` assertions,
+13 Rust test functions**.
+
+### Correspondence and Paper Updates (Runs 68, 70)
+
+Run 68 updated `CORRESPONDENCE.md` with the `FindConflictByTerm` section. Run 70
+(this run) refreshed REPORT.md and the conference paper (`paper.tex`) to bring all
+counts up to date:
+
+| Metric | Run 67 | Run 70 |
+|--------|--------|--------|
+| Lean files | 47 | **48** |
+| Theorems | 548 | **548** |
+| sorry | 0 | **0** ✅ |
+| Correspondence files | 12 | **13** |
+| #guard assertions | ~167 | **204** |
+| Rust tests | 12 | **13** |
+
+> ✅ `lake build` passed with Lean 4.28.0. **0 sorry**. 548 theorems machine-checked.
+> 🔬 *Runs 68–70 update (2026-04-21 23:45 UTC). [Lean Squad](https://github.com/dsyme/raft-lean-squad/actions/runs/24752155366)*

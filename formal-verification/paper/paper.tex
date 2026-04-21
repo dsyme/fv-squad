@@ -97,11 +97,11 @@ found, providing machine-checked evidence of correctness on the verified
 paths.  The A5 bridge theorem (\texttt{validAEStep\_raftReachable}) was
 also proved, connecting a concrete AppendEntries step to the abstract
 reachability model.  An additional 13 correspondence-validation files
-provide 216 compile-time \texttt{\#guard} assertions and 13 Rust test
+provide 204 compile-time \texttt{\#guard} assertions and 13 Rust test
 functions, confirming that the Lean models agree with the Rust
 implementation on concrete inputs across all major targets.
 
-The total LLM token cost was approximately \$483 (69~runs at
+The total LLM token cost was approximately \$490 (70~runs at
 $\sim$\$7 each using Claude Sonnet~4.6 pricing at time of publication).
 The Lean Squad workflow is open-source, installs on any GitHub repository
 with two commands, and requires only an LLM API token.  The proof
@@ -119,7 +119,7 @@ author (Don Syme) took a deliberately \emph{hands-off} approach: he
 designed the automated Lean Squad workflow itself (\S\ref{sec:workflow}) and
 merged pull requests, but was not involved in target selection,
 the ten-layer proof architecture, specification writing, or any actual
-proof engineering.  His total intervention over the project's 69~runs
+proof engineering.  His total intervention over the project's 70~runs
 amounted to two short GitHub comments (\S\ref{sec:interventions}).
 \medskip
 
@@ -150,7 +150,7 @@ addresses this barrier directly, and is different in three ways:
   self-contained verification artefact.
 \item The entire effort is \emph{automated}: every target selection,
   specification, proof architecture decision, and proof was produced by an
-  LLM-driven FV agent across 69 independent runs, with only two brief
+  LLM-driven FV agent across 70 independent runs, with only two brief
   human interventions (\S\ref{sec:interventions}).  The human author
   required no Lean expertise, no formal-methods background, and invested
   near-zero hours of proof-engineering labour.
@@ -461,14 +461,14 @@ Layer & Description & Files & Theorems \\
 5 & Raft Safety         & 2  & 18  \\
 6 & Reachability        & 1  & 4   \\
 7 & Election Model (complete) & 10 & 114 \\
-8 & Correspondence Validation & 13 & 2+192\texttt{g} \\
+8 & Correspondence Validation & 13 & 2+204\texttt{g} \\
 9 & ReadOnly Operations & 1  & 13  \\
 10& FindConflictByTerm  & 1  & 10  \\
 \midrule
-  & \textbf{Total}      & \textbf{48} & \textbf{548+192\texttt{g}} \\
+  & \textbf{Total}      & \textbf{48} & \textbf{548+204\texttt{g}} \\
 \bottomrule
 \end{tabular}
-\caption{Proof layers and theorem counts. Layer 8 files contain 192 \texttt{\#guard} assertions (\texttt{g}) evaluated at compile time; they contribute 2 named theorems (in \texttt{FindConflictCorrespondence.lean}).}
+\caption{Proof layers and theorem counts. Layer 8 files contain 204 \texttt{\#guard} assertions (\texttt{g}) evaluated at compile time; they contribute 2 named theorems (in \texttt{FindConflictCorrespondence.lean}).}
 \label{tab:layers}
 \end{table}
 
@@ -545,7 +545,7 @@ obligations that must pass for the build to succeed.
 
 For each target, a matching Rust function (prefixed \texttt{test\_\ldots\_correspondence})
 exercises the Rust implementation on the same concrete inputs, providing
-independent confirmation.  Together, the 192 Lean \texttt{\#guard}
+independent confirmation.  Together, the 204 Lean \texttt{\#guard}
 assertions and 13 Rust test functions provide two-sided behavioural
 evidence: both the Lean model and the Rust implementation produce
 identical outputs on the verified test cases.
@@ -800,7 +800,7 @@ The 13 files cover: \texttt{find\_conflict} (20~guards, exact),
 \texttt{has\_quorum} (15~guards, exact),
 \texttt{read\_only} (15~guards, exact), and
 \texttt{find\_conflict\_by\_term} (16~guards, abstraction).
-In total: 192 compile-time correspondence assertions and 13 Rust test functions.
+In total: 204 compile-time correspondence assertions and 13 Rust test functions.
 
 \paragraph{Layer~9: ReadOnly Operations.}
 \texttt{ReadOnly.lean} (13~theorems) formalises \texttt{raft-rs}'s
@@ -867,22 +867,22 @@ AEBroadcastInvariant & 10 & ABI8: hqc\_preserved\_of\_broadcast \\
 RaftLogAppend     & 16 & RA1--RA9, P4--P7: append spec \\
 ReadOnly          & 13 & RO8: advance removes ctx; RO14--RO15: inv \\
 FindConflictByTerm & 10 & FCB3: maximality; FCB6: always some \\
-FindConflictCorrespondence &  2 & 20 \texttt{\#guard}, exact \\
-MaybeAppendCorrespondence &  0 & 32 \texttt{\#guard}, exact \\
-IsUpToDateCorrespondence  &  0 & 12 \texttt{\#guard}, exact \\
-CommittedIndexCorrespondence & 0 & 11 \texttt{\#guard}, abstraction \\
-LimitSizeCorrespondence   &  0 & 10 \texttt{\#guard}, abstraction \\
-ConfigValidateCorrespondence & 0 & 12 \texttt{\#guard}, exact \\
-InflightsCorrespondence   &  0 & 12 \texttt{\#guard}, abstraction \\
-LogUnstableCorrespondence &  0 & 12 \texttt{\#guard}, exact \\
-TallyVotesCorrespondence  &  0 & 10 \texttt{\#guard}, exact \\
-VoteResultCorrespondence  &  0 & 15 \texttt{\#guard}, exact \\
-HasQuorumCorrespondence   &  0 & 15 \texttt{\#guard}, exact \\
-ReadOnlyCorrespondence    &  0 & 15 \texttt{\#guard}, exact \\
-FindConflictByTermCorrespondence & 0 & 16 \texttt{\#guard}, abstraction \\
+FindConflictCorrespondence &  2 & 27 \texttt{\#guard}, exact \\
+MaybeAppendCorrespondence &  0 & 35 \texttt{\#guard}, exact \\
+IsUpToDateCorrespondence  &  0 & 14 \texttt{\#guard}, exact \\
+CommittedIndexCorrespondence & 0 & 13 \texttt{\#guard}, abstraction \\
+LimitSizeCorrespondence   &  0 & 12 \texttt{\#guard}, abstraction \\
+ConfigValidateCorrespondence & 0 & 14 \texttt{\#guard}, exact \\
+InflightsCorrespondence   &  0 & 14 \texttt{\#guard}, abstraction \\
+LogUnstableCorrespondence &  0 & 14 \texttt{\#guard}, exact \\
+TallyVotesCorrespondence  &  0 & 12 \texttt{\#guard}, exact \\
+VoteResultCorrespondence  &  0 & 17 \texttt{\#guard}, exact \\
+HasQuorumCorrespondence   &  0 & 17 \texttt{\#guard}, exact \\
+ReadOnlyCorrespondence    &  0 & 16 \texttt{\#guard}, exact \\
+FindConflictByTermCorrespondence & 0 & 19 \texttt{\#guard}, abstraction \\
 Basic             & -- & Shared definitions \\
 \midrule
-\textbf{Total}    & \textbf{548} & \textbf{0 sorry; 192 \texttt{\#guard}} \\
+\textbf{Total}    & \textbf{548} & \textbf{0 sorry; 204 \texttt{\#guard}} \\
 \bottomrule
 \end{tabular}
 \caption{Full file inventory (all at Phase~5, 0 sorry). Correspondence files contribute \texttt{\#guard} assertions but no named theorems.}
@@ -894,7 +894,7 @@ Basic             & -- & Shared definitions \\
 
 \paragraph{No implementation bugs found.}
 All 548~theorems are consistent with the Rust implementation, as further
-confirmed by 192 compile-time \texttt{\#guard} correspondence assertions
+confirmed by 204 compile-time \texttt{\#guard} correspondence assertions
 and 13 Rust test functions.
 
 \paragraph{Formulation bug caught and corrected.}
@@ -1033,12 +1033,12 @@ report, and even an initial draft of this paper were produced autonomously.
 The human never selected a target, wrote a specification, suggested a
 proof strategy, or debugged a failing proof.
 
-Across 69 runs spanning $\approx$11 weeks, the agent produced:
+Across 70 runs spanning $\approx$11 weeks, the agent produced:
 \begin{itemize}\setlength\itemsep{0pt}
   \item 26 informal specification documents
   \item 48 Lean~4 source files ($\approx$14{,}000 lines)
   \item 548 machine-checked theorems
-  \item 192 compile-time \texttt{\#guard} correspondence assertions
+  \item 204 compile-time \texttt{\#guard} correspondence assertions
   \item 13 Rust correspondence test functions
   \item 1 formulation bug caught and corrected
   \item 0 implementation bugs
@@ -1323,7 +1323,7 @@ formalisation.
 The closest analogue to our persistent-memory mechanism is
 LEGO-Prover's growing library~\cite{wang2024legoprover}, but
 LEGO-Prover operates within a single proof session, whereas Lean
-Squad accumulates knowledge across 69 independent GitHub Actions runs
+Squad accumulates knowledge across 70 independent GitHub Actions runs
 spanning weeks.  AlphaProof~\cite{trinh2024alphaproof} demonstrated
 that reinforcement learning over formal proofs can achieve
 competition-level mathematical reasoning, but targets Olympiad
@@ -1402,7 +1402,7 @@ Our $\approx$14{,}000 lines of Lean and 548 theorems are modest by comparison.
 However, the relevant metric is not raw scale but \emph{effort}:
 those projects required person-years of expert proof engineering,
 while ours required zero human proof engineering and approximately
-69 LLM agent runs (each $\sim$15--30 minutes of wall-clock time)
+70 LLM agent runs (each $\sim$15--30 minutes of wall-clock time)
 plus two one-line human comments.  If the approach scales---and the
 successful progression from Layer~1 through Layer~8 suggests it
 can---the implications for the cost of formal verification are
@@ -1426,12 +1426,12 @@ Starting from zero, the Lean Squad agent---running as a scheduled
 GitHub Actions job with no human in the loop---autonomously selected
 26 verification targets in a production Raft implementation, designed
 a ten-layer proof architecture, wrote all specifications and proofs,
-and produced 548 machine-checked theorems across 48 files in 69 runs,
+and produced 548 machine-checked theorems across 48 files in 70 runs,
 culminating in the end-to-end safety theorem
 \texttt{raftReachable\_safe} with zero \texttt{sorry}, plus the A5
 bridge (CPS2) connecting concrete AppendEntries steps to the abstract
 reachability model, and an additional 13 correspondence-validation
-files providing 192 compile-time \texttt{\#guard} assertions and 13
+files providing 204 compile-time \texttt{\#guard} assertions and 13
 Rust test functions confirming that the Lean models agree with the
 Rust implementation on concrete inputs.
 The human author's total involvement was: designing the reusable
