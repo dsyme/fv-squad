@@ -1,21 +1,21 @@
 {
-  "run_id": "24694391681",
+  "run_id": "24696399395",
   "date": "2026-04-20",
   "lean_version": "4.28.0",
   "total_theorems": 505,
   "total_sorry": 0,
   "lean_files": 32,
   "completed_tasks_this_run": [
-    "Task 4 (Implementation Extraction): Added 3 prefix-preservation theorems to RaftLogAppend.lean — taa_maybeTerm_before (TAA prefix preservation, no-gap precondition), ra_prefix_preserved (P5: raftLogAppend prefix preservation), ra_committed_prefix_preserved (P4: committed prefix never overwritten). TARGETS.md: raft_log_append Phase 3->4.",
-    "Task 5 (Proof Assistance): Created ElectionConcreteModel.lean (ECM1-ECM7, 8 theorems). Closes the hqc_preserved gap via shared-source condition (ER9+ER10). Key chain: hae → ECM1 (CandLogCoversLastIndex) → ECM2 (CandLogMatching) → ECM3 (CandidateLogCovers) → ECM4 (hqc_preserved). ECM5/ECM6: hae from ValidAEStep."
+    "Task 10 (Project Report): Updated REPORT.md — theorem count 471→505, file count 29→32, added Layer 7 section (ElectionReachability 12T, RaftLogAppend 14T, ElectionConcreteModel 8T), updated File Inventory, Critical Gap section, and Project Timeline. Added Runs 43-46 history section with detailed theorem tables.",
+    "Task 1 (Research): Updated RESEARCH.md with current state (Run 47, 505 theorems) and new priority: AEBroadcastInvariant.lean (hae inductive invariant). Updated TARGETS.md: added A6 target (hae_inductive), updated Next Steps section, added ECM Gap Progress section."
   ],
-  "pr_branch": "lean-squad-run46-prefix-election-model-24694391681",
-  "hqc_preserved_gap": "CLOSED via ElectionConcreteModel.lean ECM1-ECM7. Remaining: inductive derivation of hae from ValidAEStep sequence (open but has proof path).",
+  "pr_branch": "lean-squad-run47-report-research-24696399395",
+  "hqc_preserved_gap": "CLOSED via ECM6 given hae+AE step. Remaining: inductive hae derivation (AEBroadcastInvariant.lean target A6).",
   "aeneas_status": "permanently_blocked_no_new_privileges",
   "sorry_count": 0,
   "theorem_count": 505,
   "file_count": 32,
-  "last_run": 46,
-  "last_task": "Task 4+5: RaftLogAppend prefix preservation + ElectionConcreteModel",
+  "last_run": 47,
+  "last_task": "Task 10+1: REPORT.md update + RESEARCH/TARGETS research update",
   "toolchain_notes": "no Mathlib, stdlib only. lakefile.toml globs=[FVSquad.+*]. List.getElem?_append_left h closes (l1++l2)[i]?=l1[i]? when h:i<l1.length. simp [h] closes (l.take n)[j]?=l[j]? when h:j<n."
 }

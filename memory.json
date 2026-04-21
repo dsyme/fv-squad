@@ -3,8 +3,8 @@
   "theorem_count": 505,
   "lean_file_count": 32,
   "sorry_count": 0,
-  "last_run": 46,
-  "hqc_preserved_gap": "CLOSED in Run 46 via ElectionConcreteModel.lean. ECM3 (candidateLogCovers_of_hae) + ECM4 (hqc_preserved_of_hae) + ECM6 (hqc_preserved_of_validAEStep) close the gap. Key hypothesis: hae (log agreement after AE broadcast). Remaining: inductively derive hae from concrete AE steps.",
+  "last_run": 47,
+  "hqc_preserved_gap": "CLOSED via ECM6 (hqc_preserved_of_validAEStep) given hae+AE step. Remaining: inductive derivation of hae across all voters from AE broadcast history. Target: AEBroadcastInvariant.lean.",
   "aeneas_status": "permanently_blocked_no_new_privileges",
   "toolchain_notes": "no Mathlib, use 'theorem' not 'lemma', stdlib only. lakefile.toml has globs=[FVSquad.+*]. LogUnstable.lean has NO namespace — open FVSquad.LogUnstable fails. Import it and use names directly. List.getElem?_append_left takes h:i<l1.length. List.getElem?_take is a simp lemma (simp [h] closes goal).",
   "notes": [
@@ -16,7 +16,8 @@
     "Run 43: Added FVSquad/ElectionReachability.lean with ER1-ER12 (12 theorems). lakefile.toml now has globs=[FVSquad.+*]. Remaining gap: derive HWM and CandLogMatching from concrete election protocol state.",
     "Run 44: Task 2 (Informal Spec): raft_log_append_informal.md written. Task 7: CRITIQUE.md updated with ER1-ER12 section, counts 471->483.",
     "Run 45: Task 3: RaftLogAppend.lean (RA1-RA9+2helpers, 11 theorems). 483->494 theorems, 30->31 files.",
-    "Run 46: Task 4: RaftLogAppend.lean += taa_maybeTerm_before+ra_prefix_preserved+ra_committed_prefix_preserved (P4/P5). Task 5: ElectionConcreteModel.lean (ECM1-ECM7, 8 theorems) closes hqc_preserved gap. 494->505 theorems, 31->32 files."
+    "Run 46: Task 4: RaftLogAppend.lean += taa_maybeTerm_before+ra_prefix_preserved+ra_committed_prefix_preserved (P4/P5). Task 5: ElectionConcreteModel.lean (ECM1-ECM7, 8 theorems) closes hqc_preserved gap. 494->505 theorems, 31->32 files.",
+    "Run 47: Task 10: REPORT.md updated (505/32, Layer 7 section, Runs 43-46 history, ECM gap). Task 1: RESEARCH.md+TARGETS.md updated (A6 hae_inductive target, next steps post-ECM)."
   ],
   "run_history": [
     {"run": 38, "result": "ConcreteProtocolStep.lean (CPS1-CPS13). 13 theorems."},
@@ -27,13 +28,14 @@
     {"run": 43, "result": "ElectionReachability.lean (ER1-ER12, 12 theorems). lakefile globs. TARGETS.md/RESEARCH.md updated."},
     {"run": 44, "result": "Task 2: raft_log_append_informal.md (Phase 2). Task 7: CRITIQUE.md + ElectionReachability section, counts 471->483."},
     {"run": 45, "result": "Task 3: RaftLogAppend.lean (RA1-RA9+2helpers, 11 theorems). 483->494 theorems, 30->31 files."},
-    {"run": 46, "result": "Task 4: taa_maybeTerm_before+ra_prefix_preserved+ra_committed_prefix_preserved (3 theorems). Task 5: ElectionConcreteModel.lean (ECM1-ECM7, 8 theorems). 494->505 theorems, 31->32 files."}
+    {"run": 46, "result": "Task 4: taa_maybeTerm_before+ra_prefix_preserved+ra_committed_prefix_preserved (3 theorems). Task 5: ElectionConcreteModel.lean (ECM1-ECM7, 8 theorems). 494->505 theorems, 31->32 files."},
+    {"run": 47, "result": "Task 10: REPORT.md updated (505/32 files, Layer 7 section, new run history). Task 1: RESEARCH.md+TARGETS.md (A6 hae_inductive, post-ECM priorities)."}
   ],
   "next_steps": [
-    "1. Task 5 (Proofs): Add inductive derivation of hae from ValidAEStep sequence to ElectionConcreteModel.lean.",
-    "2. Task 5 (Proofs): Prove raft_log_append Phase 4->5 by completing remaining postconditions (P6: batch suffix matches, P7: beyond-batch discarded).",
-    "3. Task 7 (Critique): Update CRITIQUE.md with RaftLogAppend (14 theorems) and ElectionConcreteModel (8 theorems) sections.",
-    "4. Task 11 (Paper): Update paper.tex with theorem counts 505/32, new sections on prefix preservation and ECM."
+    "1. Task 5 (Proofs): AEBroadcastInvariant.lean — inductive hae invariant across AE history (~10-20 theorems). Closes hqc_preserved unconditionally.",
+    "2. Task 5 (Proofs): RaftLogAppend P6 (batch suffix matches) + P7 (beyond-batch discarded) — Phase 4->5.",
+    "3. Task 7 (Critique): Update CRITIQUE.md with Runs 43-46 (ECM section ECM1-ECM7, paper review updates, counts 483->505).",
+    "4. Task 11 (Paper): Update paper.tex with 505/32, new sections on ElectionReachability/ElectionConcreteModel/RaftLogAppend."
   ],
   "informal_specs_written": [
     "config_validate", "inflights", "log_unstable", "quorum_recently_active",
