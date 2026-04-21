@@ -1946,6 +1946,90 @@ mod test {
         }
     }
 
+    /// Correspondence test for `RaftLog::maybe_append` vs the Lean 4 model
+    /// `FVSquad.MaybeAppend.maybeAppend` on the 8 fixture cases in
+    /// `formal-verification/tests/maybe_append/cases.json`.
+    ///
+    /// 🔬 Lean Squad automated formal verification — Task 8 Route B.
+    /// Each assertion here corresponds to one `#guard` block in
+    /// `formal-verification/lean/FVSquad/MaybeAppendCorrespondence.lean`.
+    #[test]
+    fn test_maybe_append_correspondence() {
+        let l = default_logger();
+
+        // Helper: build a RaftLog whose unstable log contains `stored` entries.
+        let make_raft_log = |stored: &[(u64, u64)]| {
+            let store = MemStorage::new();
+            let mut raft_log = RaftLog::new(store, l.clone(), &Config::default());
+            if !stored.is_empty() {
+                let entries: Vec<_> = stored.iter().map(|&(i, t)| new_entry(i, t)).collect();
+                raft_log.append(&entries);
+            }
+            raft_log
+        };
+
+        // Each tuple: (stored, prev_idx, prev_term, leader_commit, new_ents,
+        //              expected_result, expected_committed, expected_log_at)
+        // expected_result=None means the Rust maybe_append returns None.
+        // expected_log_at is a list of (index, expected_term) pairs to spot-check.
+        type Case<'a> = (
+            &'a [(u64, u64)],      // stored
+            u64,                   // prev_idx
+            u64,                   // prev_term
+            u64,                   // leader_commit
+            &'a [(u64, u64)],      // entries
+            Option<(u64, u64)>,   // expected maybe_append result
+            u64,                   // expected committed after
+            &'a [(u64, u64)],      // log spot checks (index, expected_term)
+        );
+        let cases: &[Case<'_>] = &[
+            // Case 1: Non-match (wrong prevTerm) → None
+            (&[(1,1),(2,2),(3,3)], 1, 5, 0, &[], None, 0, &[]),
+            // Case 2: Match, empty entries, commit=0 → conflict=0, last=3; committed=0
+            (&[(1,1),(2,2),(3,3)], 3, 3, 0, &[], Some((0,3)), 0, &[(3,3)]),
+            // Case 3: Match, empty entries, commit=2 → conflict=0, last=3; committed=2
+            (&[(1,1),(2,2),(3,3)], 3, 3, 2, &[], Some((0,3)), 2, &[(2,2)]),
+            // Case 4: All provided entries match → conflict=0, last=3; committed=2
+            (&[(1,1),(2,2),(3,3)], 1, 1, 2, &[(2,2),(3,3)], Some((0,3)), 2, &[(2,2),(3,3)]),
+            // Case 5: New entries beyond log → conflict=4, last=5; committed=5
+            (&[(1,1),(2,2),(3,3)], 3, 3, 5, &[(4,4),(5,5)], Some((4,5)), 5, &[(3,3),(4,4),(5,5)]),
+            // Case 6: Partial match then conflict → conflict=3, last=3; log[3]=5
+            (&[(1,1),(2,2),(3,3)], 1, 1, 0, &[(2,2),(3,5)], Some((3,3)), 0, &[(2,2),(3,5)]),
+            // Case 7: Singleton log, extend by one entry → conflict=2, last=2
+            (&[(1,1)], 1, 1, 0, &[(2,2)], Some((2,2)), 0, &[(1,1),(2,2)]),
+            // Case 8: Conflict at last stored entry → conflict=3, last=3; log[3]=5
+            (&[(1,1),(2,2),(3,3)], 2, 2, 0, &[(3,5)], Some((3,3)), 0, &[(2,2),(3,5)]),
+        ];
+
+        for (i, &(stored, prev_idx, prev_term, leader_commit, new_ents, expected_result,
+                   expected_committed, log_checks)) in cases.iter().enumerate()
+        {
+            let mut raft_log = make_raft_log(stored);
+            let entries: Vec<_> = new_ents.iter().map(|&(idx, t)| new_entry(idx, t)).collect();
+            let got = raft_log.maybe_append(prev_idx, prev_term, leader_commit, &entries);
+            assert_eq!(
+                got, expected_result,
+                "case {}: maybe_append result mismatch (stored={:?}, prev_idx={}, prev_term={}, commit={}, ents={:?})",
+                i + 1, stored, prev_idx, prev_term, leader_commit, new_ents
+            );
+            if expected_result.is_some() {
+                assert_eq!(
+                    raft_log.committed, expected_committed,
+                    "case {}: committed mismatch, got {}, want {}",
+                    i + 1, raft_log.committed, expected_committed
+                );
+                for &(idx, expected_term) in log_checks {
+                    let actual_term = raft_log.term(idx).unwrap_or(0);
+                    assert_eq!(
+                        actual_term, expected_term,
+                        "case {}: log[{}] term = {}, want {}",
+                        i + 1, idx, actual_term, expected_term
+                    );
+                }
+            }
+        }
+    }
+
     #[test]
     fn test_restore_snap() {
         let store = MemStorage::new();
