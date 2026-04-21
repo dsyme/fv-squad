@@ -1,0 +1,14 @@
+[
+  {"id": 1,  "index": 5, "last_index": 5, "term": 3, "expected_index": 5,  "expected_term": 3,    "note": "immediate match — term(5)=3 ≤ 3"},
+  {"id": 2,  "index": 5, "last_index": 5, "term": 2, "expected_index": 3,  "expected_term": 2,    "note": "scan back 2 steps — skip 5,4; term(3)=2 ≤ 2"},
+  {"id": 3,  "index": 5, "last_index": 5, "term": 1, "expected_index": 2,  "expected_term": 1,    "note": "scan back 3 steps — skip 5,4,3; term(2)=1 ≤ 1"},
+  {"id": 4,  "index": 5, "last_index": 5, "term": 0, "expected_index": 0,  "expected_term": 0,    "note": "scan to dummy — all entries > 0"},
+  {"id": 5,  "index": 3, "last_index": 5, "term": 3, "expected_index": 3,  "expected_term": 2,    "note": "immediate match: term(3)=2 ≤ 3"},
+  {"id": 6,  "index": 4, "last_index": 5, "term": 2, "expected_index": 3,  "expected_term": 2,    "note": "term(4)=3>2, scan back; term(3)=2 ≤ 2"},
+  {"id": 7,  "index": 2, "last_index": 5, "term": 2, "expected_index": 2,  "expected_term": 1,    "note": "immediate match: term(2)=1 ≤ 2"},
+  {"id": 8,  "index": 1, "last_index": 5, "term": 0, "expected_index": 0,  "expected_term": 0,    "note": "term(1)=1>0, scan to dummy"},
+  {"id": 9,  "index": 0, "last_index": 5, "term": 5, "expected_index": 0,  "expected_term": 0,    "note": "base case — index 0 always returns dummy"},
+  {"id": 10, "index": 3, "last_index": 5, "term": 1, "expected_index": 2,  "expected_term": 1,    "note": "term(3)=2>1, scan to index 2 where term=1"},
+  {"id": 11, "index": 1, "last_index": 5, "term": 2, "expected_index": 1,  "expected_term": 1,    "note": "immediate match: term(1)=1 ≤ 2"},
+  {"id": 12, "index": 10,"last_index": 5, "term": 3, "expected_index": 10, "expected_term": null, "note": "out-of-range early return — index 10 > last_index 5"}
+]

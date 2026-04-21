@@ -2089,14 +2089,21 @@ under normal operation (storage failure is a fatal condition). No mismatches fou
 
 ### Validation evidence
 
-- **Lean side**: 10 proved theorems in `FVSquad/FindConflictByTerm.lean` (lake build ✅, 0 sorry).
-- **Rust side**: No dedicated Rust correspondence test yet (Route B not yet applied to this target).
-- **Correspondence test status**: ⬜ Not yet — planned as a next step.
+- **Lean side**: 10 proved theorems in `FVSquad/FindConflictByTerm.lean` + 12 `#guard` assertions
+  in `FVSquad/FindConflictByTermCorrespondence.lean` (lake build ✅, 0 sorry).
+- **Rust side**: `test_find_conflict_by_term_correspondence` in `src/raft_log.rs` (12 cases, all pass).
+- **Fixtures**: `formal-verification/tests/find_conflict_by_term/cases.json` (12 cases).
+- **Commands**:
+  - Lean: `cd formal-verification/lean && lake build FVSquad.FindConflictByTermCorrespondence`
+  - Rust: `cargo test test_find_conflict_by_term_correspondence`
+- **Coverage**: 12 cases covering immediate match, multi-step backward scan, base case (index 0),
+  scan to dummy entry, and out-of-range early return.
+- **Correspondence test status**: ✅ Complete — 12 `#guard` + 12 Rust assertions all pass.
 
 ---
 
 ## Last Updated
-- **Date**: 2026-04-21 22:30 UTC
-- **Commit**: `e069d2e`
+- **Date**: 2026-04-21 23:00 UTC
+- **Commit**: `7f83c46`
 
-> 🔬 Updated by [Lean Squad](https://github.com/dsyme/raft-lean-squad/actions/runs/24749616887) automated formal verification. Run 68: Task 6 Correspondence Review — added `FindConflictByTerm.lean` (10T, 0 sorry) section. Task 10: REPORT.md updated (548T/47F/0sorry, Runs 63-67). 47 Lean files, 548 theorems, 0 sorry.
+> 🔬 Updated by [Lean Squad](https://github.com/dsyme/raft-lean-squad/actions/runs/24750830891) automated formal verification. Run 69: Task 8 Route B — FindConflictByTermCorrespondence (12 #guard, Rust test). Task 11: paper updated (548→548+T, 47→48F). 48 Lean files, 548 theorems (+ 12 guard), 0 sorry.
