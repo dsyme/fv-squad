@@ -1,9 +1,9 @@
 {
   "lean_version": "4.28.0",
-  "theorem_count": 515,
-  "lean_file_count": 32,
-  "sorry_count": 4,
-  "last_run": "49",
+  "theorem_count": 520,
+  "lean_file_count": 34,
+  "sorry_count": 2,
+  "last_run": "Run 50 (2026-04-21): Task 6 (Correspondence) + Task 4->5 (P6/P7 proofs). PR: lean-squad/run-50-p6-p7-correspondence-24699525834.",
   "hqc_preserved_gap": "CLOSED conditional on hae via ECM6 (hqc_preserved_of_validAEStep). Remaining: derive hae inductively over AE broadcast history. Target: AEBroadcastInvariant.lean.",
   "aeneas_status": "permanently_blocked_no_new_privileges",
   "toolchain_notes": "no Mathlib, use 'theorem' not 'lemma', stdlib only. lakefile.toml has globs=[FVSquad.+*]. LogUnstable.lean has NO namespace \u2014 open FVSquad.LogUnstable fails. Import it and use names directly. List.getElem?_append_left takes h:i<l1.length. List.getElem?_take is a simp lemma (simp [h] closes goal).",
@@ -67,9 +67,10 @@
     }
   ],
   "next_steps": [
-    "1. Task 5 (Proofs): AEBroadcastInvariant.lean \u2014 inductive hae invariant across AE history (~10-20 theorems). Closes hqc_preserved unconditionally.",
-    "2. Task 5 (Proofs): RaftLogAppend P6 (batch suffix matches) + P7 (beyond-batch discarded) \u2014 Phase 4->5 remaining theorems.",
-    "3. Task 11 (Paper): Update paper.tex with 505/32, new Layer 8 section (ElectionReachability+ECM+RaftLogAppend), ECM gap update, run count 48."
+    "Close remaining 2 sorry in FindConflictCorrespondence.lean (makeLog_some, makeLog_none at lines 167/174)",
+    "Connect ElectionReachability ER9 (shared-source) to a concrete Raft election history to close the main safety gap",
+    "Update paper (formal-verification/paper/) with Run 50 results: P6/P7 proved, ABI all proved",
+    "Task 9 (CI): Add lean-ci.yml workflow to run lake build on PRs with .lean files"
   ],
   "informal_specs_written": [
     "config_validate",
@@ -111,6 +112,17 @@
         "tests/find_conflict/"
       ],
       "notes": "Correspondence tests for find_conflict (17 #guard PASS). ABI1-ABI5 proved; ABI6-ABI8 sorry pending broadcast type."
+    },
+    {
+      "run": 50,
+      "date": "2026-04-21",
+      "tasks": [
+        "Task 6 Correspondence Review",
+        "Task 4->5 RaftLogAppend P6/P7"
+      ],
+      "theorems_added": 5,
+      "sorry_added": 0,
+      "pr": "lean-squad/run-50-p6-p7-correspondence-24699525834"
     }
   ]
 }

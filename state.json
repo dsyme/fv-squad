@@ -1,21 +1,21 @@
 {
-  "run_id": "24698399972",
+  "run_id": "24699525834",
   "date": "2026-04-21",
   "lean_version": "4.28.0",
-  "total_theorems": 515,
-  "total_sorry": 4,
+  "total_theorems": 520,
+  "total_sorry": 2,
   "lean_files": 34,
   "completed_tasks_this_run": [
-    "Task 8 (Route B Correspondence Tests): Created find_conflict correspondence harness \u2014 17 fixture cases in cases.json; FindConflictCorrespondence.lean with 17 #guard assertions (lake build PASSES); Rust test_find_conflict_correspondence function (17 cases, untested due to no network); README.md documentation. 2 auxiliary theorems use sorry (findConflict_emptyEntries_eq_zero, findConflict_noMatch_eq_firstIdx).",
-    "Task 5 (Proof Assistance): Created AEBroadcastInvariant.lean closing the ECM6 gap. 10 theorems: ABI1 hae_for_voter_after_ae, ABI1b hae_for_voter_of_validAEStep, ABI2 hae_for_other_preserved, ABI3 haeCovered_extend, ABI4 haeCovered_nil, ABI5 haeCovered_induction \u2014 all 0 sorry. ABI6/ABI6b/ABI7/ABI8 use sorry pending concrete broadcast-sequence type definition."
+    "Task 6 (Correspondence Review): Added ElectionReachability.lean section (12 theorems, ER1-ER12, 0 sorry) to CORRESPONDENCE.md. Fixed stale ABI6/ABI7/ABI8 sorry annotations. Updated Known Mismatches (removed resolved ABI6-7 gap). Updated file count 32->34.",
+    "Task 4->5 (Proof Assistance): Proved ra_batch_term (P6) and ra_beyond_batch_none (P7) in RaftLogAppend.lean. Added 3 private helpers: taa_offset_le_after, taa_total_extent, taa_maybeTerm_at_batch. RaftLogAppend: 14->19 theorems, 0 sorry. lake build passed."
   ],
-  "pr_branch": "lean-squad/run-49-correspondence-ae-broadcast",
+  "pr_branch": "lean-squad/run-50-p6-p7-correspondence-24699525834",
   "hqc_preserved_gap": "CLOSED conditional on hae via ECM6. Remaining: AEBroadcastInvariant.lean (~10-20 theorems).",
   "aeneas_status": "permanently_blocked_no_new_privileges",
-  "sorry_count": 0,
-  "theorem_count": 505,
-  "file_count": 32,
-  "last_run": 48,
+  "sorry_count": 2,
+  "theorem_count": 520,
+  "file_count": 34,
+  "last_run": 50,
   "last_task": "Task 7+6: CRITIQUE.md + CORRESPONDENCE.md updates (RaftLogAppend + ECM sections)",
   "toolchain_notes": "no Mathlib, stdlib only. lakefile.toml globs=[FVSquad.+*]. List.getElem?_append_left h closes (l1++l2)[i]?=l1[i]? when h:i<l1.length. simp [h] closes (l.take n)[j]?=l[j]? when h:j<n."
 }
