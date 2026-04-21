@@ -137,3 +137,207 @@ impl ReadOnly {
         self.read_index_queue.len()
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::eraftpb::Entry;
+    use crate::default_logger;
+
+    /// Build a `Message` whose `entries[0].data` is `key` — matches how Raft
+    /// calls `add_request` in practice (the context comes from the first entry's data).
+    fn make_req(key: &[u8]) -> Message {
+        let mut e = Entry::default();
+        e.data = key.to_vec().into();
+        let mut m = Message::default();
+        m.entries = vec![e].into();
+        m
+    }
+
+    /// Helper: collect acks for `ctx` from a ReadOnly (sorted for determinism).
+    fn sorted_acks(ro: &ReadOnly, ctx: &[u8]) -> Vec<u64> {
+        match ro.pending_read_index.get(ctx) {
+            None => vec![],
+            Some(rs) => {
+                let mut v: Vec<u64> = rs.acks.iter().cloned().collect();
+                v.sort_unstable();
+                v
+            }
+        }
+    }
+
+    /// Correspondence test: mirrors the 14 `#guard` cases in
+    /// `formal-verification/lean/FVSquad/ReadOnlyCorrespondence.lean`.
+    ///
+    /// Context mapping: Lean `Nat` k → Rust `vec![k as u8]`.
+    #[test]
+    fn test_read_only_correspondence() {
+        let l = default_logger();
+
+        // Case 1–2: empty state
+        let ro = ReadOnly::new(ReadOnlyOption::Safe);
+        assert_eq!(ro.pending_read_count(), 0, "case 1: empty count");
+        assert_eq!(ro.last_pending_request_ctx(), None, "case 2: empty last_ctx");
+
+        // Case 3: add one request
+        {
+            let mut ro = ReadOnly::new(ReadOnlyOption::Safe);
+            let ctx1 = vec![1u8];
+            ro.add_request(100, make_req(&ctx1), 1);
+            assert_eq!(ro.pending_read_count(), 1, "case 3: count");
+            assert_eq!(ro.last_pending_request_ctx(), Some(ctx1.clone()), "case 3: last_ctx");
+            assert_eq!(
+                ro.pending_read_index.get(ctx1.as_slice()).map(|rs| rs.index),
+                Some(100),
+                "case 3: index"
+            );
+            assert_eq!(sorted_acks(&ro, &ctx1), vec![1], "case 3: acks");
+        }
+
+        // Case 4: duplicate add_request is idempotent
+        {
+            let mut ro = ReadOnly::new(ReadOnlyOption::Safe);
+            let ctx1 = vec![1u8];
+            ro.add_request(100, make_req(&ctx1), 1);
+            ro.add_request(200, make_req(&ctx1), 2); // duplicate — ignored
+            assert_eq!(ro.pending_read_count(), 1, "case 4: idempotent count");
+            assert_eq!(
+                ro.pending_read_index.get(ctx1.as_slice()).map(|rs| rs.index),
+                Some(100),
+                "case 4: original index retained"
+            );
+        }
+
+        // Case 5: add two distinct requests → queue=[1,2]
+        {
+            let mut ro = ReadOnly::new(ReadOnlyOption::Safe);
+            let ctx1 = vec![1u8];
+            let ctx2 = vec![2u8];
+            ro.add_request(100, make_req(&ctx1), 1);
+            ro.add_request(101, make_req(&ctx2), 1);
+            assert_eq!(ro.pending_read_count(), 2, "case 5: count=2");
+            assert_eq!(ro.last_pending_request_ctx(), Some(ctx2.clone()), "case 5: last=2");
+            assert_eq!(
+                ro.read_index_queue.iter().cloned().collect::<Vec<_>>(),
+                vec![ctx1, ctx2],
+                "case 5: queue order"
+            );
+        }
+
+        // Case 6: add three requests → count=3
+        {
+            let mut ro = ReadOnly::new(ReadOnlyOption::Safe);
+            ro.add_request(100, make_req(&[1u8]), 1);
+            ro.add_request(101, make_req(&[2u8]), 1);
+            ro.add_request(102, make_req(&[3u8]), 1);
+            assert_eq!(ro.pending_read_count(), 3, "case 6: count=3");
+            assert_eq!(ro.last_pending_request_ctx(), Some(vec![3u8]), "case 6: last=3");
+        }
+
+        // Case 7: recv_ack on absent ctx → None
+        {
+            let mut ro = ReadOnly::new(ReadOnlyOption::Safe);
+            let result = ro.recv_ack(7, &[99u8]);
+            assert!(result.is_none(), "case 7: absent recv_ack");
+        }
+
+        // Case 8: recv_ack adds new id to ack set
+        {
+            let mut ro = ReadOnly::new(ReadOnlyOption::Safe);
+            let ctx1 = vec![1u8];
+            ro.add_request(100, make_req(&ctx1), 1);
+            let acks = ro.recv_ack(2, &ctx1).expect("case 8: should be Some");
+            let mut sorted: Vec<u64> = acks.iter().cloned().collect();
+            sorted.sort_unstable();
+            assert_eq!(sorted, vec![1, 2], "case 8: acks=[1,2]");
+        }
+
+        // Case 9: recv_ack duplicate id is idempotent
+        {
+            let mut ro = ReadOnly::new(ReadOnlyOption::Safe);
+            let ctx1 = vec![1u8];
+            ro.add_request(100, make_req(&ctx1), 1);
+            ro.recv_ack(2, &ctx1);
+            let acks = ro.recv_ack(2, &ctx1).expect("case 9: should be Some");
+            let mut sorted: Vec<u64> = acks.iter().cloned().collect();
+            sorted.sort_unstable();
+            assert_eq!(sorted, vec![1, 2], "case 9: acks idempotent");
+        }
+
+        // Case 10: advance on absent ctx → no-op
+        {
+            let mut ro = ReadOnly::new(ReadOnlyOption::Safe);
+            ro.add_request(100, make_req(&[1u8]), 1);
+            let rss = ro.advance(&[99u8], &l);
+            assert!(rss.is_empty(), "case 10: advance absent");
+            assert_eq!(ro.pending_read_count(), 1, "case 10: count unchanged");
+        }
+
+        // Case 11: advance first of three
+        {
+            let mut ro = ReadOnly::new(ReadOnlyOption::Safe);
+            ro.add_request(100, make_req(&[1u8]), 1);
+            ro.add_request(101, make_req(&[2u8]), 1);
+            ro.add_request(102, make_req(&[3u8]), 1);
+            let rss = ro.advance(&[1u8], &l);
+            assert_eq!(rss.len(), 1, "case 11: 1 status returned");
+            assert_eq!(rss[0].index, 100, "case 11: index=100");
+            assert_eq!(ro.pending_read_count(), 2, "case 11: count=2");
+            let remaining: Vec<_> = ro.read_index_queue.iter().cloned().collect();
+            assert_eq!(remaining, vec![vec![2u8], vec![3u8]], "case 11: queue=[2,3]");
+        }
+
+        // Case 12: advance second of three (middle)
+        {
+            let mut ro = ReadOnly::new(ReadOnlyOption::Safe);
+            ro.add_request(100, make_req(&[1u8]), 1);
+            ro.add_request(101, make_req(&[2u8]), 1);
+            ro.add_request(102, make_req(&[3u8]), 1);
+            let rss = ro.advance(&[2u8], &l);
+            assert_eq!(rss.len(), 2, "case 12: 2 statuses returned");
+            assert_eq!(rss[0].index, 100, "case 12: first index=100");
+            assert_eq!(rss[1].index, 101, "case 12: second index=101");
+            assert_eq!(ro.pending_read_count(), 1, "case 12: count=1");
+        }
+
+        // Case 13: advance last of three (drains all)
+        {
+            let mut ro = ReadOnly::new(ReadOnlyOption::Safe);
+            ro.add_request(100, make_req(&[1u8]), 1);
+            ro.add_request(101, make_req(&[2u8]), 1);
+            ro.add_request(102, make_req(&[3u8]), 1);
+            let rss = ro.advance(&[3u8], &l);
+            assert_eq!(rss.len(), 3, "case 13: 3 statuses returned");
+            assert_eq!(rss[0].index, 100, "case 13: index[0]=100");
+            assert_eq!(rss[1].index, 101, "case 13: index[1]=101");
+            assert_eq!(rss[2].index, 102, "case 13: index[2]=102");
+            assert_eq!(ro.pending_read_count(), 0, "case 13: count=0");
+        }
+
+        // Case 14: advance then add new request
+        {
+            let mut ro = ReadOnly::new(ReadOnlyOption::Safe);
+            ro.add_request(100, make_req(&[1u8]), 1);
+            ro.add_request(101, make_req(&[2u8]), 1);
+            ro.advance(&[1u8], &l);
+            ro.add_request(103, make_req(&[3u8]), 1);
+            let q: Vec<_> = ro.read_index_queue.iter().cloned().collect();
+            assert_eq!(q, vec![vec![2u8], vec![3u8]], "case 14: queue=[2,3]");
+            assert_eq!(ro.pending_read_count(), 2, "case 14: count=2");
+        }
+
+        // Case 15 (bonus): recv_ack then advance returns enriched status
+        {
+            let mut ro = ReadOnly::new(ReadOnlyOption::Safe);
+            let ctx1 = vec![1u8];
+            ro.add_request(100, make_req(&ctx1), 1);
+            ro.recv_ack(2, &ctx1);
+            let rss = ro.advance(&ctx1, &l);
+            assert_eq!(rss.len(), 1, "case 15: 1 status");
+            let mut sorted: Vec<u64> = rss[0].acks.iter().cloned().collect();
+            sorted.sort_unstable();
+            assert_eq!(sorted, vec![1, 2], "case 15: acks=[1,2]");
+            assert_eq!(ro.pending_read_count(), 0, "case 15: queue empty");
+        }
+    }
+}

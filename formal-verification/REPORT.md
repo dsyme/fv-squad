@@ -2,29 +2,29 @@
 
 > 🔬 *Lean Squad — automated formal verification for `dsyme/raft-lean-squad`.*
 
-**Status**: 🔄 **ADVANCED** — 522 theorems, 34 Lean files, **2 `sorry`**, machine-checked
-by Lean 4.28.0 (stdlib only). Top-level safety theorem proved **conditionally** — A5 bridge
-(CPS2) proved; CPS13 closes `hqc_preserved` from `CandidateLogCovers`; ECM6 closes
-`hqc_preserved` directly from a concrete AE step + log-agreement hypothesis `hae`;
-`AEBroadcastInvariant.lean` (ABI1–ABI10, 0 sorry) proves inductive `hae` over a broadcast.
+**Status**: 🔄 **ADVANCED** — 538 theorems, 46 Lean files, **1 `sorry`**, machine-checked
+by Lean 4.28.0 (stdlib only). Top-level safety theorem proved **conditionally**. Eight-layer
+proof architecture complete. Layer 8 (correspondence validation): 12 files, 167+ `#guard`
+assertions, 12 Rust tests. Layer 9 (ReadOnly): 12 theorems, 1 sorry (RO8 requires
+NoDuplicates), informal spec written.
 
 ---
 
 ## Last Updated
-- **Date**: 2026-04-21 02:12 UTC
-- **Commit**: `349032e` — Runs 49–50: AEBroadcastInvariant + FindConflictCorrespondence + RaftLogAppend P6/P7
+- **Date**: 2026-04-21 10:08 UTC
+- **Commit**: `30800ef` — Runs 51–62: 0-sorry milestone, ReadOnly Phase 4, ReadOnly correspondence
 
 ---
 
 ## Executive Summary
 
 The FVSquad project applied Lean 4 formal verification to the Raft consensus implementation
-in `dsyme/fv-squad` over 33+ automated runs. Starting from zero, the project:
+in `dsyme/fv-squad` over 62+ automated runs. Starting from zero, the project:
 
 1. Identified 26 FV-amenable targets across the codebase
 2. Extracted informal specifications for each target
 3. Wrote Lean 4 specifications, implementation models, and proofs
-4. Proved **522 theorems** across **34 Lean files** with **2 `sorry`** (both in `FindConflictCorrespondence.lean` — correspondence helper lemmas pending `omega` extension)
+4. Proved **538 theorems** across **46 Lean files** with **1 `sorry`** (RO8: `advance_removes_ctx` pending NoDuplicates invariant)
 5. Proved **conditional end-to-end Raft cluster safety**: any cluster state reachable
    via transitions satisfying 5 stated invariants is safe (no two nodes ever apply
    different entries at the same log index)
@@ -41,6 +41,9 @@ in `dsyme/fv-squad` over 33+ automated runs. Starting from zero, the project:
 11. Proved **ABI1–ABI10** (AEBroadcastInvariant): inductive `hae` over a voter broadcast
     sequence — ABI5 (haeCovered_induction) proves that after sequentially applying `ValidAEStep`
     to every voter with `prevLogIndex=0`, the log-agreement hypothesis holds for all voters
+12. Achieved **0 sorry** milestone (Run 55) before adding Layer 9 ReadOnly work
+13. Added **Layer 8: 12 correspondence validation files** (167+ `#guard` + 12 Rust tests)
+14. Added **Layer 9: ReadOnly.lean** (12 theorems, 11 proved, RO8 sorry pending NoDuplicates)
 
 All five `RaftReachable.step` hypotheses are now addressed: `hnew_cert` closed by CR8,
 `hno_overwrite` by CPS1, `hcommitted_mono` by CPS11, `hqc_preserved` closed by ECM6
@@ -710,3 +713,90 @@ Three private helpers were added to discharge P6/P7: `taa_offset_le_after`,
 
 > 🔄 `lake build` passed with Lean 4.28.0. 2 sorry remain (FindConflictCorrespondence helper lemmas). 522 theorems machine-checked.
 > 🔬 *Runs 49–50 update (2026-04-21 02:12 UTC). [Lean Squad](https://github.com/dsyme/raft-lean-squad/actions/runs/24700413995)*
+
+---
+
+## Runs 51–62 Update: 0-sorry Milestone, Layer 8 Correspondence Validation, ReadOnly Phase 4
+
+### 🏆 Milestone: 0 sorry (Run 55)
+
+All helper lemmas in `FindConflictCorrespondence.lean` were proved in Run 55, reaching
+the **0 sorry milestone** across the entire project for the first time. The last proof
+(`makeLog_some`) used `List.mem_iff_get` + `getElem!_pos` to bridge membership to
+positional indexing through two private helpers (`indexInj_tail`, `no_double_idx`).
+
+| Metric | Run 50 | Run 55 |
+|--------|--------|--------|
+| Lean files | 34 | 37 |
+| Theorems | 522 | 526 |
+| sorry | 2 | **0** ✅ |
+
+### Layer 8: Correspondence Validation (Runs 52–62)
+
+Task 8 Route B systematic catch-up: 11 targets now have dedicated `*Correspondence.lean`
+files with `#guard` compile-time assertions, plus matching Rust test functions.
+
+| Target | File | #guard | Rust test | Level |
+|--------|------|--------|-----------|-------|
+| `find_conflict` | `FindConflictCorrespondence.lean` | 17 | `test_find_conflict_correspondence` | exact |
+| `maybe_append` | `MaybeAppendCorrespondence.lean` | 35 | `test_maybe_append_correspondence` | exact |
+| `is_up_to_date` | `IsUpToDateCorrespondence.lean` | 14 | `test_is_up_to_date_correspondence` | exact |
+| `committed_index` | `CommittedIndexCorrespondence.lean` | 13 | `test_committed_index_correspondence` | abstraction |
+| `limit_size` | `LimitSizeCorrespondence.lean` | 12 | `test_limit_size_correspondence` | abstraction |
+| `config_validate` | `ConfigValidateCorrespondence.lean` | 14 | `test_config_validate_correspondence` | exact |
+| `inflights` | `InflightsCorrespondence.lean` | 14 | `test_inflights_correspondence` | abstraction |
+| `log_unstable` | `LogUnstableCorrespondence.lean` | 14 | `test_log_unstable_correspondence` | exact |
+| `tally_votes` | `TallyVotesCorrespondence.lean` | 12 | `test_tally_votes_correspondence` | exact |
+| `vote_result` | `VoteResultCorrespondence.lean` | 17 | `test_vote_result_correspondence` | exact |
+| `has_quorum` | `HasQuorumCorrespondence.lean` | 17 | `test_has_quorum_correspondence` | exact |
+| `read_only` | `ReadOnlyCorrespondence.lean` | 14 | `test_read_only_correspondence` | exact |
+
+Total: **12 correspondence files, 167+ `#guard` assertions, 12 Rust test functions**.
+
+### Layer 8: CI Integration (Run 56)
+
+`.github/workflows/lean-ci.yml` was updated with a `correspondence-tests` job that runs
+`cargo test correspondence --features protobuf-codec` on all Rust tests, triggered on
+changes to `src/**` and `formal-verification/tests/**`. Run 61 added `timeout-minutes`
+(60 min for `build`, 30 min for `correspondence-tests`).
+
+### Layer 9: ReadOnly Phase 4 (Runs 60–62)
+
+`ReadOnly.lean` models the leader-side ReadIndex bookkeeping from `src/read_only.rs`
+(Raft §6.4). Twelve theorems (RO1–RO12):
+
+| Theorem | Statement | Status |
+|---------|-----------|--------|
+| RO1 | `addRequest` idempotent when ctx present | ✅ proved |
+| RO2 | New `addRequest` extends queue | ✅ proved |
+| RO3 | New `addRequest` extends pending | ✅ proved |
+| RO4 | Entry retrievable after `addRequest` | ✅ proved |
+| RO5 | `recvAck` returns none iff ctx absent | ✅ proved |
+| RO6 | `recvAck` adds id to ack set | ✅ proved |
+| RO7 | `advance` is no-op when ctx absent | ✅ proved |
+| RO8 | After `advance`, ctx not in queue | 🔄 sorry (NoDuplicates needed) |
+| RO9 | Empty ReadOnly satisfies QueuePendingInv | ✅ proved |
+| RO10 | `addRequest` preserves QueuePendingInv | ✅ proved |
+| RO11 | Successful `addRequest` increments count | ✅ proved |
+| RO12 | `pendingReadCount` zero iff queue empty | ✅ proved |
+
+RO8 requires formalising a NoDuplicates invariant on `ro.queue`. The informal spec
+(`formal-verification/specs/read_only_informal.md`) was completed in Run 61, documenting
+the ReadIndex linearisability protocol and identifying this gap.
+
+`ReadOnlyCorrespondence.lean` (Run 62) provides 14 `#guard` tests matching the 15-case
+Rust test `test_read_only_correspondence`. All cases pass. The correspondence level is
+**exact**: the Lean model reproduces all observable behaviour of the Rust implementation
+modulo the documented abstractions (Vec<u8> ctx → Nat, HashSet → List, logger elided).
+
+| Metric | Run 50 | Run 62 |
+|--------|--------|--------|
+| Lean files | 34 | **46** |
+| Theorems | 522 | **538** |
+| sorry | 2 | **1** (RO8) |
+| Correspondence files | 1 | **12** |
+| #guard assertions | 17 | **167+** |
+| Rust test functions | 1 | **12** |
+
+> 🔄 `lake build` passed with Lean 4.28.0. 1 sorry remains: `RO8_advance_removes_ctx` (requires NoDuplicates). 538 theorems machine-checked.
+> 🔬 *Runs 51–62 update (2026-04-21 10:08 UTC). [Lean Squad](https://github.com/dsyme/raft-lean-squad/actions/runs/24716554131)*
