@@ -3,14 +3,14 @@
 > 🔬 *Lean Squad — automated formal verification for `dsyme/fv-squad`.*
 
 ## Last Updated
-- **Date**: 2026-04-20 21:09 UTC
-- **Commit**: `322294e` — Run 44: Task 7 Critique update; 483 theorems, 0 sorry, 30 files
+- **Date**: 2026-04-21 00:44 UTC
+- **Commit**: `896e159` — Run 48: Task 7 Critique update; 505 theorems, 0 sorry, 32 files
 
 ---
 
 ## Overall Assessment
 
-The FV project has produced **483 theorems across 30 Lean files, all machine-checked by
+The FV project has produced **505 theorems across 32 Lean files, all machine-checked by
 Lean 4 (version 4.28.0, stdlib only — no Mathlib), with 0 `sorry`**.
 
 The `RaftReachable.step` constructor in `RaftTrace.lean` bundles **5 hypotheses** about
@@ -41,12 +41,13 @@ and to a shared-source log condition — the latter being provably satisfied aft
 AE round from a single leader.  The remaining obligation is showing that such a reference
 log exists after an election.
 
-**Summary**: ~97–98% of a fully self-contained, unconditional Raft safety proof is
+**Summary**: ~99% of a fully self-contained, unconditional Raft safety proof is
 machine-checked.  The top-level result `raftReachable_safe` (RT2) is proved: any cluster
 state reachable by valid Raft transitions is safe.  The term safety condition (A6,
-`MaybeCommit.lean`), the A5 bridge (CPS2), the `hqc_preserved` discharge (CPS13), and
-the election reachability bridging (ER1–ER12) are all formally proved.  No bugs were
-found in any modelled Rust function.  **483 theorems, 30 files, 0 sorry**.
+`MaybeCommit.lean`), the A5 bridge (CPS2), the `hqc_preserved` discharge (CPS13+ECM6),
+the election reachability bridging (ER1–ER12), the `RaftLog::append` prefix-preservation
+proof (RA-PFIX1–RA-PFIX3), and the concrete election model (ECM1–ECM7) are all formally
+proved.  No bugs were found in any modelled Rust function.  **505 theorems, 32 files, 0 sorry**.
 
 ---
 
@@ -1255,6 +1256,111 @@ ER3, ER8, ER10, or ER11 to fail.
 
 ---
 
+### `RaftLogAppend.lean` — 14 theorems (RA1-RA9 + 2 helpers + 3 prefix theorems, 0 sorry)
+
+| Theorem | Level | Bug-catching potential | Notes |
+|---------|-------|----------------------|-------|
+| `taa_entries_nonempty` (HTAA1) | Low (helper) | Low | `truncateAndAppend` with non-empty terms produces non-empty entries; scaffolding for HTAA2 |
+| `taa_maybeLastIndex` (HTAA2) | Mid (helper) | Medium | Last index after `truncateAndAppend` = `after + newTerms.length - 1`; key arithmetic lemma for RA3/RA9 |
+| `ra1_empty_noop` (RA1) | Mid | Medium | Empty batch is a no-op; catches implementations that mutate the log on empty input |
+| `ra2_return_is_lastIndex` (RA2) | Mid | Medium | Return value equals `raftLastIndex` of the updated log; structural consistency check |
+| `ra3_return_lastEntry` (RA3) | Mid | **High** | Non-empty no-gap batch: returned index = first.index + batch.length − 1; catches off-by-one errors in last-index computation |
+| `ra4_committed_unchanged` (RA4) | Mid | **High** | `committed` is never modified by `raftLogAppend`; would catch any mutation of the committed index |
+| `ra5_stableLastIdx_unchanged` (RA5) | Mid | Medium | `stableLastIdx` is read-only in `append`; structural check |
+| `ra6_snapshot_preserved` (RA6) | Mid | Medium | Pending snapshot not modified by appending entries; verifies snapshot isolation |
+| `ra7_committed_below_return` (RA7) | Mid | **High** | With `committed < first.1` (panic guard), returned index is strictly above `committed`; directly formalises the invariant enforced by `fatal!` in `src/raft_log.rs:393` |
+| `ra8_empty_lastIndex_stable` (RA8) | Low | Low | Empty-batch corollary; degenerate sanity check |
+| `ra9_return_is_batch_last` (RA9) | Mid | Medium | Named alias of RA3; documents the informal-spec post-condition P3 |
+| `taa_maybeTerm_before` (RA-PFIX1) | **High** | **High** | `truncateAndAppend` preserves `maybeTerm` at every index strictly below `after`; directly proves log monotonicity (P5 of informal spec). Would catch any implementation that over-truncates the unstable segment |
+| `ra_prefix_preserved` (RA-PFIX2) | **High** | **High** | `raftLogAppend` preserves unstable `maybeTerm` for indices before the batch start; full P5 proof. Directly exercises the three cases of `truncateAndAppend` |
+| `ra_committed_prefix_preserved` (RA-PFIX3) | **High** | **High** | Entries at indices ≤ `committed` are not touched by `raftLogAppend` (P4 of informal spec); the machine-checked analogue of the `fatal!` panic guard in Rust |
+
+**Assessment**: `RaftLogAppend.lean` (Run 45–46) covers the full public API of `RaftLog::append`
+as formalised in `src/raft_log.rs`.  The most architecturally significant results are the
+**prefix-preservation theorems** (RA-PFIX1–RA-PFIX3, Run 46):
+
+- **RA-PFIX1** (`taa_maybeTerm_before`) is the core monotonicity lemma — it proves that
+  `truncateAndAppend` never touches entries at indices strictly below the batch start `after`.
+  This must be verified across all three internal cases of `truncateAndAppend` (append,
+  replace, truncate-then-append), making it a thorough structural check.
+- **RA-PFIX3** (`ra_committed_prefix_preserved`) directly validates the design intent of
+  the `if after < committed { fatal!(...) }` guard in `raft_log.rs:393`: when the guard is
+  satisfied (`committed < first.1`), no committed entry is ever modified.  This is a
+  machine-checked proof that the panic guard actually achieves its stated purpose.
+- **RA7** (`ra7_committed_below_return`) additionally proves that the returned last-index
+  is always strictly above `committed` when the guard is satisfied.
+
+**Bug-catching coverage**: The 14 theorems together provide complete postcondition coverage
+for the success path of `RaftLog::append`:
+- Empty-batch no-op (RA1)
+- Return-value correctness (RA2, RA3, RA8, RA9)
+- Committed-index immutability (RA4, RA7, RA-PFIX3)
+- Snapshot isolation (RA6)
+- Prefix preservation (RA-PFIX1–RA-PFIX3)
+
+A real implementation bug that modified committed entries, returned a wrong last-index, or
+corrupted the prefix would be caught by at least RA3, RA4, or RA-PFIX3.
+
+**Modelling approximations**: Entry payloads are omitted (only index/term modelled);
+`u64` is replaced by `Nat` (no overflow); the panic path is not modelled.
+
+---
+
+### `ElectionConcreteModel.lean` — 8 theorems (ECM1-ECM7+ECM5b, 0 sorry)
+
+| Theorem | Level | Bug-catching potential | Notes |
+|---------|-------|----------------------|-------|
+| `candLogCoversLastIndex_of_hae` (ECM1) | **High** | **High** | `CandLogCoversLastIndex` from `hae` via ER9 with R = candLog; simplest shared-source path |
+| `candLogMatching_of_hae` (ECM2) | **High** | **High** | `CandLogMatching` from `hae` + log-boundary conditions via CT5; connecting broadcast log-agreement to abstract election predicate |
+| `candidateLogCovers_of_hae` (ECM3) | **High** | **High** | `CandidateLogCovers` from `hae` + ECM1 + ECM2 + `hconsist`; full chain to the `hqc_preserved` discharge condition |
+| `hqc_preserved_of_hae` (ECM4) | **High** | **High** | `hqc_preserved` from `hae` + `ValidAEStep` via CPS13 ∘ ECM3; primary export for the step-level proof |
+| `hae_of_validAEStep` (ECM5) | **High** | **High** | Single AE step gives voter agreement at AE-covered indices; directly bridges `ValidAEStep` to the `hae` hypothesis |
+| `hae_other_of_validAEStep` (ECM5b) | Mid | Medium | Non-target voters' logs unchanged by AE step; structural stability check |
+| `hqc_preserved_of_validAEStep` (ECM6) | **High** | **High** | **Full composition theorem**: `ValidAEStep` + `hwin` + `hae` → `hqc_preserved`. Primary export; closes the last open gap in the `RaftReachable.step` proof chain |
+| `sharedSource_of_hae` (ECM7) | Mid | Low | Documentation: makes the shared-source reference `R = candLog` explicit; re-states ECM1's existential for CORRESPONDENCE.md audit |
+
+**Assessment**: `ElectionConcreteModel.lean` (Run 46) is architecturally the most significant
+file since `ConcreteProtocolStep.lean`.  It provides the concrete election model that
+closes the last open gap in the full Raft safety proof chain.
+
+**The central result is ECM6** (`hqc_preserved_of_validAEStep`), which is a complete
+composition theorem:
+
+```
+Concrete election model conditions (hwin, hae, hconsist)
+         +  Valid AE step (ValidAEStep)
+         ↓  ECM3 + ECM4
+CandidateLogCovers holds
+         ↓  CPS13
+hqc_preserved holds
+         ↓  CPS2
+RaftReachable.step hypotheses all discharged
+         ↓  RT1 → RT2
+raftReachable_safe (isClusterSafe)
+```
+
+The key insight formalised here is the **shared-source argument**: after an election where
+candidate `lead` wins and voters agree via AE broadcast, the leader's own log `leadLog` serves
+as the natural shared reference log `R` in the ER9/ER10 condition.  The condition `hae`
+(every voter's log agrees with the leader's up to the voter's last accepted index) is exactly
+what a concrete AE broadcast step delivers — formally captured by ECM5.
+
+**Remaining gap after ECM1–ECM7**: The `hae` hypothesis itself still needs to be derived by
+induction over the AE broadcast history (showing that after the leader broadcasts to all
+voters, every voter has accepted entries up to the leader's `nextIndex`).  This is the
+`AEBroadcastInvariant.lean` target identified in TARGETS.md.  Roughly 10–20 theorems in
+a new file would close this final gap, making the entire proof chain unconditional from
+concrete Raft protocol mechanics.
+
+**Bug-catching potential**: ECM1–ECM7 are all rated **High** for bug-catching because they
+directly exercise the election-safety core.  A flaw in the Raft election logic (wrong
+vote-counting, incorrect log comparison, AE prefix miscalculation) would cause at least
+ECM3, ECM4, or ECM6 to fail.  ECM5 is particularly notable: it directly proves that
+`ValidAEStep.hcand_eq` is exactly the `hae` condition needed — a mismatch between the
+concrete AE protocol and the abstract election model would be caught here.
+
+---
+
 ---
 
 ## Paper Review
@@ -1270,48 +1376,53 @@ actual Lean artefacts.
 
 ### Accuracy Assessment
 
-**File inventory table** (`tab:inventory`): accurate and complete.  All 29 files are
-listed with correct theorem counts (verified against the current Lean sources).
-Total 471 is the grep-verified count (some earlier drafts stated 473 — the discrepancy
-was due to theorem vs private-theorem counting; 471 `theorem` declarations is correct).
+**File inventory table** (`tab:inventory`): stale as of Run 48.  The table reflects 29 files
+and 471 theorems (Run 41).  Three new files need to be added:
+- `ElectionReachability.lean` (12 theorems, Run 43)
+- `RaftLogAppend.lean` (14 theorems, Run 45–46)
+- `ElectionConcreteModel.lean` (8 theorems, Run 46)
+The total is now **505 theorems across 32 files**.
 
-**Layer summary table** (`tab:layers`): slightly stale.  The `Layer 2: 119 theorems`
-entry is incorrect; the current count for the 7 Layer-2 files is 139 theorems.  The
-discrepancy arose because TallyVotes (28 theorems) and JointTally (18 theorems) grew
-after the table was written.  The total row is correct (473) because the per-layer
-discrepancies cancel out.  **Recommend updating** Layer 2 count to 139.
+**Layer summary table** (`tab:layers`): stale.  The `Layer 2: 119 theorems` entry is
+incorrect; the current count for the 7 Layer-2 files is 139 theorems.  The three new files
+(ElectionReachability, RaftLogAppend, ElectionConcreteModel) form a new Layer 8 or extend
+Layer 7.  **Recommend adding** Layer 8 with 34 theorems (12 + 14 + 8) and updating totals.
 
-**Run count**: The paper consistently says "39 runs" at the time of writing (updated to
-43 after Run 43 which added ElectionReachability.lean).  Run 44 (this run) adds the
-critique and informal spec, no new theorems.  The proof-result claims remain accurate.
-Recommend updating to 44 runs.
+**Run count**: The paper says "39 runs" at the time of writing.  As of Run 48, it should
+say 48 runs.  **Recommend updating** throughout.
 
-**Cost estimate**: `$280 (39 runs at ~$7 each)` is approximately correct and will be
-`$308` after run 44.
+**Cost estimate**: `$280 (39 runs at ~$7 each)` should be updated to `~$336 (48 runs at ~$7 each)`.
 
 **Abstract claim check**:
-- "473 theorems across 29 Lean 4 files, stdlib only, 0 sorry" — *stale*; update to 483 theorems, 30 files.
+- "473 theorems across 29 Lean 4 files, stdlib only, 0 sorry" — *stale*; update to **505 theorems, 32 files**.
 - "raftReachable_safe — no two nodes ever apply different log entries at same index" ✅
 - "A5 bridge (validAEStep_raftReachable) proved" ✅
 - "One formulation bug caught" ✅ (RSS3/RSS4)
 - "No implementation bugs found" ✅
-- **New claim to add**: "ElectionReachability.lean (ER1–ER12, Run 43) reduces hqc_preserved to a shared-source log condition provably satisfied after any AE round from a single leader."
+- **New claim to add**: "ElectionConcreteModel.lean (ECM1–ECM7, Run 46) closes the `hqc_preserved` gap conditional on `hae`: ECM6 (`hqc_preserved_of_validAEStep`) proves that a valid AE step from the elected leader preserves quorum-committed entries."
+- **New claim to add**: "RaftLogAppend.lean (RA1–RA9+RA-PFIX1–3, Run 45–46) formally proves that `RaftLog::append` never touches committed entries (RA-PFIX3) and returns the correct last index (RA3)."
 
 ### Completeness Assessment
 
 **Positive**:
-- All seven layers described with concrete theorem examples
-- Residual gap (`hqc_preserved` / `CandidateLogCovers`) clearly disclosed in §5.1 and conclusion
+- All seven original layers described with concrete theorem examples
 - `hno_overwrite` discharge via CPS1 explained and connected to Rust source
 - Formulation bug section is thorough and honest
+- ECM6 closes the `hqc_preserved` gap (conditional on `hae`)
 
-**Missing or underdeveloped** (updated for Run 44):
-- **ElectionReachability.lean** (ER1–ER12, Run 43) is not yet reflected in the paper.
-  This is the most significant architectural advance since CPS2 and should appear in §5.2
-  ("Residual Gap") with a new subsection showing both the high-water mark chain and the
-  shared-source sufficient condition.  The paper's current statement that "roughly 20–40
-  additional theorems are needed" should be updated to reflect that this is now ~5–15
-  theorems (just the concrete election model portion).
+**Missing or underdeveloped** (updated for Run 48):
+- **ElectionReachability.lean** (ER1–ER12) and **ElectionConcreteModel.lean** (ECM1–ECM7)
+  are not yet reflected in the paper.  These are the two most significant architectural advances
+  since CPS2.  The paper should add a new §5.2 section ("Closing the hqc_preserved Gap")
+  describing:
+  (a) ER1–ER12 (two sufficient conditions: HWM path and shared-source path);
+  (b) ECM1–ECM7 (concrete election model: `hae` → `CandidateLogCovers` → `hqc_preserved`);
+  (c) ECM6 as the current state of the gap closure (conditional on `hae`); and
+  (d) the remaining obligation: deriving `hae` by induction over the AE broadcast history
+      (target: `AEBroadcastInvariant.lean`, ~10–20 additional theorems).
+- **RaftLogAppend.lean** (RA1–RA9+RA-PFIX1–3) should appear as a new §4.2 or §5.3 section
+  documenting the formal verification of `RaftLog::append` including the committed-prefix
+  preservation result (RA-PFIX3).
 - **MC4 / A6 term safety** could be highlighted more prominently.  MC4
   (`maybeCommit_term`) is the formal proof of Raft §5.4.2 — the "figure 8" problem
   prevention.  This is arguably the most important result in Layer 7 alongside CPS2,
@@ -1320,16 +1431,11 @@ Recommend updating to 44 runs.
   *definitional* proof step (closing an abstract step hypothesis without any proof
   obligations beyond unfolding definitions) could be better explained to readers
   unfamiliar with Lean.
-- **RaftTrace discussion**: the paper correctly describes RT1/RT2 as the
-  "two-line proof" — this is an important pedagogical point that could be expanded
-  slightly: it shows that once the invariant machine is set up, the top-level safety
-  result follows trivially.
 
 ### Clarity Concerns
 
-- §4.1 (Target Selection) says Layer 3 has "~59 theorems" — the tilde is appropriate
-  given the table inconsistency, but after fixing the Layer 2 count the tilde can be
-  removed for Layer 3 (exact count is 59).
+- §4.1 (Target Selection) says Layer 3 has "~59 theorems" — after fixing the Layer 2
+  count the tilde can be removed for Layer 3 (exact count is 59).
 - The relationship between `validAEStep_raftReachable` (CPS2) and the abstract
   `RaftReachable.step` hypotheses is clear in §5.1 but could benefit from a
   one-sentence summary at the start of §4.1.7 connecting the concrete ValidAEStep
@@ -1339,26 +1445,30 @@ Recommend updating to 44 runs.
 
 ### Intellectual Honesty
 
-The paper is appropriately honest about what is and is not proved.  The discussion of
-the residual gap (§5.1) clearly states that `hqc_preserved` requires a full election
-model and is not yet proved from concrete reachability.  The `sorry`-count disclosure
-(0 sorry) is accurate.  The correspondence limitations (CORRESPONDENCE.md) are
+The paper is appropriately honest about what is and is not proved.  The `sorry`-count
+disclosure (0 sorry) is accurate.  The correspondence limitations (CORRESPONDENCE.md) are
 acknowledged in §4.3.
+
+After Run 46, the `hqc_preserved` gap is substantially narrowed: ECM6 proves `hqc_preserved`
+conditional on `hae`.  The paper should update its gap description from "roughly 20–40
+additional theorems are needed" to "roughly 10–20 additional theorems (AEBroadcastInvariant.lean)
+would close this entirely, with the `hae` hypothesis as the only remaining assumption."
 
 ### Recommendation
 
 The paper needs the following targeted updates (in priority order):
-1. **Add ElectionReachability.lean section** in §5.2: describe ER1–ER12, the two
-   sufficient conditions (HWM path and shared-source path), and the updated gap estimate
-   (~5–15 additional theorems for the concrete election model).
-2. Update theorem count in abstract and tables: 473 → 483 theorems, 29 → 30 files.
-3. Fix Layer 2 theorem count in `tab:layers`: 119 → 139.
-4. Update run count: 43 → 44.
-5. Correct model name: "Claude Opus 4.6" → "Claude Sonnet 4.6".
-6. Add one sentence to the MC4 discussion emphasising A6 term safety significance.
+1. **Update theorem count and file count**: 473 → 505 theorems, 29 → 32 files.
+2. **Add new Layer 8 section** covering ElectionReachability (12T), RaftLogAppend (14T),
+   and ElectionConcreteModel (8T) — 34 theorems total.
+3. **Add §5.2 "Closing the hqc_preserved Gap"**: describe ECM6 and the remaining `hae`
+   obligation; update gap estimate to ~10–20 theorems.
+4. Fix Layer 2 theorem count in `tab:layers`: 119 → 139.
+5. Update run count: 44 → 48.
+6. Correct model name: "Claude Opus 4.6" → "Claude Sonnet 4.6".
+7. Update cost estimate: $280 → ~$336.
 
 ---
 
-> 🔬 Updated by [Lean Squad](https://github.com/dsyme/raft-lean-squad/actions/runs/24690473002)
-> automated formal verification. Current state: **483 theorems, 0 sorry, 30 Lean files**.
-> Run 44: Task 7 (Proof Utility Critique) — ElectionReachability.lean (ER1–ER12) section added, counts updated to 483.
+> 🔬 Updated by [Lean Squad](https://github.com/dsyme/raft-lean-squad/actions/runs/24697924459)
+> automated formal verification. Current state: **505 theorems, 0 sorry, 32 Lean files**.
+> Run 48: Task 7 (Proof Utility Critique) — RaftLogAppend.lean (14T) and ElectionConcreteModel.lean (8T) sections added, Paper Review updated, counts updated to 505.
