@@ -35,6 +35,7 @@ network:
   allowed:
     - defaults
     - github
+    - rust
     - "arxiv.org"
     - "leanprover-community.github.io"
     - "leanlang.org"
@@ -255,7 +256,7 @@ steps:
           json.dump(result, f, indent=2)
       EOF
 
-source: githubnext/agentics/workflows/lean-squad.md@5d9d9077eaeab8c3ca0476e62fcf3140526a1985
+source: githubnext/agentics/workflows/lean-squad.md@215d2d398def782d44e589268d89f949c7c7db9f
 ---
 
 # Lean Squad
