@@ -2149,4 +2149,69 @@ mod test {
             );
         }
     }
+
+    /// Correspondence test for `RaftLog::find_conflict_by_term` vs the Lean 4 model
+    /// `FVSquad.FindConflictByTerm.findConflictByTermFull` on the 12 fixture cases in
+    /// `formal-verification/tests/find_conflict_by_term/cases.json`.
+    ///
+    /// 🔬 Lean Squad automated formal verification — Task 8 Route B.
+    /// Each assertion here corresponds to one `#guard` block in
+    /// `formal-verification/lean/FVSquad/FindConflictByTermCorrespondence.lean`.
+    ///
+    /// Log fixture: entries [(1,1),(2,1),(3,2),(4,3),(5,3)] → last_index=5.
+    /// Index 0 is the implicit dummy entry with term 0 (from snapshot_metadata).
+    #[test]
+    fn test_find_conflict_by_term_correspondence() {
+        let l = default_logger();
+
+        // Build a RaftLog with entries at indices 1..=5 with terms [1, 1, 2, 3, 3].
+        // This mirrors the Lean `testLog5` fixture.
+        let store = MemStorage::new();
+        let mut raft_log = RaftLog::new(store, l.clone(), &Config::default());
+        raft_log.append(&[
+            new_entry(1, 1),
+            new_entry(2, 1),
+            new_entry(3, 2),
+            new_entry(4, 3),
+            new_entry(5, 3),
+        ]);
+        assert_eq!(raft_log.last_index(), 5, "fixture: last_index must be 5");
+
+        // (index, term, expected_index, expected_term)
+        // Matches formal-verification/tests/find_conflict_by_term/cases.json exactly.
+        // For out-of-range cases (expected_term = None), index > last_index.
+        let cases: &[(u64, u64, u64, Option<u64>)] = &[
+            // Cases 1-4: scan from last index (5)
+            (5, 3, 5, Some(3)), // case 1: immediate match — term(5)=3 ≤ 3
+            (5, 2, 3, Some(2)), // case 2: scan back 2 — skip 5,4; term(3)=2 ≤ 2
+            (5, 1, 2, Some(1)), // case 3: scan back 3 — skip 5,4,3; term(2)=1 ≤ 1
+            (5, 0, 0, Some(0)), // case 4: scan to dummy (all entries > 0)
+            // Cases 5-8: scan from intermediate indices
+            (3, 3, 3, Some(2)), // case 5: term(3)=2 ≤ 3 — immediate match
+            (4, 2, 3, Some(2)), // case 6: term(4)=3>2, scan back; term(3)=2 ≤ 2
+            (2, 2, 2, Some(1)), // case 7: term(2)=1 ≤ 2 — immediate match
+            (1, 0, 0, Some(0)), // case 8: term(1)=1>0, scan to dummy
+            // Case 9: base case at index 0
+            (0, 5, 0, Some(0)), // case 9: base case — index 0 always returns dummy
+            // Cases 10-11: additional scan scenarios
+            (3, 1, 2, Some(1)), // case 10: term(3)=2>1, scan to index 2 where term=1
+            (1, 2, 1, Some(1)), // case 11: term(1)=1 ≤ 2 — immediate match
+            // Case 12: out-of-range early return
+            (10, 3, 10, None),  // case 12: index 10 > last_index 5 → (10, None)
+        ];
+
+        for (i, &(index, term, expected_idx, expected_term)) in cases.iter().enumerate() {
+            let (got_idx, got_term) = raft_log.find_conflict_by_term(index, term);
+            assert_eq!(
+                got_idx, expected_idx,
+                "case {}: find_conflict_by_term({index}, {term}).0 = {got_idx}, want {expected_idx}",
+                i + 1
+            );
+            assert_eq!(
+                got_term, expected_term,
+                "case {}: find_conflict_by_term({index}, {term}).1 = {got_term:?}, want {expected_term:?}",
+                i + 1
+            );
+        }
+    }
 }
