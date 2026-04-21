@@ -1,0 +1,14 @@
+[
+  {"id": 1, "cap": 3, "ops": [], "check": "count", "expected": 0, "note": "fresh buffer is empty"},
+  {"id": 2, "cap": 3, "ops": [], "check": "full", "expected": false, "note": "fresh not full"},
+  {"id": 3, "cap": 3, "ops": ["add:10"], "check": "queue", "expected": [10], "note": "single add"},
+  {"id": 4, "cap": 3, "ops": ["add:10","add:20"], "check": "count", "expected": 2, "note": "two adds"},
+  {"id": 5, "cap": 3, "ops": ["add:10","add:20","add:30"], "check": "full", "expected": true, "note": "3 = cap"},
+  {"id": 6, "cap": 3, "ops": ["add:10","add:20","freeTo:10"], "check": "queue", "expected": [20], "note": "free first"},
+  {"id": 7, "cap": 3, "ops": ["add:10","add:20","add:30","freeTo:20"], "check": "queue", "expected": [30], "note": "free first two"},
+  {"id": 8, "cap": 3, "ops": ["add:10","add:20","freeTo:25"], "check": "queue", "expected": [], "note": "free all"},
+  {"id": 9, "cap": 3, "ops": ["add:10","add:20","freeFirstOne"], "check": "queue", "expected": [20], "note": "free first one"},
+  {"id": 10, "cap": 3, "ops": ["add:10","add:20","reset"], "check": "queue", "expected": [], "note": "reset clears"},
+  {"id": 11, "cap": 3, "ops": ["add:10","reset"], "check": "full", "expected": false, "note": "not full after reset"},
+  {"id": 12, "cap": 1, "ops": ["add:10"], "check": "full", "expected": true, "note": "cap=1 is full"}
+]

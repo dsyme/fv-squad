@@ -423,4 +423,121 @@ mod tests {
             assert_eq!(inflight.incoming_cap, None);
         }
     }
+
+    /// Task 8 Route B — inflights correspondence test.
+    /// Mirrors formal-verification/tests/inflights/cases.json
+    /// and FVSquad/InflightsCorrespondence.lean exactly.
+    #[test]
+    fn test_inflights_correspondence() {
+        /// Extract the ring buffer's logical contents in order.
+        fn logical(inf: &Inflights) -> Vec<u64> {
+            (0..inf.count)
+                .map(|i| {
+                    let idx = if inf.buffer.is_empty() {
+                        0
+                    } else {
+                        (inf.start + i) % inf.cap
+                    };
+                    if inf.buffer.is_empty() { 0 } else { inf.buffer[idx] }
+                })
+                .collect()
+        }
+
+        // Case 1: new(3).count == 0
+        {
+            let inf = Inflights::new(3);
+            assert_eq!(inf.count(), 0, "case 1: count");
+        }
+
+        // Case 2: new(3).full == false
+        {
+            let inf = Inflights::new(3);
+            assert!(!inf.full(), "case 2: full");
+        }
+
+        // Case 3: new(3).add(10) → queue = [10]
+        {
+            let mut inf = Inflights::new(3);
+            inf.add(10);
+            assert_eq!(logical(&inf), vec![10], "case 3: queue after add(10)");
+        }
+
+        // Case 4: new(3).add(10).add(20) → count = 2
+        {
+            let mut inf = Inflights::new(3);
+            inf.add(10);
+            inf.add(20);
+            assert_eq!(inf.count(), 2, "case 4: count after two adds");
+        }
+
+        // Case 5: new(3).add(10).add(20).add(30) → full
+        {
+            let mut inf = Inflights::new(3);
+            inf.add(10);
+            inf.add(20);
+            inf.add(30);
+            assert!(inf.full(), "case 5: full after three adds");
+        }
+
+        // Case 6: new(3).add(10).add(20).free_to(10) → queue = [20]
+        {
+            let mut inf = Inflights::new(3);
+            inf.add(10);
+            inf.add(20);
+            inf.free_to(10);
+            assert_eq!(logical(&inf), vec![20], "case 6: queue after free_to(10)");
+        }
+
+        // Case 7: new(3).add(10).add(20).add(30).free_to(20) → queue = [30]
+        {
+            let mut inf = Inflights::new(3);
+            inf.add(10);
+            inf.add(20);
+            inf.add(30);
+            inf.free_to(20);
+            assert_eq!(logical(&inf), vec![30], "case 7: queue after free_to(20)");
+        }
+
+        // Case 8: new(3).add(10).add(20).free_to(25) → queue = []
+        {
+            let mut inf = Inflights::new(3);
+            inf.add(10);
+            inf.add(20);
+            inf.free_to(25);
+            assert_eq!(logical(&inf), Vec::<u64>::new(), "case 8: queue after free_to(25)");
+        }
+
+        // Case 9: new(3).add(10).add(20).free_first_one → queue = [20]
+        {
+            let mut inf = Inflights::new(3);
+            inf.add(10);
+            inf.add(20);
+            inf.free_first_one();
+            assert_eq!(logical(&inf), vec![20], "case 9: queue after free_first_one");
+        }
+
+        // Case 10: new(3).add(10).add(20).reset → queue = []
+        {
+            let mut inf = Inflights::new(3);
+            inf.add(10);
+            inf.add(20);
+            inf.reset();
+            assert_eq!(logical(&inf), Vec::<u64>::new(), "case 10: queue after reset");
+        }
+
+        // Case 11: new(3).add(10).reset → not full
+        {
+            let mut inf = Inflights::new(3);
+            inf.add(10);
+            inf.reset();
+            assert!(!inf.full(), "case 11: not full after reset");
+        }
+
+        // Case 12: new(1).add(10) → full
+        {
+            let mut inf = Inflights::new(1);
+            inf.add(10);
+            assert!(inf.full(), "case 12: full after one add on cap-1 buffer");
+        }
+    }
 }
