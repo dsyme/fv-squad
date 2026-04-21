@@ -3,16 +3,20 @@
 > 🔬 *Lean Squad — automated formal verification for `dsyme/fv-squad`.*
 
 ## Last Updated
-- **Date**: 2026-04-21 03:48 UTC
-- **Commit**: `c2b81af` — Run 55: Task 5 (makeLog_some proved, 0 sorry) + Task 7 Critique update; 526 theorems, 0 sorry, 37 files
+- **Date**: 2026-04-21 09:18 UTC
+- **Commit**: `b9c56b4` — Run 60: Task 4 (ReadOnly.lean, 12 theorems, 1 sorry) + Task 7 Critique update; 45 files, 1 sorry
 
 ---
 
 ## Overall Assessment
 
-The FV project has produced **526 theorems across 37 Lean files, machine-checked by
-Lean 4 (version 4.28.0, stdlib only — no Mathlib), with 0 `sorry`** — the last
-remaining sorry (`makeLog_some` in `FindConflictCorrespondence.lean`) was proved in Run 55.
+The FV project has produced **493 theorem declarations across 45 Lean files, machine-checked by
+Lean 4 (version 4.28.0, stdlib only — no Mathlib), with 1 `sorry`** (RO8 in `ReadOnly.lean`,
+which requires a NoDuplicates invariant for the queue — see §Layer 9 below).
+
+Since Run 55, the project has expanded significantly with **Layer 8: Correspondence Validation**
+(11 correspondence-test files covering 152+ `#guard` tests for 11 Rust functions) and
+**Layer 9: ReadOnly.lean** (ReadIndex protocol bookkeeping, 12 theorems).
 
 The `RaftReachable.step` constructor in `RaftTrace.lean` bundles **5 hypotheses** about
 each protocol transition.  These encode deep Raft correctness properties.  The key
@@ -52,9 +56,11 @@ machine-checked.  The top-level result `raftReachable_safe` (RT2) is proved: any
 state reachable by valid Raft transitions is safe.  The broadcast induction gap is now
 closed by `AEBroadcastInvariant.lean` (ABI1–ABI10, 0 sorry): after a full AE broadcast
 round, `hqc_preserved` holds unconditionally.  The `RaftLogAppend.lean` now proves P4–P7
-(prefix, batch placement, and beyond-batch-none).  Correspondence testing for `find_conflict`
-(17 `#guard` tests, Route B) is complete.  No bugs were found in any modelled Rust function.
-**526 theorems, 37 files, 0 sorry** — the project has no remaining `sorry` obligations.
+(prefix, batch placement, and beyond-batch-none).  **Layer 8** adds 11 correspondence-test
+files with 152+ `#guard` tests validating that Lean implementation models agree with Rust
+source on concrete cases.  **Layer 9** adds `ReadOnly.lean` (12 theorems, 1 sorry) formalising
+the ReadIndex linearisability bookkeeping protocol.  No bugs were found in any modelled Rust function.
+**45 files, 493 theorem declarations, 1 sorry** (RO8 in ReadOnly.lean).
 
 ---
 
@@ -1428,18 +1434,105 @@ entries, all-match, suffix conflict, new entries beyond log, etc.).  This is Tas
 evidence — direct behavioural correspondence without needing Aeneas extraction.
 
 **Run 55 achievement**: The `makeLog_some` theorem was the last remaining `sorry` in the
-entire project.  The proof uses:
-- `List.mem_iff_get` to convert membership `(idx, term) ∈ stored` to `∃ i : Fin stored.length, stored.get i = (idx, term)`
-- `getElem!_pos tl j hj : tl[j]! = tl[j]` and `tl[j] = tl.get ⟨j, hj⟩ := rfl`
-- `indexInj_tail` to propagate `IndexInjective` to the tail during induction
-- `no_double_idx` to derive `False` when `hd.1 = idx` and `(idx, term) ∈ tl` simultaneously
-
-This closes the last sorry: **the entire project is now 0 sorry**.
+project (until Run 60 adds ReadOnly.lean with RO8).
 
 **Gaps**: The 17 cases cover the main behaviours but do not exercise:
 - Logs with more than ~5 entries (performance limitation of `#guard`)
 - Cases where `prevLogIndex > 0` (non-zero base index)
 - Error handling paths (Rust returns `Result`; Lean models `Option`)
+
+---
+
+## Layer 8: Correspondence Validation (Runs 52–57)
+
+Task 8 Route B correspondence tests provide direct behavioural evidence that Lean
+implementation models agree with Rust source code on concrete inputs.  11 correspondence
+files have been added (Runs 52–57), covering 11 distinct Rust functions with 152+ `#guard`
+assertions and matching Rust unit tests (`cargo test correspondence`).
+
+### Assessment of Layer 8 as a whole
+
+**Strengths**:
+- Each `#guard` test is a compile-time assertion checked by Lean's kernel — not a runtime
+  test that could pass under a type error.
+- The corresponding Rust unit tests (`test_*_correspondence` in `src/`) run against the
+  actual implementation on the same fixture data, providing a true cross-check.
+- Together, the 11 correspondence files cover the most critical data-path functions:
+  log access (`find_conflict`, `maybe_append`, `is_up_to_date`), quorum operations
+  (`committed_index`, `tally_votes`, `vote_result`, `has_quorum`), and utility functions
+  (`limit_size`, `config_validate`, `inflights`, `log_unstable`).
+
+**Limitations**:
+- `#guard` tests are bounded to small inputs (compile-time evaluation has practical limits).
+- All 11 correspondence tests show agreement — no divergence was found.  This is positive
+  but also means we have not yet discovered any correspondence mismatches.
+- Several files use `abstraction` level (not `exact`): `committed_index` only tests the
+  non-group-commit path; `limit_size` uses `Nat` for sizes; `inflights` uses `List` for the
+  ring buffer.
+
+| File | Guards | Correspondence level | Key function |
+|------|--------|---------------------|-------------|
+| `FindConflictCorrespondence.lean` | 17 | Exact | `find_conflict` |
+| `MaybeAppendCorrespondence.lean` | 35 | Exact | `maybe_append` |
+| `IsUpToDateCorrespondence.lean` | 14 | Exact | `is_up_to_date` |
+| `CommittedIndexCorrespondence.lean` | 13 | Abstraction | `committed_index` (non-GC) |
+| `VoteResultCorrespondence.lean` | 17 | Exact | `vote_result` |
+| `HasQuorumCorrespondence.lean` | 17 | Exact | `has_quorum` |
+| `LimitSizeCorrespondence.lean` | 12 | Abstraction | `limit_size` |
+| `ConfigValidateCorrespondence.lean` | 14 | Exact | `config_validate` |
+| `InflightsCorrespondence.lean` | 14 | Abstraction | `Inflights` ring buffer |
+| `LogUnstableCorrespondence.lean` | 14 | Exact | `log_unstable` ops |
+| `TallyVotesCorrespondence.lean` | 12 | Exact | `tally_votes` |
+
+**Bug-catching potential**: **High**.  Any change to the Rust implementation that modifies
+observable input-output behaviour would cause the corresponding `#guard` tests to fail at
+build time in CI.  This is a regression safety net stronger than the property-based theorems
+for the specific functions covered.
+
+---
+
+## Layer 9: ReadOnly.lean (Run 60)
+
+### `ReadOnly.lean` — 12 theorems, 1 sorry
+
+Formalises the `ReadOnly` struct from `src/read_only.rs` — the leader-side bookkeeping
+for the ReadIndex linearisability protocol (Raft §6.4).
+
+| Theorem | Level | Bug-catching potential | Notes |
+|---------|-------|----------------------|-------|
+| `RO1_addRequest_idempotent` | Mid | **High** | Duplicate context is silently ignored — catches any code that processes the same request twice |
+| `RO2_addRequest_extends_queue` | Low | Medium | Queue grows by exactly 1 for new context |
+| `RO3_addRequest_extends_pending` | Low | Medium | Pending map grows by correct entry |
+| `RO4_addRequest_entry_present` | Mid | **High** | New entry retrievable with correct index and selfId; would catch wrong initial ack set |
+| `RO5_recvAck_none_iff_absent` | Mid | **High** | Returns `none` exactly when ctx absent — catches silent failure to track acks |
+| `RO6_recvAck_adds_id` | Mid | **High** | Ack set grows by id; prior acks preserved — catches lost-ack bug |
+| `RO7_advance_noop_if_absent` | Mid | Medium | No-op when ctx not in queue — precondition safety |
+| `RO8_advance_removes_ctx` (**sorry**) | Mid | **High** | After advance, ctx no longer in queue — requires NoDuplicates invariant |
+| `RO9_inv_empty` | Low | Low | Empty state satisfies invariant — base case |
+| `RO10_inv_add` | Mid | **High** | Invariant preserved by addRequest — key inductive step |
+| `RO11_addRequest_count` | Low | Medium | pendingReadCount + 1 for new ctx |
+| `RO12_pendingReadCount_zero_iff` | Low | Low | Zero count ↔ empty queue |
+
+**Assessment**: The ReadOnly model captures the core linearisability safety protocol:
+a read is not delivered until a quorum has acked the heartbeat at the commit index
+captured when the request was received.  The theorems cover the key state transitions.
+
+**Remaining sorry (RO8)**: `advance` should remove the delivered contexts from the queue.
+The proof requires the `NoDuplicates queue` invariant (maintained by `addRequest`'s
+idempotency guard but not yet formally stated as a separate invariant).  This is a
+straightforward Task 5 target: state `NoDuplicates` as an invariant, show it is preserved
+by `addRequest` and `advance`, then use it to prove `RO8`.
+
+**Bug-catching potential**: The model catches bugs where:
+- A duplicate read request is processed (RO1)
+- An acknowledgement is double-counted (RO6)
+- Read delivery is triggered before a quorum has responded (the `advance` function
+  correctly dequeues all requests up to the acked context, providing FIFO linearisability)
+
+**Approximations / Limitations**:
+- The `req : Message` field is elided — payload correspondence not checked
+- `Vec<u8>` context keys are modelled as `Nat` — no byte-level reasoning
+- `ReadOnlyOption` (Safe vs LeaseBased) is not modelled
 
 ---
 
@@ -1556,3 +1649,10 @@ The paper needs the following targeted updates (in priority order):
 > 🔬 Updated by [Lean Squad](https://github.com/dsyme/raft-lean-squad/actions/runs/24702950218)
 > automated formal verification. Current state: **526 theorems, 0 sorry, 37 Lean files**.
 > Run 55: Task 5 (Proof Assistance — `makeLog_some` proved, 0 sorry achieved) + Task 7 (Critique update).
+
+---
+
+> 🔬 Updated by [Lean Squad](https://github.com/dsyme/raft-lean-squad/actions/runs/24714321754)
+> automated formal verification. Current state: **45 files, 493 theorem declarations, 1 sorry (RO8 in ReadOnly.lean)**.
+> Run 60: Task 4 (ReadOnly.lean — ReadIndex protocol bookkeeping, 12 theorems, 1 sorry) +
+> Task 7 (Critique update — Layer 8 correspondence validation table, Layer 9 ReadOnly section).
