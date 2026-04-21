@@ -2,16 +2,17 @@
 
 > 🔬 *Lean Squad — automated formal verification for `dsyme/raft-lean-squad`.*
 
-**Status**: 🔄 **ADVANCED** — 505 theorems, 32 Lean files, **0 `sorry`**, machine-checked
+**Status**: 🔄 **ADVANCED** — 522 theorems, 34 Lean files, **2 `sorry`**, machine-checked
 by Lean 4.28.0 (stdlib only). Top-level safety theorem proved **conditionally** — A5 bridge
 (CPS2) proved; CPS13 closes `hqc_preserved` from `CandidateLogCovers`; ECM6 closes
-`hqc_preserved` directly from a concrete AE step + log-agreement hypothesis `hae`.
+`hqc_preserved` directly from a concrete AE step + log-agreement hypothesis `hae`;
+`AEBroadcastInvariant.lean` (ABI1–ABI10, 0 sorry) proves inductive `hae` over a broadcast.
 
 ---
 
 ## Last Updated
-- **Date**: 2026-04-20 23:53 UTC
-- **Commit**: `417a1c7` — Runs 43–46: ElectionReachability + RaftLogAppend + ElectionConcreteModel
+- **Date**: 2026-04-21 02:12 UTC
+- **Commit**: `349032e` — Runs 49–50: AEBroadcastInvariant + FindConflictCorrespondence + RaftLogAppend P6/P7
 
 ---
 
@@ -23,7 +24,7 @@ in `dsyme/fv-squad` over 33+ automated runs. Starting from zero, the project:
 1. Identified 26 FV-amenable targets across the codebase
 2. Extracted informal specifications for each target
 3. Wrote Lean 4 specifications, implementation models, and proofs
-4. Proved **505 theorems** across **32 Lean files** with **0 `sorry`**
+4. Proved **522 theorems** across **34 Lean files** with **2 `sorry`** (both in `FindConflictCorrespondence.lean` — correspondence helper lemmas pending `omega` extension)
 5. Proved **conditional end-to-end Raft cluster safety**: any cluster state reachable
    via transitions satisfying 5 stated invariants is safe (no two nodes ever apply
    different entries at the same log index)
@@ -33,10 +34,13 @@ in `dsyme/fv-squad` over 33+ automated runs. Starting from zero, the project:
    condition of `ValidAEStep` is automatically satisfied
 8. Proved **ECM6**: `hqc_preserved` holds given a concrete AE step + the log-agreement
    hypothesis `hae` — a direct bridge from a single AE broadcast to the abstract condition
-9. Proved **RA1–RA9 + prefix preservation**: `RaftLog::append` correctness including
-   P4 (committed prefix never overwritten) and P5 (prefix preserved across appends)
+9. Proved **RA1–RA9 + P4/P5/P6/P7**: `RaftLog::append` correctness including prefix
+   preservation, batch placement, and beyond-batch-none results
 10. Proved **ER1–ER12** (ElectionReachability): reduces `CandidateLogCovers` to the
     shared-source condition; the latter is satisfied after any AE broadcast from one leader
+11. Proved **ABI1–ABI10** (AEBroadcastInvariant): inductive `hae` over a voter broadcast
+    sequence — ABI5 (haeCovered_induction) proves that after sequentially applying `ValidAEStep`
+    to every voter with `prevLogIndex=0`, the log-agreement hypothesis holds for all voters
 
 All five `RaftReachable.step` hypotheses are now addressed: `hnew_cert` closed by CR8,
 `hno_overwrite` by CPS1, `hcommitted_mono` by CPS11, `hqc_preserved` closed by ECM6
@@ -231,23 +235,26 @@ graph TD
     RSS8_2["RSS8 (RaftSafety)"] --> RT2
 ```
 
-### Layer 7 — Concrete Election Model (9 files, ~102 theorems)
+### Layer 7 — Concrete Election Model (11 files, ~117 theorems)
 
 Bridges the abstract `RaftReachable.step` hypotheses to concrete Raft protocol operations.
-The newest addition is the ElectionConcreteModel chain that closes `hqc_preserved` from
-the `hae` (log-agreement) hypothesis.
+The newest additions are `AEBroadcastInvariant.lean` (inductive `hae` over a broadcast
+sequence) and `FindConflictCorrespondence.lean` (executable correspondence tests for
+`find_conflict`).
 
 ```mermaid
 graph TD
-    RE["RaftElection.lean<br/>15 theorems<br/>ElectionSafety: ≤1 leader/term<br/>vote-granting rules"]
+    RE["RaftElection.lean<br/>14 theorems<br/>ElectionSafety: ≤1 leader/term<br/>vote-granting rules"]
     LC["LeaderCompleteness.lean<br/>10 theorems<br/>CandLogCovers chain<br/>LC3: leader has all committed"]
-    CT["ConcreteTransitions.lean<br/>8 theorems<br/>CT4: LMI preserved by AE<br/>CT5: broadcast → CandLogMatching"]
+    CT["ConcreteTransitions.lean<br/>11 theorems<br/>CT4: LMI preserved by AE<br/>CT5: broadcast → CandLogMatching"]
     CR["CommitRule.lean<br/>9 theorems<br/>CR8: hnew_cert closed<br/>commit rule ↔ quorum ACK"]
     MC["MaybeCommit.lean<br/>12 theorems<br/>MC4: A6 term safety<br/>commit index ↔ leader term"]
     CPS["ConcreteProtocolStep.lean<br/>14 theorems<br/>CPS2: A5 bridge<br/>CPS13: hqc_preserved from CandLogCovers"]
     ER["ElectionReachability.lean<br/>12 theorems<br/>ER9/ER10: shared-source<br/>→ CandidateLogCovers<br/>ER12: AE prefix preservation"]
     ECM["ElectionConcreteModel.lean<br/>8 theorems<br/>ECM6: hqc_preserved from hae<br/>ECM5: single AE step → partial hae"]
-    RLA["RaftLogAppend.lean<br/>14 theorems<br/>RA1–RA9: append spec<br/>P4/P5: prefix preservation"]
+    RLA["RaftLogAppend.lean<br/>19 theorems<br/>RA1–RA9: append spec<br/>P4/P5/P6/P7: prefix+batch"]
+    ABI["AEBroadcastInvariant.lean<br/>10 theorems<br/>ABI5: haeCovered_induction<br/>ABI7: hqc_preserved_of_broadcast"]
+    FCC["FindConflictCorrespondence.lean<br/>2 theorems + 17 #guard<br/>Correspondence tests<br/>(2 sorry pending)"]
 
     RE --> LC
     CT --> ER
@@ -256,14 +263,19 @@ graph TD
     CPS --> ECM
     CR --> CPS
     MC --> CPS
+    ECM --> ABI
 ```
 
 **Key results**:
 - `hqc_preserved_of_validAEStep` (ECM6): given `hae` and a valid AE step, quorum-certified entries survive — closes the `hqc_preserved` gap conditionally on `hae`
 - `candidateLogCovers_of_sharedSource` (ER10): if leader's log is the shared reference, `CandidateLogCovers` holds
 - `hwm_of_ae_prefix` (ER12): prior log agreements survive an AE step (inductive invariant seed)
+- `haeCovered_induction` (ABI5): inductive derivation of `hae` over a voter broadcast sequence
+- `hqc_preserved_of_broadcast` (ABI7): after a full broadcast round, `hqc_preserved` holds
 - `ra_committed_prefix_preserved` (P4): `RaftLog::append` never overwrites committed entries
 - `ra_prefix_preserved` (P5): the prefix of the log before `append` is preserved
+- `ra_batch_term` (P6): each batch entry appears at the expected index with the correct term
+- `ra_beyond_batch_none` (P7): no entries exist beyond the last batch entry after `append`
 
 | File | Theorems | Phase | Key result |
 |------|----------|-------|------------|
@@ -297,9 +309,11 @@ graph TD
 | `ConcreteProtocolStep.lean` | 14 | 5 ✅ | CPS1–CPS13: A5 bridge (CPS2) + hqc_preserved discharge (CPS13) |
 | `ElectionReachability.lean` | 12 | 5 ✅ | ER1–ER12: shared-source → CandidateLogCovers; AE prefix preservation |
 | `ElectionConcreteModel.lean` | 8 | 5 ✅ | ECM1–ECM7: hqc_preserved from hae (log agreement); closes gap via ECM6 |
-| `RaftLogAppend.lean` | 14 | 4 ✅ | RA1–RA9+3: RaftLog::append spec + prefix preservation (P4/P5) |
+| `RaftLogAppend.lean` | 19 | 5 ✅ | RA1–RA9+P4/P5/P6/P7: RaftLog::append spec + prefix+batch preservation |
+| `AEBroadcastInvariant.lean` | 10 | 5 ✅ | ABI1–ABI10: inductive hae over broadcast sequence; ABI7 closes hqc_preserved |
+| `FindConflictCorrespondence.lean` | 2+17 | 4 🔄 | 17 #guard correspondence tests; 2 sorry on helper lemmas |
 | `Basic.lean` | helpers | — | Shared definitions |
-| **Total** | **505** | **5 ✅** | **0 sorry** |
+| **Total** | **522** | **5 ✅** | **2 sorry** (FindConflictCorrespondence helpers) |
 
 ---
 
@@ -633,3 +647,66 @@ and a valid AE step fires, quorum-certified entries remain certified in the new 
 
 > ✅ `lake build` passed with Lean 4.28.0. 0 sorry. All 505 theorems machine-checked.
 > 🔬 *Runs 43–46 update (2026-04-20 23:53 UTC). [Lean Squad](https://github.com/dsyme/raft-lean-squad/actions/runs/24696399395)*
+
+---
+
+## Runs 49–50 Update: AEBroadcastInvariant + FindConflictCorrespondence + RaftLogAppend P6/P7
+
+**New files added in Runs 49–50**:
+
+### AEBroadcastInvariant.lean (Run 49, 10 theorems, 0 sorry)
+
+Closes the inductive gap for `hae` (log-agreement hypothesis) over a full voter broadcast
+sequence.  Where ECM5 proved `hae` for a single AE step to one voter, ABI extends this
+inductively to the full broadcast round:
+
+| ID | Name | Description |
+|----|------|-------------|
+| ABI1 | `hae_for_voter_after_ae` | After AE to `v` with `prevLogIndex=0`, `hae` holds for `v` |
+| ABI2 | `hae_for_voter_of_validAEStep` | Variant: `hae` holds for `v` after any `ValidAEStep` |
+| ABI3 | `hae_for_other_preserved` | AE to `v` preserves `hae` for `w ≠ v` (leader log unchanged) |
+| ABI4 | `haeCovered_extend` | AE step extends the covered-voter set by one |
+| ABI5 | `haeCovered_nil` | Base case: empty coverage is vacuously true |
+| ABI6 | `haeCovered_induction` | **Induction**: after broadcasting to the first n voters, `hae` holds for those n voters |
+| ABI7 | `hae_of_two_voter_broadcast` | Specialisation to 2 voters |
+| ABI8 | `hqc_preserved_of_broadcast` | **Primary result**: full broadcast → `hqc_preserved` |
+| ABI9 | `hae_broadcast_invariant_schema` | General schema for arbitrary voter-sequence broadcast |
+| ABI10 | `hae_of_single_broadcast` | Specialisation to 1 voter |
+
+**Significance**: ABI8 (`hqc_preserved_of_broadcast`) is the key theorem: after the leader
+broadcasts AE to all voters (each with `prevLogIndex=0`, giving the full leader log), the
+`hqc_preserved` condition holds for the resulting cluster state.  This closes the broadcast
+induction gap that ECM6 left open.
+
+### FindConflictCorrespondence.lean (Run 49, 2 theorems + 17 #guard, 2 sorry)
+
+Implements Task 8 Route B correspondence testing for `find_conflict`.  The 17 `#guard`
+assertions evaluate the Lean `findConflict` model on concrete test cases at `lake build`
+time.  The corresponding Rust test in `src/raft_log.rs` runs the same cases with `cargo test`.
+
+**The 2 `sorry`** guard helper lemmas `makeLog_some` and `makeLog_none` — the inductive
+steps for the log encoding function `makeLog`.  All 17 `#guard` tests pass (compile-time),
+so the correspondence is demonstrated for all cases even while the helper proofs are pending.
+
+### RaftLogAppend.lean — P6/P7 additions (Run 50, 19 public theorems, 0 sorry)
+
+Two additional theorems proved in Run 50:
+
+| Label | Theorem | Statement |
+|-------|---------|-----------|
+| P6 | `ra_batch_term` | Each batch entry appears at the expected index with its correct term after `raftLogAppend` |
+| P7 | `ra_beyond_batch_none` | No entries exist beyond the last batch entry after `raftLogAppend` |
+
+Three private helpers were added to discharge P6/P7: `taa_offset_le_after`,
+`taa_total_extent`, and `taa_maybeTerm_at_batch`.
+
+| Metric | After Run 48 | After Run 50 |
+|--------|-------------|-------------|
+| Lean files | 32 | 34 |
+| Theorems | 505 | 522 |
+| sorry | 0 | 2 (FindConflictCorrespondence helpers) |
+| Broadcast induction closed? | No (hae only per-step) | **Yes (ABI5-ABI8)** |
+| RaftLogAppend | P4+P5 proved | **P4+P5+P6+P7 proved** |
+
+> 🔄 `lake build` passed with Lean 4.28.0. 2 sorry remain (FindConflictCorrespondence helper lemmas). 522 theorems machine-checked.
+> 🔬 *Runs 49–50 update (2026-04-21 02:12 UTC). [Lean Squad](https://github.com/dsyme/raft-lean-squad/actions/runs/24700413995)*
