@@ -1,9 +1,9 @@
 {
   "lean_version": "4.28.0",
-  "theorem_count": 542,
-  "lean_file_count": 46,
+  "theorem_count": 552,
+  "lean_file_count": 47,
   "sorry_count": 0,
-  "last_run": "Run 66 (2026-04-21): Task 2 (find_conflict_by_term informal spec) + Task 6 (CORRESPONDENCE.md ReadOnly sections). PR: lean-squad/run-66-task2-task6-24736307285.",
+  "last_run": "Run 67 (2026-04-21): Task 3/5 FindConflictByTerm.lean (10T, 0 sorry). Task 1: TARGETS+RESEARCH update. PR: lean-squad/run-67-task3-task1-24745775854.",
   "hqc_preserved_gap": "CLOSED via AEBroadcastInvariant.lean (ABI8). Remaining: connect broadcast model to full election lifecycle.",
   "aeneas_status": "permanently_blocked_no_new_privileges",
   "toolchain_notes": "no Mathlib, use theorem not lemma. lakefile.toml globs=[FVSquad.+*]. LogUnstable/IsUpToDate NO namespace. ReadOnly has namespace FVSquad.ReadOnly. Lean4 operator precedence: existential binder \u2203 x \u2208 l, P stops at = (prec 50), so write \u2203 x \u2208 l, (x.1 == c) = true with explicit parens. Bool if-then-else desugars to ite (b = true) so use if_pos/if_neg not simp only [h, ite_true/ite_false]. List.any_map exists in stdlib.",
@@ -11,7 +11,8 @@
     "Run 62: Task 8 Route B: ReadOnlyCorrespondence.lean (14 #guard tests). Task 10: REPORT.md updated (538T/46F/1sorry).",
     "Run 64: Task 5: Proved RO8 (advance_removes_ctx) and added RO13 (addRequest_preserves_nodup). 540T/46F/0sorry.",
     "Run 65: Task 5: Proved RO14 (recvAck preserves QueuePendingInv) and RO15 (advance preserves QueuePendingInv). 542T/46F/0sorry. Key insight: amember_aupdate_eq uses List.any_map + funext; aupdate_key_subset uses by_cases + if_pos/if_neg.",
-    "Run 66: Task 2 \u2014 find_conflict_by_term_informal.md (6 proposed Lean properties). Task 6 \u2014 CORRESPONDENCE.md + ReadOnly.lean (13T) + ReadOnlyCorrespondence.lean (14 #guard) sections."
+    "Run 66: Task 2 \u2014 find_conflict_by_term_informal.md (6 proposed Lean properties). Task 6 \u2014 CORRESPONDENCE.md + ReadOnly.lean (13T) + ReadOnlyCorrespondence.lean (14 #guard) sections.",
+    "Run 67: Task 3/5 FindConflictByTerm.lean (10T, 0 sorry). FCB3 maximality proved by structural induction alone. FCB2 needs LogDummyZero. Task 1 TARGETS+RESEARCH updated."
   ],
   "run_history": [
     {
@@ -49,14 +50,32 @@
       "sorry_after": 0,
       "theorems_added": 4,
       "pr_branch": "lean-squad/run-65-task5-task9-24720468785"
+    },
+    {
+      "run": 67,
+      "date": "2026-04-21",
+      "tasks": [
+        "Task 3 (Formal Spec Writing)",
+        "Task 1 (Research Update)"
+      ],
+      "changes": [
+        "Added FindConflictByTerm.lean: 10 theorems FCB1-FCB9 + helper, 0 sorry",
+        "FCB3 maximality proved without monotonicity assumption",
+        "FCB2 term bound needs LogDummyZero (logTerm 0 = 0)",
+        "FCB6 proves model always returns Some (no storage-error path)",
+        "TARGETS.md: added find_conflict_by_term Phase 5 entry",
+        "RESEARCH.md: appended Run 67 update and next directions"
+      ],
+      "sorry_count_after": 0,
+      "lean_file_count_after": 47,
+      "pr_branch": "lean-squad/run-67-task3-task1-24745775854"
     }
   ],
   "next_steps": [
-    "Task 3: Write FindConflictByTerm.lean \u2014 formal spec using proposed 6 properties from find_conflict_by_term_informal.md",
-    "Prove RO14: NoDuplicates preserved by advance (queue shortens)",
-    "Prove RO15: recvAck preserves NoDuplicates (pending values changed, not keys)",
-    "Connect AEBroadcastInvariant to full Raft election lifecycle",
-    "Task 11: Update paper with Runs 60-66 results (ReadOnly, 0-sorry milestone, correspondence counts)"
+    "Task 11: Update paper (formal-verification/paper/) with Runs 60-67 results: ReadOnly (15T), FindConflictByTerm (10T), 0-sorry milestone, correspondence test table",
+    "Connect AEBroadcastInvariant to full Raft election lifecycle (election -> AE broadcast -> ABI8)",
+    "progress_set (src/tracker/progress_set.rs): informal spec + Lean spec for ProgressSet::quorum_active",
+    "Connect find_conflict_by_term to handle_append_response fast-reject path proof"
   ],
   "correspondence_test_targets": [
     {
@@ -145,10 +164,16 @@
       "phase": 5,
       "notes": "Phase 5: RO1-RO15 proved, 0 sorry. QueuePendingInv fully preserved by all ops (RO14+RO15). NoDuplicates next.",
       "sorry_count": 0
+    },
+    {
+      "name": "find_conflict_by_term",
+      "file": "formal-verification/lean/FVSquad/FindConflictByTerm.lean",
+      "phase": 5,
+      "notes": "Run 67: FCB1-FCB9 + logNonDecreasing_le (10 theorems, 0 sorry). Maximality (FCB3) proved without monotonicity assumption. Base case uses LogDummyZero."
     }
   ],
-  "lean_files": 46,
-  "last_run_date": "2026-04-22",
+  "lean_files": 47,
+  "last_run_date": "2026-04-21",
   "informal_specs_written": [
     "find_conflict_by_term"
   ]
