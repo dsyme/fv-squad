@@ -274,3 +274,36 @@ The codebase explicitly supports Aeneas via the `aeneas` Cargo feature. The `com
 - [Mathlib4](https://leanprover-community.github.io/mathlib4_docs/)
 - [Aeneas](https://github.com/AeneasVerif/aeneas)
 - [Charon](https://github.com/AeneasVerif/charon)
+
+## Run 67 Update (2026-04-21) — FindConflictByTerm + Next Targets
+
+**Current state**: 552 theorems, 47 Lean files, 0 sorry.
+
+### Completed This Run
+`find_conflict_by_term` (Task 3/5): `RaftLog::find_conflict_by_term` formalised in
+`FVSquad/FindConflictByTerm.lean` (10 theorems, 0 sorry). Key properties proved:
+- **FCB1**: Result index ≤ input index (scan is bounded)
+- **FCB2**: Returned term ≤ query term (correctness of scan exit)
+- **FCB3**: Maximality — every index above result has term > query term
+- **FCB4**: Identity — immediate return when first entry matches
+- **FCB5/FCB7**: Out-of-range guard correctness
+- **FCB6**: The model always returns `Some` (no storage-error path)
+- **FCB8**: Base-case characterisation (dummy entry at index 0)
+- **FCB9**: Monotone log implies maximality (delegates to FCB3)
+
+### Research Directions for Future Runs
+
+1. **Connect to fast-reject path** (`handle_append_response`, `src/raft.rs ~L1657`):
+   prove that `find_conflict_by_term` output is a valid probe point for the leader.
+
+2. **`progress_set`** (`src/tracker/progress_set.rs`): `ProgressSet::quorum_active` —
+   informal spec + Lean spec. Would bridge per-peer `Progress` model to full-cluster
+   quorum tracking.
+
+3. **Connect AEBroadcastInvariant to election lifecycle**:
+   after an election, the leader broadcasts AE; ABI8 should apply. Requires composing
+   `RaftElection.lean` → `ElectionConcreteModel.lean` → `AEBroadcastInvariant.lean`.
+
+4. **Update conference paper** (`formal-verification/paper/paper.tex`):
+   Runs 60–67 add ReadOnly (15T), FindConflictByTerm (10T), 0-sorry milestone.
+   Section on correspondence tests (12 targets, 160+ #guard cases) needs expansion.
