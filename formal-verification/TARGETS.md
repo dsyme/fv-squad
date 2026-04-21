@@ -48,21 +48,18 @@ See `CRITIQUE.md §Critical Gap Analysis` for the full analysis.
 | Priority | ID | File | Function | Phase | Notes |
 |----------|----|------|----------|-------|-------|
 | 11 | `progress_set` | `src/tracker/progress_set.rs` | quorum tracking over progress map | 1 | Formalise `ProgressSet::quorum_active` and quorum detection across the voter progress map. |
-| 22 | `raft_log_append` | `src/raft_log.rs` | `RaftLog::append` | 4 ✅ | Lean spec + impl extraction (Run 45+46). `FVSquad/RaftLogAppend.lean` (14 theorems: RA1–RA9 + taa_entries_nonempty + taa_maybeLastIndex + taa_maybeTerm_before + ra_prefix_preserved + ra_committed_prefix_preserved). P4/P5 prefix-preservation proved (Run 46). P6/P7 (batch suffix + beyond-batch discarded) remain for Phase 5. |
+| 21 | `read_only` | `src/read_only.rs` | `ReadOnly` struct + 5 methods | 4 🔄 | ReadIndex linearisability bookkeeping (Raft §6.4). Informal spec: `specs/read_only_informal.md`. Lean model: `FVSquad/ReadOnly.lean` (12 theorems: RO1–RO12, 11 proved, 1 sorry: RO8 needs NoDuplicates invariant for queue). Next step: formalise NoDuplicates and prove RO8. |
+| 22 | `raft_log_append` | `src/raft_log.rs` | `RaftLog::append` | 5 ✅ | Lean spec + impl (Run 45+46) + P6/P7 proved (Run 50). `FVSquad/RaftLogAppend.lean` (14+ theorems). |
 
 ## Next Steps
 
-The priority order for future runs, given the current state (Run 47):
+The priority order for future runs, given the current state (Run 61):
 
-1. **A6: AEBroadcastInvariant** (`AEBroadcastInvariant.lean`) — prove `HAEInvariant` as
-   an inductive invariant. ECM5 gives the single-step version; the inductive case
-   generalises it to all voters after a broadcast sequence. ~10–20 theorems.
-2. **raft_log_append Phase 5**: prove P6 (batch suffix matches) and P7 (beyond-batch
-   discarded) — completes the `RaftLog::append` correctness spec.
-3. **Task 7 (Critique)**: Update CRITIQUE.md with Runs 43–46 (ECM section, paper review).
-4. **Task 11 (Paper)**: Update paper.tex with theorem counts (505/32), new sections.
-5. **Target 11** (`progress_set`) — lower priority than closing the inductive gap.
-6. **Task 8** (Aeneas extraction) — blocked on OCaml/opam in no-new-privileges containers.
+1. **`read_only` Phase 5**: formalise `NoDuplicates` invariant for `queue` and prove `RO8_advance_removes_ctx`. Optionally add `RO13` (advance preserves QueuePendingInv) and `RO14` (advance returns statuses in order).
+2. **`progress_set`** (Target 11): informal spec + Lean spec for `ProgressSet::quorum_active`.
+3. **Task 10 (Report)**: Update REPORT.md with Runs 56–61 changes (ReadOnly Phase 4, new informal spec).
+4. **Task 11 (Paper)**: Update paper.tex with updated theorem counts, ReadOnly section, correspondence table.
+5. **Correspondence tests for `read_only`**: add `ReadOnlyCorrespondence.lean` and Rust test for `add_request`/`recv_ack`/`advance`.
 
 ---
 
