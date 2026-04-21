@@ -1699,6 +1699,144 @@ invalidated by these gaps.
 
 ---
 
+## `FVSquad/LimitSizeCorrespondence.lean` — LimitSize Correspondence Tests (12 `#guard`, 0 sorry)
+
+**New in Run 56.** Task 8 Route B correspondence test for `limit_size` (`src/util.rs#L54`).
+
+| Lean name | Rust counterpart | Rust location | Correspondence | Notes |
+|-----------|-----------------|---------------|----------------|-------|
+| `limitSize id sizes (some budget)` | `limit_size(&mut entries, limit)` | `src/util.rs#L54` | Abstraction | Pure functional: `id` as size fn; Rust uses `Entry::compute_size()` |
+
+### Test cases (10 `#guard`)
+
+Covers: empty list, singleton, all-fit, progressive truncation at various budgets, no-limit (`none`), mixed entry sizes.
+
+### Validation evidence
+
+- **Lean side**: 12 `#guard` tests in `FVSquad/LimitSizeCorrespondence.lean` (lake build ✅)
+- **Rust side**: `test_limit_size_correspondence` in `src/util.rs` (10 cases, `cargo test ✅`)
+- **Fixture**: `formal-verification/tests/limit_size/cases.json`
+
+### Correspondence level: **Abstraction**
+
+The Lean model uses `id : Nat → Nat` as the size function; the Rust uses `compute_size()` on `Entry` objects. The observable behaviour (truncation length) is identical for equivalent inputs. Divergences (type abstraction, `Nat` vs `u64`, in-place mutation vs pure return, `NO_LIMIT` sentinel vs `Option.none`) are all safe abstractions documented in `formal-verification/lean/FVSquad/LimitSize.lean`.
+
+**No mismatches found.**
+
+---
+
+## `FVSquad/ConfigValidateCorrespondence.lean` — ConfigValidate Correspondence Tests (14 `#guard`, 0 sorry)
+
+**New in Run 56.** Task 8 Route B correspondence test for `Config::validate` (`src/config.rs#L166`).
+
+| Lean name | Rust counterpart | Rust location | Correspondence | Notes |
+|-----------|-----------------|---------------|----------------|-------|
+| `configValidate cfg` | `cfg.validate().is_ok()` | `src/config.rs#L166` | Exact | Same 8-constraint conjunction; returns `Bool` vs `Result<()>` |
+
+### Test cases (12 `#guard`)
+
+Covers: default config (valid), each of 8 constraint violations (C1–C8), and two multi-field valid configs (min_election_tick = election_tick; LeaseBased with check_quorum).
+
+### Validation evidence
+
+- **Lean side**: 14 `#guard` tests in `FVSquad/ConfigValidateCorrespondence.lean` (lake build ✅)
+- **Rust side**: `test_config_validate_correspondence` in `src/config.rs` (12 cases, `cargo test ✅`)
+- **Fixture**: `formal-verification/tests/config_validate/cases.json`
+
+### Correspondence level: **Exact**
+
+The Lean `configValidate` function computes the same boolean verdict as `Config::validate().is_ok()` on all tested inputs. The only deliberate abstraction is that error messages are not modelled (Lean returns `Bool`, Rust returns `Result`), which is consistent with the specification focus on the validity predicate rather than diagnostics.
+
+**No mismatches found.**
+
+---
+
+## `FVSquad/InflightsCorrespondence.lean` — Inflights Correspondence Tests (14 `#guard`, 0 sorry)
+
+**New in Run 56.** Task 8 Route B correspondence test for the `Inflights` ring-buffer (`src/tracker/inflights.rs`).
+
+| Lean name | Rust counterpart | Rust location | Correspondence | Notes |
+|-----------|-----------------|---------------|----------------|-------|
+| `Inflights.add n` | `Inflights::add(to: u64)` | `inflights.rs#L71` | Abstraction | Lean: append to `List Nat`; Rust: ring-buffer write |
+| `Inflights.freeTo n` | `Inflights::free_to(to: u64)` | `inflights.rs#L82` | Abstraction | Drop-while `≤ n`; ring-buffer rotate in Rust |
+| `Inflights.freeFirstOne` | `Inflights::free_first_one()` | `inflights.rs#L104` | Abstraction | Drop head of queue |
+| `Inflights.reset` | `Inflights::reset()` | `inflights.rs#L109` | Exact | Both produce empty state |
+| `Inflights.count` | `Inflights::count()` | `inflights.rs#L55` | Abstraction | `queue.length` vs ring-buffer occupancy |
+| `Inflights.full` | `Inflights::full()` | `inflights.rs#L61` | Exact | `count == cap` |
+
+### Test cases (12 `#guard`)
+
+Covers: fresh buffer (count=0, full=false), single add, two adds, full state, `freeTo` with various thresholds, `freeFirstOne`, `reset`, cap=1 edge case.
+
+### Validation evidence
+
+- **Lean side**: 14 `#guard` tests in `FVSquad/InflightsCorrespondence.lean` (lake build ✅)
+- **Rust side**: `test_inflights_correspondence` in `src/tracker/inflights.rs` (12 cases, `cargo test ✅`)
+- **Fixture**: `formal-verification/tests/inflights/cases.json`
+
+### Correspondence level: **Abstraction**
+
+The Lean model uses a simple `List Nat` queue; the Rust uses a circular ring buffer. The `logicalContent` bridge function in `Inflights.lean` maps the ring buffer's logical sequence to the Lean list. All observable properties (count, full, queue content after operations) match. The ring-buffer implementation detail (wrap-around index arithmetic) is abstracted away without affecting correctness.
+
+**No mismatches found.**
+
+---
+
+## `FVSquad/LogUnstableCorrespondence.lean` — LogUnstable Correspondence Tests (14 `#guard`, 0 sorry)
+
+**New in Run 56.** Task 8 Route B correspondence test for the `Unstable` log buffer (`src/log_unstable.rs`).
+
+| Lean name | Rust counterpart | Rust location | Correspondence | Notes |
+|-----------|-----------------|---------------|----------------|-------|
+| `maybeFirstIndex u` | `Unstable::maybe_first_index()` | `log_unstable.rs#L98` | Exact | Returns `some (snap_index + 1)` if snapshot, else `none` |
+| `maybeLastIndex u` | `Unstable::maybe_last_index()` | `log_unstable.rs#L85` | Exact | Entries last index, else snap index |
+| `maybeTerm u i` | `Unstable::maybe_term(idx)` | `log_unstable.rs#L107` | Exact | Entry term lookup + snapshot fallback |
+
+### Test cases (12 `#guard`)
+
+Covers: `maybeFirstIndex` with entries-only (→ none) and snapshot (→ some); `maybeLastIndex` with entries, empty, snapshot-only; `maybeTerm` at various indices — in-range, out-of-range, at snapshot index, before snapshot.
+
+### Validation evidence
+
+- **Lean side**: 14 `#guard` tests in `FVSquad/LogUnstableCorrespondence.lean` (lake build ✅)
+- **Rust side**: `test_log_unstable_correspondence` in `src/log_unstable.rs` (12 cases, `cargo test ✅`)
+- **Fixture**: `formal-verification/tests/log_unstable/cases.json`
+
+### Correspondence level: **Exact**
+
+The Lean model stores `(offset, List Nat, Option (Nat × Nat))` (index offset, entry terms, optional snapshot). The correspondence with Rust `Unstable` holds when `entries[i].term == lean_terms[i]` and `entries[i].index == offset + i`. All three query operations (`maybe_first_index`, `maybe_last_index`, `maybe_term`) are exactly reproduced.
+
+**No mismatches found.**
+
+---
+
+## `FVSquad/TallyVotesCorrespondence.lean` — TallyVotes Correspondence Tests (12 `#guard`, 0 sorry)
+
+**New in Run 56.** Task 8 Route B correspondence test for `ProgressTracker::tally_votes` (`src/tracker.rs`).
+
+| Lean name | Rust counterpart | Rust location | Correspondence | Notes |
+|-----------|-----------------|---------------|----------------|-------|
+| `checkFn yes_ids no_ids` | closure passed to `Configuration::vote_result` | `tracker.rs` | Exact | Maps yes/no/missing to `Option Bool` |
+| `tallyVotes voters checkFn` | `ProgressTracker::tally_votes()` | `tracker.rs` | Exact | Counts yes/no/missing; derives `VoteResult` |
+
+### Test cases (10 `#guard`)
+
+Covers: empty voters (→ Won), single yes/no/missing, 3-voter majority scenarios (Won/Pending/Lost), all-yes, 5-voter configurations.
+
+### Validation evidence
+
+- **Lean side**: 12 `#guard` tests in `FVSquad/TallyVotesCorrespondence.lean` (lake build ✅)
+- **Rust side**: `test_tally_votes_correspondence` in `src/tracker.rs` (10 cases, `cargo test ✅`)
+- **Fixture**: `formal-verification/tests/tally_votes/cases.json`
+
+### Correspondence level: **Exact**
+
+The Lean `tallyVotes` exactly mirrors the `ProgressTracker::tally_votes` algorithm: iterate voters, count yes/no/missing via the check function, then determine `VoteResult` using majority arithmetic. The `(granted, rejected, result)` triple matches on all 10 tested cases.
+
+**No mismatches found.**
+
+---
+
 ## `FVSquad/VoteResultCorrespondence.lean` — VoteResult Correspondence Tests (12 `#guard`, 0 sorry)
 
 **New in Run 55.** Task 8 Route B correspondence test for `Configuration::vote_result`
@@ -1760,7 +1898,7 @@ joint-quorum composition is proved separately in `JointVote.lean`.
 ---
 
 ## Last Updated
-- **Date**: 2026-04-21 03:56 UTC
-- **Commit**: `c2b81af`
+- **Date**: 2026-04-21 09:03 UTC
+- **Commit**: `8149852b5069ec8749c83e031c1db2301bf14554`
 
-> 🔬 Updated by [Lean Squad](https://github.com/dsyme/raft-lean-squad/actions/runs/24703148371) automated formal verification. Run 55: Task 8 Route B (VoteResultCorrespondence.lean: 12 #guard; HasQuorumCorrespondence.lean: 12 #guard). 39 Lean files, 522 theorems, 1 sorry (FindConflictCorrespondence.lean makeLog_some).
+> 🔬 Updated by [Lean Squad](https://github.com/dsyme/raft-lean-squad/actions/runs/24713683812) automated formal verification. Run 59: Task 6 Correspondence Review — added sections for LimitSizeCorrespondence, ConfigValidateCorrespondence, InflightsCorrespondence, LogUnstableCorrespondence, TallyVotesCorrespondence (Runs 56-57). 44 Lean files, 524 theorems, 0 sorry, 189 #guard assertions across 11 correspondence files.

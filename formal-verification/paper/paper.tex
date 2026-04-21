@@ -79,7 +79,7 @@ properties of \texttt{raft-rs}---a production Rust implementation of the
 Raft distributed consensus protocol---with near-zero human labour.  The
 human author required no expertise in Lean, formal methods, or proof
 engineering; his role was limited to designing the reusable workflow,
-merging pull requests, and writing two short comments across 56
+merging pull requests, and writing two short comments across 58
 autonomous agent runs.
 
 The agent autonomously researched the codebase, selected 26 verification
@@ -100,7 +100,7 @@ provide 189 compile-time \texttt{\#guard} assertions and 11 Rust test
 functions, confirming that the Lean models agree with the Rust
 implementation on concrete inputs across all major targets.
 
-The total LLM token cost was approximately \$399 (57~runs at
+The total LLM token cost was approximately \$406 (58~runs at
 $\sim$\$7 each using Claude Sonnet~4.6 pricing at time of publication).
 The Lean Squad workflow is open-source, installs on any GitHub repository
 with two commands, and requires only an LLM API token.  The proof
@@ -1005,7 +1005,7 @@ report, and even an initial draft of this paper were produced autonomously.
 The human never selected a target, wrote a specification, suggested a
 proof strategy, or debugged a failing proof.
 
-Across 57 runs spanning $\approx$10 weeks, the agent produced:
+Across 58 runs spanning $\approx$10 weeks, the agent produced:
 \begin{itemize}\setlength\itemsep{0pt}
   \item 26 informal specification documents
   \item 44 Lean~4 source files ($\approx$12{,}900 lines)
@@ -1374,7 +1374,7 @@ Our $\approx$12{,}900 lines of Lean and 524 theorems are modest by comparison.
 However, the relevant metric is not raw scale but \emph{effort}:
 those projects required person-years of expert proof engineering,
 while ours required zero human proof engineering and approximately
-55 LLM agent runs (each $\sim$15--30 minutes of wall-clock time)
+58 LLM agent runs (each $\sim$15--30 minutes of wall-clock time)
 plus two one-line human comments.  If the approach scales---and the
 successful progression from Layer~1 through Layer~8 suggests it
 can---the implications for the cost of formal verification are
@@ -1398,7 +1398,7 @@ Starting from zero, the Lean Squad agent---running as a scheduled
 GitHub Actions job with no human in the loop---autonomously selected
 26 verification targets in a production Raft implementation, designed
 an eight-layer proof architecture, wrote all specifications and proofs,
-and produced 524 machine-checked theorems across 44 files in 57 runs,
+and produced 524 machine-checked theorems across 44 files in 58 runs,
 culminating in the end-to-end safety theorem
 \texttt{raftReachable\_safe} with zero \texttt{sorry}, plus the A5
 bridge (CPS2) connecting concrete AppendEntries steps to the abstract
