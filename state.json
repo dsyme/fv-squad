@@ -3,7 +3,7 @@
   "theorem_count": 548,
   "lean_file_count": 48,
   "sorry_count": 0,
-  "last_run": "Run 69 (2026-04-21): Task 8 Route B \u2014 FindConflictByTermCorrespondence (16 #guard, Rust test). Task 11: paper updated (548T/48F/ten-layer/69 runs). PR: lean-squad/run-69-task8-task11-24750830891.",
+  "last_run": "Run 70 (2026-04-21): Task 10 REPORT.md + Task 11 paper.tex (204 #guard, 13 corr.files, 70 runs). PR: lean-squad/run-70-task11-task10-24752155366.",
   "hqc_preserved_gap": "CLOSED via AEBroadcastInvariant.lean (ABI8). Remaining: connect broadcast model to full election lifecycle.",
   "aeneas_status": "permanently_blocked_no_new_privileges",
   "toolchain_notes": "no Mathlib, use theorem not lemma. lakefile.toml globs=[FVSquad.+*]. LogUnstable/IsUpToDate NO namespace. ReadOnly has namespace FVSquad.ReadOnly. Lean4 operator precedence: existential binder \u2203 x \u2208 l, P stops at = (prec 50), so write \u2203 x \u2208 l, (x.1 == c) = true with explicit parens. Bool if-then-else desugars to ite (b = true) so use if_pos/if_neg not simp only [h, ite_true/ite_false]. List.any_map exists in stdlib.",
@@ -105,13 +105,32 @@
       "sorry_count_after": 0,
       "lean_file_count_after": 48,
       "pr_branch": "lean-squad/run-69-task8-task11-24750830891"
+    },
+    {
+      "run": 70,
+      "date": "2026-04-21",
+      "tasks": [
+        "Task 10 (Project Report)",
+        "Task 11 (Conference Paper)"
+      ],
+      "changes": [
+        "REPORT.md: status updated to 48 files, 13 correspondence files, 204 #guard, 13 Rust tests",
+        "REPORT.md: added FindConflictByTermCorrespondence row (19 #guard) to Layer 8 table",
+        "REPORT.md: added Runs 68-70 update section",
+        "paper.tex: #guard count fixed 192->204 (and 216->204 in abstract)",
+        "paper.tex: individual file counts corrected in inventory table",
+        "paper.tex: run count 69->70, cost $483->$490",
+        "paper.pdf: not recompiled (sudo blocked in sandbox)"
+      ],
+      "sorry_count_after": 0,
+      "lean_file_count_after": 48,
+      "pr_branch": "lean-squad/run-70-task11-task10-24752155366"
     }
   ],
   "next_steps": [
     "Connect AEBroadcastInvariant to full Raft election lifecycle (election -> AE broadcast -> ABI8)",
-    "Task 8 Route B: more correspondence tests \u2014 tally_votes or vote_result if new patterns available",
     "Task 5: prove remaining sorry-free progress toward full concrete protocol proof",
-    "Task 11: recompile paper.pdf when LaTeX available",
+    "Recompile paper.pdf when LaTeX becomes available",
     "progress_set (src/tracker/progress_set.rs): informal spec + Lean spec for quorum_active"
   ],
   "correspondence_test_targets": [
