@@ -1,21 +1,20 @@
 {
-  "run_id": "24700413995",
+  "run_id": "24701759513",
   "date": "2026-04-21",
   "lean_version": "4.28.0",
   "total_theorems": 522,
-  "total_sorry": 2,
-  "lean_files": 34,
+  "total_sorry": 1,
+  "lean_files": 37,
   "completed_tasks_this_run": [
-    "Task 10 (Project Report): REPORT.md updated — 505->522 theorems, 32->34 files, 2 sorry; added Runs 49-50 section (AEBroadcastInvariant 10T, FindConflictCorrespondence 2T+17guards, RaftLogAppend P6/P7); updated Layer 7 to 11 files; updated File Inventory.",
-    "Task 7 (Proof Utility Critique): CRITIQUE.md updated — AEBroadcastInvariant section (10T, ABI8 closes broadcast induction), FindConflictCorrespondence section (17 #guard tests, 2 sorry), RaftLogAppend updated (14->19T, P6/P7 added); Gaps updated (broadcast induction now closed, makeLog sorry remaining); Trajectory step 14 resolved."
+    "Task 8 (Route B catch-up): IsUpToDateCorrespondence.lean (12 #guard, exact), CommittedIndexCorrespondence.lean (8 #guard, abstraction). 4 correspondence test targets total."
   ],
-  "pr_branch": "lean-squad/run-51-report-critique-24700413995",
+  "pr_branch": "lean-squad/run-53-task8-correspondence-24701759513",
   "hqc_preserved_gap": "CLOSED via ABI8 (hqc_preserved_of_broadcast). Remaining: connect broadcast to full Raft election lifecycle.",
   "aeneas_status": "permanently_blocked_no_new_privileges",
-  "sorry_count": 2,
+  "sorry_count": 1,
   "theorem_count": 522,
-  "file_count": 34,
-  "last_run": 51,
-  "last_task": "Task 10 (REPORT) + Task 7 (CRITIQUE)",
-  "toolchain_notes": "no Mathlib, stdlib only. lakefile.toml globs=[FVSquad.+*]. List.getElem?_append_left h closes (l1++l2)[i]?=l1[i]? when h:i<l1.length. simp [h] closes (l.take n)[j]?=l[j]? when h:j<n."
+  "file_count": 37,
+  "last_run": 53,
+  "last_task": "Task 8 (Route B catch-up): isUpToDate + committedIndex correspondence",
+  "toolchain_notes": "no Mathlib, stdlib only. lakefile.toml globs=[FVSquad.+*]. IsUpToDate.lean has NO namespace — use LogId, isUpToDate directly (no 'open FVSquad.IsUpToDate'). List.getElem?_append_left h closes (l1++l2)[i]?=l1[i]? when h:i<l1.length."
 }
