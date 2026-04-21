@@ -1872,6 +1872,80 @@ mod test {
         }
     }
 
+    /// Correspondence test: verifies that `find_conflict` matches the Lean 4 model
+    /// `FVSquad.FindConflict.findConflict` on the 17 fixture cases in
+    /// `formal-verification/tests/find_conflict/cases.json`.
+    ///
+    /// 🔬 Lean Squad automated formal verification — Task 8 Route B.
+    /// Each assertion here corresponds to one `#guard` in
+    /// `formal-verification/lean/FVSquad/FindConflictCorrespondence.lean`.
+    #[test]
+    fn test_find_conflict_correspondence() {
+        let l = default_logger();
+
+        // Helper: build a RaftLog whose unstable log contains `stored` entries
+        // (index, term). The Lean model uses makeLog(stored) for the same input.
+        let make_raft_log = |stored: &[(u64, u64)]| {
+            let store = MemStorage::new();
+            let mut raft_log = RaftLog::new(store, l.clone(), &Config::default());
+            if !stored.is_empty() {
+                let entries: Vec<_> = stored.iter().map(|&(i, t)| new_entry(i, t)).collect();
+                raft_log.append(&entries);
+            }
+            raft_log
+        };
+
+        // Each tuple: (log_stored, entries_to_check, expected_result)
+        // Matches cases.json exactly.
+        let cases: &[(&[(u64, u64)], &[(u64, u64)], u64)] = &[
+            // Case 1: Empty entries → 0 (FC1)
+            (&[(1,1),(2,2),(3,3)], &[], 0),
+            // Case 2: All entries match → 0 (FC4a)
+            (&[(1,1),(2,2),(3,3)], &[(1,1),(2,2),(3,3)], 0),
+            // Case 3: Matching suffix → 0
+            (&[(1,1),(2,2),(3,3)], &[(2,2),(3,3)], 0),
+            // Case 4: Last entry only, matches → 0 (FC9)
+            (&[(1,1),(2,2),(3,3)], &[(3,3)], 0),
+            // Case 5: New entries beyond log → first new index (FC5)
+            (&[(1,1),(2,2),(3,3)], &[(1,1),(2,2),(3,3),(4,4),(5,4)], 4),
+            // Case 6: Matching prefix then new entries → first new index
+            (&[(1,1),(2,2),(3,3)], &[(2,2),(3,3),(4,4),(5,4)], 4),
+            // Case 7: One match then new entries
+            (&[(1,1),(2,2),(3,3)], &[(3,3),(4,4),(5,4)], 4),
+            // Case 8: All new entries (beyond log) → first new index
+            (&[(1,1),(2,2),(3,3)], &[(4,4),(5,4)], 4),
+            // Case 9: Conflict at first entry (FC2)
+            (&[(1,1),(2,2),(3,3)], &[(1,4),(2,4)], 1),
+            // Case 10: One match then conflict → conflict index (FC7)
+            (&[(1,1),(2,2),(3,3)], &[(2,1),(3,4),(4,4)], 2),
+            // Case 11: Two matches then conflict → conflict index (FC7)
+            (&[(1,1),(2,2),(3,3)], &[(3,1),(4,2),(5,4),(6,4)], 3),
+            // Case 12: Empty log, any entry is new → first entry index
+            (&[], &[(1,1)], 1),
+            // Case 13: Empty log, empty entries → 0 (FC1)
+            (&[], &[], 0),
+            // Case 14: Singleton log, matching entry → 0 (FC9)
+            (&[(1,5)], &[(1,5)], 0),
+            // Case 15: Singleton log, mismatching entry → entry index (FC10)
+            (&[(1,5)], &[(1,3)], 1),
+            // Case 16: Conflict deep in match prefix (FC7)
+            (&[(1,1),(2,2),(3,3),(4,4),(5,5)], &[(1,1),(2,2),(3,3),(4,4),(5,6),(6,6)], 5),
+            // Case 17: All entries conflict → first entry index (FC2)
+            (&[(1,1),(2,1),(3,1)], &[(1,2),(2,2),(3,2)], 1),
+        ];
+
+        for (i, (stored, check_ents, expected)) in cases.iter().enumerate() {
+            let raft_log = make_raft_log(stored);
+            let entries: Vec<_> = check_ents.iter().map(|&(idx, t)| new_entry(idx, t)).collect();
+            let got = raft_log.find_conflict(&entries);
+            assert_eq!(
+                got, *expected,
+                "case {}: find_conflict({:?}, {:?}) = {}, want {}",
+                i + 1, stored, check_ents, got, expected
+            );
+        }
+    }
+
     #[test]
     fn test_restore_snap() {
         let store = MemStorage::new();

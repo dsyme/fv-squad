@@ -1,0 +1,128 @@
+{
+  "description": "Correspondence test cases for RaftLog::find_conflict (Rust) vs findConflict (Lean 4 model)",
+  "target": "FVSquad.FindConflict.findConflict",
+  "rust_target": "raft_log::RaftLog::find_conflict",
+  "lean_file": "formal-verification/lean/FVSquad/FindConflictCorrespondence.lean",
+  "rust_test": "src/raft_log.rs :: test_find_conflict_correspondence",
+  "cases": [
+    {
+      "id": 1,
+      "description": "Empty entries → no conflict (FC1)",
+      "log": [[1,1],[2,2],[3,3]],
+      "entries": [],
+      "expected": 0
+    },
+    {
+      "id": 2,
+      "description": "All entries match → 0 (FC4a)",
+      "log": [[1,1],[2,2],[3,3]],
+      "entries": [[1,1],[2,2],[3,3]],
+      "expected": 0
+    },
+    {
+      "id": 3,
+      "description": "Suffix of log, all match → 0",
+      "log": [[1,1],[2,2],[3,3]],
+      "entries": [[2,2],[3,3]],
+      "expected": 0
+    },
+    {
+      "id": 4,
+      "description": "Last entry only, matches → 0",
+      "log": [[1,1],[2,2],[3,3]],
+      "entries": [[3,3]],
+      "expected": 0
+    },
+    {
+      "id": 5,
+      "description": "New entries beyond log end → index of first new entry (FC5)",
+      "log": [[1,1],[2,2],[3,3]],
+      "entries": [[1,1],[2,2],[3,3],[4,4],[5,4]],
+      "expected": 4
+    },
+    {
+      "id": 6,
+      "description": "Matching prefix then new entries → first new index",
+      "log": [[1,1],[2,2],[3,3]],
+      "entries": [[2,2],[3,3],[4,4],[5,4]],
+      "expected": 4
+    },
+    {
+      "id": 7,
+      "description": "One match then new entries → first new index",
+      "log": [[1,1],[2,2],[3,3]],
+      "entries": [[3,3],[4,4],[5,4]],
+      "expected": 4
+    },
+    {
+      "id": 8,
+      "description": "All new entries (beyond log) → first new index",
+      "log": [[1,1],[2,2],[3,3]],
+      "entries": [[4,4],[5,4]],
+      "expected": 4
+    },
+    {
+      "id": 9,
+      "description": "Conflict at first entry (FC2)",
+      "log": [[1,1],[2,2],[3,3]],
+      "entries": [[1,4],[2,4]],
+      "expected": 1
+    },
+    {
+      "id": 10,
+      "description": "One match then conflict → conflict index (FC7)",
+      "log": [[1,1],[2,2],[3,3]],
+      "entries": [[2,1],[3,4],[4,4]],
+      "expected": 2
+    },
+    {
+      "id": 11,
+      "description": "Two matches then conflict → conflict index",
+      "log": [[1,1],[2,2],[3,3]],
+      "entries": [[3,1],[4,2],[5,4],[6,4]],
+      "expected": 3
+    },
+    {
+      "id": 12,
+      "description": "Empty log, any entry is new → first entry index (FC5)",
+      "log": [],
+      "entries": [[1,1]],
+      "expected": 1
+    },
+    {
+      "id": 13,
+      "description": "Empty log, empty entries → 0 (FC1)",
+      "log": [],
+      "entries": [],
+      "expected": 0
+    },
+    {
+      "id": 14,
+      "description": "Singleton log, matching entry → 0 (FC9)",
+      "log": [[1,5]],
+      "entries": [[1,5]],
+      "expected": 0
+    },
+    {
+      "id": 15,
+      "description": "Singleton log, mismatching entry → entry index (FC10)",
+      "log": [[1,5]],
+      "entries": [[1,3]],
+      "expected": 1
+    },
+    {
+      "id": 16,
+      "description": "Conflict deep in entries → correct conflict index (FC7 first-mismatch)",
+      "log": [[1,1],[2,2],[3,3],[4,4],[5,5]],
+      "entries": [[1,1],[2,2],[3,3],[4,4],[5,6],[6,6]],
+      "expected": 5
+    },
+    {
+      "id": 17,
+      "description": "All entries new with no stored log matches → first entry",
+      "log": [[1,1],[2,1],[3,1]],
+      "entries": [[1,2],[2,2],[3,2]],
+      "expected": 1
+    }
+  ]
+}
