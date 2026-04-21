@@ -1,9 +1,9 @@
 {
   "lean_version": "4.28.0",
-  "theorem_count": 552,
+  "theorem_count": 548,
   "lean_file_count": 47,
   "sorry_count": 0,
-  "last_run": "Run 67 (2026-04-21): Task 3/5 FindConflictByTerm.lean (10T, 0 sorry). Task 1: TARGETS+RESEARCH update. PR: lean-squad/run-67-task3-task1-24745775854.",
+  "last_run": "Run 68 (2026-04-21): Task 10 REPORT.md (548T/47F/0sorry, Runs 63-67) + Task 6 CORRESPONDENCE.md (FindConflictByTerm section). PR: lean-squad/run-68-task10-task6-24749616887.",
   "hqc_preserved_gap": "CLOSED via AEBroadcastInvariant.lean (ABI8). Remaining: connect broadcast model to full election lifecycle.",
   "aeneas_status": "permanently_blocked_no_new_privileges",
   "toolchain_notes": "no Mathlib, use theorem not lemma. lakefile.toml globs=[FVSquad.+*]. LogUnstable/IsUpToDate NO namespace. ReadOnly has namespace FVSquad.ReadOnly. Lean4 operator precedence: existential binder \u2203 x \u2208 l, P stops at = (prec 50), so write \u2203 x \u2208 l, (x.1 == c) = true with explicit parens. Bool if-then-else desugars to ite (b = true) so use if_pos/if_neg not simp only [h, ite_true/ite_false]. List.any_map exists in stdlib.",
@@ -69,13 +69,31 @@
       "sorry_count_after": 0,
       "lean_file_count_after": 47,
       "pr_branch": "lean-squad/run-67-task3-task1-24745775854"
+    },
+    {
+      "run": 68,
+      "date": "2026-04-21",
+      "tasks": [
+        "Task 10 (Project Report)",
+        "Task 6 (Correspondence Review)"
+      ],
+      "changes": [
+        "REPORT.md: status updated to 548T/47F/0sorry",
+        "REPORT.md: Layer 9 ReadOnly updated to all 13T proved (0 sorry)",
+        "REPORT.md: Added Runs 63-67 section (ReadOnly complete + FindConflictByTerm)",
+        "CORRESPONDENCE.md: Added FindConflictByTerm.lean section (10T, 0 sorry)",
+        "CORRESPONDENCE.md: Updated Last Updated to Run 68"
+      ],
+      "sorry_count_after": 0,
+      "lean_file_count_after": 47,
+      "pr_branch": "lean-squad/run-68-task10-task6-24749616887"
     }
   ],
   "next_steps": [
-    "Task 11: Update paper (formal-verification/paper/) with Runs 60-67 results: ReadOnly (15T), FindConflictByTerm (10T), 0-sorry milestone, correspondence test table",
+    "Task 11: Update paper (formal-verification/paper/) with Runs 60-67 results: ReadOnly (13T), FindConflictByTerm (10T), 0-sorry milestone, correspondence test table",
     "Connect AEBroadcastInvariant to full Raft election lifecycle (election -> AE broadcast -> ABI8)",
-    "progress_set (src/tracker/progress_set.rs): informal spec + Lean spec for ProgressSet::quorum_active",
-    "Connect find_conflict_by_term to handle_append_response fast-reject path proof"
+    "Task 8 Route B: FindConflictByTerm correspondence test (Lean model vs Rust implementation)",
+    "progress_set (src/tracker/progress_set.rs): informal spec + Lean spec for ProgressSet::quorum_active"
   ],
   "correspondence_test_targets": [
     {
