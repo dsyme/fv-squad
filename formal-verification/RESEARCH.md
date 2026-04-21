@@ -221,21 +221,40 @@ Medium for INF-3, INF-4 (require `dropWhile` induction). No difficult arithmetic
 
 We prioritise Targets 1 and 2 first (highest tractability, standalone specs). Targets 3–4 next (Aeneas-compatible). Targets 5–6 after.
 
-## Current Project State (Run 43)
+## Current Project State (Run 47)
 
-- **30 Lean files**, **483 proved theorems**, **0 sorry**, **Lean 4.28.0**
+- **32 Lean files**, **505 proved theorems**, **0 sorry**, **Lean 4.28.0**
 - Top-level safety theorem `raftReachable_safe` (RT2) proved.
 - `ConcreteProtocolStep.lean` (CPS1–CPS13) bridges concrete AppendEntries to RT2.
-- `ElectionReachability.lean` (ER1–ER12) bridges abstract election conditions to `CandidateLogCovers`.
-- Remaining gap: `CandLogMatching` + High-Water-Mark must be derived from the concrete
-  election protocol state (candidacy, vote-granting rules, `voterLog`).
+- `ElectionReachability.lean` (ER1–ER12) reduces `CandidateLogCovers` to the shared-source condition.
+- `ElectionConcreteModel.lean` (ECM1–ECM7) closes `hqc_preserved` from the `hae` hypothesis.
+- **Key insight**: ECM6 (`hqc_preserved_of_validAEStep`) proves that `hqc_preserved` holds
+  given (a) the leader won the election, (b) voters' logs agree with the leader up to their
+  last index (`hae`), and (c) a valid AE step fires. The remaining gap is now:
+
+  > **Derive `hae` inductively** from the concrete AE broadcast history.
+  > ECM5 gives `hae` for a single AE step (indices > prevLogIndex). The inductive case
+  > needs to show that this agreement is maintained across all AE steps from one leader.
 
 ### Priority for future runs:
-1. **Derive HWM** from concrete vote-granting rules (voterLog, term, isUpToDate check)
-2. **Derive CandLogMatching** from log-matching invariant + vote condition  
-3. **Close `hqc_preserved`** end-to-end using ER5+ER7+ER3
-4. **Target 11** (`progress_set`) — lower priority
-5. **Aeneas extraction** — still blocked on container privileges
+1. **Task 5 (Proofs)**: `hae` inductive invariant — new file `AEBroadcastInvariant.lean`:
+   - Define `HAEInvariant cs lead` := `∀ w k, k ≤ (voterLog w).index → cs.logs w k = cs.logs lead k`
+   - Prove it is preserved by `ValidAEStep` from lead to any voter v
+   - Compose with ECM6 to get `hqc_preserved` without `hae` as explicit hypothesis
+   - ~10–20 theorems
+2. **Task 5 (Proofs)**: Complete RaftLogAppend Phase 5:
+   - P6: batch suffix matches (result log has the new entries starting at their indices)
+   - P7: entries beyond the batch are discarded (truncation correctness)
+3. **Task 7 (Critique)**: Update CRITIQUE.md with Runs 43–46 findings:
+   - ElectionConcreteModel.lean (ECM1–ECM7) section
+   - Updated theorem counts (483→505)
+   - Paper review update for new sections
+4. **Task 11 (Paper)**: Update paper.tex with theorem counts 505/32, new sections on:
+   - ElectionReachability.lean (ER1–ER12)
+   - ElectionConcreteModel.lean (ECM1–ECM7)
+   - RaftLogAppend.lean (RA1–RA9+3, P4/P5)
+5. **Target 11** (`progress_set`) — still lower priority than closing the inductive gap
+6. **Aeneas extraction** — still blocked on container privileges
 
 ## Mathlib Modules Expected to Be Useful
 

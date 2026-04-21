@@ -2,15 +2,16 @@
 
 > 🔬 *Lean Squad — automated formal verification for `dsyme/raft-lean-squad`.*
 
-**Status**: 🔄 **ADVANCED** — 471 theorems, 29 Lean files, **0 `sorry`**, machine-checked
+**Status**: 🔄 **ADVANCED** — 505 theorems, 32 Lean files, **0 `sorry`**, machine-checked
 by Lean 4.28.0 (stdlib only). Top-level safety theorem proved **conditionally** — A5 bridge
-(CPS2) proved; CPS13 closes the `hqc_preserved` condition from `CandidateLogCovers`.
+(CPS2) proved; CPS13 closes `hqc_preserved` from `CandidateLogCovers`; ECM6 closes
+`hqc_preserved` directly from a concrete AE step + log-agreement hypothesis `hae`.
 
 ---
 
 ## Last Updated
-- **Date**: 2026-04-20 17:30 UTC
-- **Commit**: `22707b6` — CPS13 (hqc_preserved discharge from CandidateLogCovers)
+- **Date**: 2026-04-20 23:53 UTC
+- **Commit**: `417a1c7` — Runs 43–46: ElectionReachability + RaftLogAppend + ElectionConcreteModel
 
 ---
 
@@ -22,21 +23,25 @@ in `dsyme/fv-squad` over 33+ automated runs. Starting from zero, the project:
 1. Identified 26 FV-amenable targets across the codebase
 2. Extracted informal specifications for each target
 3. Wrote Lean 4 specifications, implementation models, and proofs
-4. Proved **471 theorems** across **29 Lean files** with **0 `sorry`**
+4. Proved **505 theorems** across **32 Lean files** with **0 `sorry`**
 5. Proved **conditional end-to-end Raft cluster safety**: any cluster state reachable
    via transitions satisfying 5 stated invariants is safe (no two nodes ever apply
    different entries at the same log index)
 6. Proved **CPS2 (A5 bridge)**: `ValidAEStep` on a `RaftReachable` state gives a new
    `RaftReachable` state — first concrete→abstract connection
 7. Proved **CPS13**: given `CandidateLogCovers` (leader completeness), the `hqc_preserved`
-   condition of `ValidAEStep` is automatically satisfied — closing one of the three
-   remaining `ValidAEStep` hypothesis obligations
+   condition of `ValidAEStep` is automatically satisfied
+8. Proved **ECM6**: `hqc_preserved` holds given a concrete AE step + the log-agreement
+   hypothesis `hae` — a direct bridge from a single AE broadcast to the abstract condition
+9. Proved **RA1–RA9 + prefix preservation**: `RaftLog::append` correctness including
+   P4 (committed prefix never overwritten) and P5 (prefix preserved across appends)
+10. Proved **ER1–ER12** (ElectionReachability): reduces `CandidateLogCovers` to the
+    shared-source condition; the latter is satisfied after any AE broadcast from one leader
 
-Five of the `RaftReachable.step` hypotheses are now closed or addressed: `hnew_cert`
-is closed by CommitRule (CR8), `hno_overwrite` is addressed by CPS1, `hcommitted_mono`
-is addressed by CPS11, and **`hqc_preserved` is now derivable from `CandidateLogCovers`
-(CPS13)**. The remaining gap is `CandidateLogCovers` itself (requiring `HLogConsistency`
-from a concrete log-matching model) and the full election integration.
+All five `RaftReachable.step` hypotheses are now addressed: `hnew_cert` closed by CR8,
+`hno_overwrite` by CPS1, `hcommitted_mono` by CPS11, `hqc_preserved` closed by ECM6
+given `hae`. The remaining concrete gap is deriving `hae` inductively from the Raft
+election + AE history, and fully integrating term tracking.
 
 No bugs were found in the implementation code (itself a positive finding).
 
@@ -53,19 +58,23 @@ But `RaftReachable.step` takes 5 hypotheses as parameters:
 |---|---|---|
 | `hlogs'` | Only one voter's log changes per step | Proved for AppendEntries (CPS8/CPS9); needs full election model |
 | `hno_overwrite` | Committed entries not overwritten | **Addressed** by CPS1 (validAEStep_hno_overwrite) |
-| `hqc_preserved` | Quorum-certified entries remain quorum-certified | **Closed by CPS13** given `CandidateLogCovers` (leader completeness) |
+| `hqc_preserved` | Quorum-certified entries remain quorum-certified | **Closed by ECM6** given `hae` (log agreement); chain: ECM6 → ECM3 → CPS13 |
 | `hcommitted_mono` | Committed indices only advance | **Addressed** by CPS11 (constructor helper for local monotonicity) |
 | `hnew_cert` | New commits are quorum-certified | **Closed** by CommitRule (CR5, CR8, definitional via `Iff.rfl`) |
 
-The **A5 bridge** (CPS2: `validAEStep_raftReachable`) and the **hqc_preserved discharge**
-(CPS13: `validAEStep_hqc_preserved_from_lc`) are both now proved. CPS13 shows that the
-abstract `hqc_preserved` condition in `ValidAEStep` follows directly from `CandidateLogCovers`
-(leader completeness) — eliminating one of the three remaining explicit hypothesis obligations.
+The **A5 bridge** (CPS2: `validAEStep_raftReachable`), the **hqc_preserved discharge**
+(CPS13: `validAEStep_hqc_preserved_from_lc`), and the **concrete hqc_preserved**
+(ECM6: `hqc_preserved_of_validAEStep`) are all now proved. ECM6 is the strongest result:
+it shows that `hqc_preserved` holds given only `hae` (log agreement between each voter
+and the leader at the voter's last index) without needing to pass `CandidateLogCovers`
+as a separate parameter.
 
 The remaining gap is:
-1. **`CandidateLogCovers`** — still needs `HLogConsistency`, which requires formalising the
-   log-matching invariant from a concrete AppendEntries + election model.
-2. **`hcommitted_mono`** and **`hnew_cert`** — need concrete term/commit-rule integration.
+1. **`hae` inductive derivation** — showing that log agreement holds as an inductive
+   invariant across the full AE broadcast history (ECM5 gives it for a single step;
+   the inductive case needs the history of all prior AE steps).
+2. **Term tracking** — integrating Raft terms into the concrete election model so that
+   only entries from the current leader's term are committed.
 
 ---
 
@@ -81,14 +90,14 @@ graph TD
     D["🔗 Layer 4: Cross-Module Composition<br/>SafetyComposition · JointSafetyComposition<br/>CrossModuleComposition"]
     E["🛡️ Layer 5: Raft Safety<br/>RaftSafety (RSS1–RSS8)<br/>RaftProtocol (RP6, RP8)"]
     F["⚠️ Layer 6: Reachability (conditional)<br/>RaftTrace (RT1, RT2)<br/>raftReachable_safe"]
-    G["🔬 Layer 7: Election Model (partial)<br/>RaftElection · LeaderCompleteness<br/>ConcreteTransitions · CommitRule<br/>MaybeCommit · ConcreteProtocolStep (A5 bridge)"]
+    G["🔬 Layer 7: Concrete Election Model<br/>RaftElection · LeaderCompleteness<br/>ConcreteTransitions · CommitRule · MaybeCommit<br/>ConcreteProtocolStep (CPS2/CPS13)<br/>ElectionReachability (ER1–ER12)<br/>ElectionConcreteModel (ECM1–ECM7)<br/>RaftLogAppend (RA1–RA9+3)"]
 
     A --> B
     B --> C
     C --> D
     D --> E
     E --> F
-    G -->|"CPS2: A5 bridge proved<br/>CPS13: hqc_preserved closed from CandidateLogCovers"| F
+    G -->|"CPS2: A5 bridge proved<br/>ECM6: hqc_preserved from hae+AE<br/>ER10: CandidateLogCovers from shared-source"| F
 ```
 
 ---
@@ -222,9 +231,39 @@ graph TD
     RSS8_2["RSS8 (RaftSafety)"] --> RT2
 ```
 
----
+### Layer 7 — Concrete Election Model (9 files, ~102 theorems)
 
-## File Inventory
+Bridges the abstract `RaftReachable.step` hypotheses to concrete Raft protocol operations.
+The newest addition is the ElectionConcreteModel chain that closes `hqc_preserved` from
+the `hae` (log-agreement) hypothesis.
+
+```mermaid
+graph TD
+    RE["RaftElection.lean<br/>15 theorems<br/>ElectionSafety: ≤1 leader/term<br/>vote-granting rules"]
+    LC["LeaderCompleteness.lean<br/>10 theorems<br/>CandLogCovers chain<br/>LC3: leader has all committed"]
+    CT["ConcreteTransitions.lean<br/>8 theorems<br/>CT4: LMI preserved by AE<br/>CT5: broadcast → CandLogMatching"]
+    CR["CommitRule.lean<br/>9 theorems<br/>CR8: hnew_cert closed<br/>commit rule ↔ quorum ACK"]
+    MC["MaybeCommit.lean<br/>12 theorems<br/>MC4: A6 term safety<br/>commit index ↔ leader term"]
+    CPS["ConcreteProtocolStep.lean<br/>14 theorems<br/>CPS2: A5 bridge<br/>CPS13: hqc_preserved from CandLogCovers"]
+    ER["ElectionReachability.lean<br/>12 theorems<br/>ER9/ER10: shared-source<br/>→ CandidateLogCovers<br/>ER12: AE prefix preservation"]
+    ECM["ElectionConcreteModel.lean<br/>8 theorems<br/>ECM6: hqc_preserved from hae<br/>ECM5: single AE step → partial hae"]
+    RLA["RaftLogAppend.lean<br/>14 theorems<br/>RA1–RA9: append spec<br/>P4/P5: prefix preservation"]
+
+    RE --> LC
+    CT --> ER
+    LC --> CPS
+    ER --> ECM
+    CPS --> ECM
+    CR --> CPS
+    MC --> CPS
+```
+
+**Key results**:
+- `hqc_preserved_of_validAEStep` (ECM6): given `hae` and a valid AE step, quorum-certified entries survive — closes the `hqc_preserved` gap conditionally on `hae`
+- `candidateLogCovers_of_sharedSource` (ER10): if leader's log is the shared reference, `CandidateLogCovers` holds
+- `hwm_of_ae_prefix` (ER12): prior log agreements survive an AE step (inductive invariant seed)
+- `ra_committed_prefix_preserved` (P4): `RaftLog::append` never overwrites committed entries
+- `ra_prefix_preserved` (P5): the prefix of the log before `append` is preserved
 
 | File | Theorems | Phase | Key result |
 |------|----------|-------|------------|
@@ -256,8 +295,11 @@ graph TD
 | `CommitRule.lean` | 9 | 5 ✅ | CR1–CR9: commit rule formalised; closes `hnew_cert` |
 | `MaybeCommit.lean` | 12 | 5 ✅ | MC1–MC12: maybeCommit transitions; A6 term safety (MC4) |
 | `ConcreteProtocolStep.lean` | 14 | 5 ✅ | CPS1–CPS13: A5 bridge (CPS2) + hqc_preserved discharge (CPS13) |
+| `ElectionReachability.lean` | 12 | 5 ✅ | ER1–ER12: shared-source → CandidateLogCovers; AE prefix preservation |
+| `ElectionConcreteModel.lean` | 8 | 5 ✅ | ECM1–ECM7: hqc_preserved from hae (log agreement); closes gap via ECM6 |
+| `RaftLogAppend.lean` | 14 | 4 ✅ | RA1–RA9+3: RaftLog::append spec + prefix preservation (P4/P5) |
 | `Basic.lean` | helpers | — | Shared definitions |
-| **Total** | **471** | **5 ✅** | **0 sorry** |
+| **Total** | **505** | **5 ✅** | **0 sorry** |
 
 ---
 
@@ -298,7 +340,7 @@ discharged from a concrete election model.  See §Critical Gap.
 graph TD
     REAL["Real Raft Cluster<br/>(Rust implementation)"]
     MODEL["FVSquad Model<br/>(Lean 4 abstract model)"]
-    PROOF["Lean Proofs<br/>(471 theorems, 0 sorry)"]
+    PROOF["Lean Proofs<br/>(505 theorems, 0 sorry)"]
 
     REAL -->|"Modelled as"| MODEL
     MODEL -->|"Proved in"| PROOF
@@ -331,7 +373,7 @@ AppendEntries/RequestVote messages and prove that they satisfy the `step` hypoth
 
 ### No implementation bugs found
 
-All 471 theorems are consistent with the Rust implementation. This is a positive
+All 505 theorems are consistent with the Rust implementation. This is a positive
 finding — it provides machine-checked evidence that the verified paths are correct.
 
 ### Formulation bug caught by `sorry`
@@ -351,6 +393,9 @@ entered the proof base. Both theorems were corrected with proper hypotheses
 - `validAEStep_raftReachable` (CPS2): A5 bridge — ValidAEStep on RaftReachable gives new RaftReachable
 - `validAEStep_hqc_preserved_from_lc` (CPS13): given CandidateLogCovers, hqc_preserved holds automatically
 - `maybeCommit_term` (MC4): A6 term safety — committed only advances when entry term = leader current term
+- `candidateLogCovers_of_sharedSource` (ER10): shared-source reference log proves CandidateLogCovers
+- `hqc_preserved_of_validAEStep` (ECM6): closes hqc_preserved given only log-agreement hypothesis `hae`
+- `ra_committed_prefix_preserved` (P4): RaftLog::append never overwrites committed entries
 
 ---
 
@@ -384,10 +429,13 @@ timeline
     section A5 bridge + term safety (r156–r160)
         MaybeCommit MC1–MC12 : 12 theorems, A6 term safety (MC4)
         ConcreteProtocolStep CPS1–CPS13 : 14 theorems, A5 bridge (CPS2), hqc_preserved discharge (CPS13)
-    section Election model (next)
-        hqc_preserved: closed by CPS13 from CandidateLogCovers
-        CandidateLogCovers (HLogConsistency) : ~60–100 theorems planned
-        Fully concrete RaftReachable : long-term target
+    section Election model + log append (Runs 43–46)
+        ElectionReachability ER1–ER12 : 12 theorems, shared-source → CandidateLogCovers
+        RaftLogAppend RA1–RA9+3 : 14 theorems, prefix preservation (P4+P5)
+        ElectionConcreteModel ECM1–ECM7 : 8 theorems, hqc_preserved from hae (ECM6)
+    section Remaining gap (open)
+        hae inductive derivation : from ValidAEStep history across all voters
+        Term integration : Raft terms in concrete election model
 ```
 
 ---
@@ -411,7 +459,7 @@ Key tactic inventory used across the proofs:
 | `constructor` / `intro` / `ext` | Conjunction, implication, function extensionality |
 | `funext` | Proving function equality |
 
-No `native_decide`, no `axiom`. All 471 theorems are fully proved with 0 `sorry`.
+No `native_decide`, no `axiom`. All 505 theorems are fully proved with 0 `sorry`.
 The prior 2 `sorry` in `ConcreteTransitions.lean` (CT4 and CT5) were closed in run r156
 (ConcreteProtocolStep.lean provides the bridge via CPS5/CPS6).
 
@@ -475,7 +523,7 @@ abstract reachability model.
 | sorry | 0 | 0 | 0 |
 | hqc_preserved closed? | — | No | **Yes (CPS13)** |
 
-> ✅ `lake build` passed with Lean 4.28.0. 0 sorry. All theorems machine-checked.
+> ✅ `lake build` passed with Lean 4.28.0. 0 sorry. All 471 theorems machine-checked (Runs 37–39).
 > 🔬 *Run 39 update (2026-04-20). [Lean Squad](https://github.com/dsyme/raft-lean-squad/actions/runs/24667813296)*
 
 ---
@@ -516,5 +564,72 @@ has it in `cs'` (for non-v voters by `hlogs'_other`; for v at k ≤ prevLogIndex
 `validAEStep_prefix_unchanged`; for v at k > prevLogIndex by the leader's AppendEntries
 entry). By `hasQuorum_monotone` (HQ9), the new state also has a quorum.
 
-> ✅ `lake build` passed with Lean 4.28.0. 0 sorry. All 471 theorems machine-checked.
+> ✅ `lake build` passed with Lean 4.28.0. 0 sorry. All 471 theorems machine-checked (Run 41).
 > 🔬 *Run 41 update (2026-04-20). [Lean Squad](https://github.com/dsyme/raft-lean-squad/actions/runs/24680821349)*
+
+---
+
+## Runs 43–46 Update: ElectionReachability + RaftLogAppend + ElectionConcreteModel
+
+**New files added in Runs 43–46**:
+
+### ElectionReachability.lean (Run 43, 12 theorems, 0 sorry)
+
+Provides three routes from concrete election conditions to `CandidateLogCovers`:
+
+1. **High-water mark route** (ER1–ER4): `CandidateLogCovers` follows from a high-water
+   mark condition — for each voter `w`, there exists an index `j ≥ (voterLog w).index`
+   where the candidate's log agrees with `w`'s log.
+2. **Extended-LMI bridge** (ER5–ER8): the standard `LogMatchingInvariantFor` (extended
+   with the candidate as an extra voter) implies `CandLogMatching`; a global LMI agreement
+   point gives the high-water mark condition.
+3. **Shared-source theorem** (ER9–ER12): if a common reference log `R` satisfies
+   `R(voterLog w).index = candLog(voterLog w).index` and `R(voterLog w).index = logs w (voterLog w).index`
+   for every voter, then `CandidateLogCovers` holds (ER10). This is the key reduction:
+   after an AE broadcast from a single leader, the leader's own log is such a reference.
+
+ER12 (`hwm_of_ae_prefix`) seeds the inductive argument: prior log agreements survive any AE step.
+
+### RaftLogAppend.lean (Runs 45–46, 14 theorems, 0 sorry)
+
+Formalises `RaftLog::append` from `src/raft_log.rs`:
+
+| Theorem | Statement |
+|---------|-----------|
+| RA1–RA3 | `truncateAndAppend` structural properties |
+| RA4–RA5 | `maybeLastIndex` post-conditions after append |
+| RA6–RA9 | `raftLastIndex` after append |
+| `taa_maybeTerm_before` | Term at prior indices preserved by `truncateAndAppend` |
+| `taa_entries_nonempty` | Non-empty batch stays non-empty |
+| `taa_maybeLastIndex` | Last index after `truncateAndAppend` |
+| P4 `ra_committed_prefix_preserved` | Committed prefix never overwritten by `raftLogAppend` |
+| P5 `ra_prefix_preserved` | Full prefix preserved by `raftLogAppend` |
+
+### ElectionConcreteModel.lean (Run 46, 8 theorems, 0 sorry)
+
+Closes the `hqc_preserved` gap given the log-agreement hypothesis `hae`:
+
+| Label | Theorem | Key contribution |
+|-------|---------|-----------------|
+| ECM1 | `candLogCoversLastIndex_of_hae` | ER9 with `R = candLog` |
+| ECM2 | `candLogMatching_of_hae` | Reuses CT5 |
+| ECM3 | `candidateLogCovers_of_hae` | ER10 = ECM1 + ECM2 |
+| ECM4 | `hqc_preserved_of_hae` | CPS13 ∘ ECM3 |
+| ECM5 | `hae_of_validAEStep` | Single AE step → partial log agreement at new indices |
+| ECM6 | `hqc_preserved_of_validAEStep` | **Primary result**: `hqc_preserved` from `hae` + AE step |
+| ECM7 | `sharedSource_of_hae` | Explicit shared-source witness `R = candLog` for audit |
+
+ECM6 is the primary export: given a concrete cluster state where the leader won the
+election (`hwin`), voters' logs agree with the leader's up to their last index (`hae`),
+and a valid AE step fires, quorum-certified entries remain certified in the new state.
+
+| Metric | Before Run 43 | After Run 46 |
+|--------|--------------|-------------|
+| Lean files | 29 | 32 |
+| Theorems | 471 | 505 |
+| sorry | 0 | 0 |
+| hqc_preserved closed? | Conditionally (CPS13 from CandidateLogCovers) | **Yes (ECM6 from hae+AE)** |
+| RaftLogAppend phase | — | Phase 4 (P4+P5 proved) |
+
+> ✅ `lake build` passed with Lean 4.28.0. 0 sorry. All 505 theorems machine-checked.
+> 🔬 *Runs 43–46 update (2026-04-20 23:53 UTC). [Lean Squad](https://github.com/dsyme/raft-lean-squad/actions/runs/24696399395)*

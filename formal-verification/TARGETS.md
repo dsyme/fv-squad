@@ -48,20 +48,58 @@ See `CRITIQUE.md §Critical Gap Analysis` for the full analysis.
 | Priority | ID | File | Function | Phase | Notes |
 |----------|----|------|----------|-------|-------|
 | 11 | `progress_set` | `src/tracker/progress_set.rs` | quorum tracking over progress map | 1 | Formalise `ProgressSet::quorum_active` and quorum detection across the voter progress map. |
-| 22 | `raft_log_append` | `src/raft_log.rs` | `RaftLog::append` | 4 ✅ | Lean spec + impl extraction (Run 45+46). `FVSquad/RaftLogAppend.lean` (14 theorems: RA1–RA9 + taa_entries_nonempty + taa_maybeLastIndex + taa_maybeTerm_before + ra_prefix_preserved + ra_committed_prefix_preserved). P4/P5 prefix-preservation proved (Run 46). |
+| 22 | `raft_log_append` | `src/raft_log.rs` | `RaftLog::append` | 4 ✅ | Lean spec + impl extraction (Run 45+46). `FVSquad/RaftLogAppend.lean` (14 theorems: RA1–RA9 + taa_entries_nonempty + taa_maybeLastIndex + taa_maybeTerm_before + ra_prefix_preserved + ra_committed_prefix_preserved). P4/P5 prefix-preservation proved (Run 46). P6/P7 (batch suffix + beyond-batch discarded) remain for Phase 5. |
 
 ## Next Steps
 
-The priority order for future runs, given the critique:
+The priority order for future runs, given the current state (Run 47):
 
-1. **A1: Election model** (`RaftElection.lean`) — the foundation for all other gap targets.
-   Define `NodeState`, vote-granting rule, term monotonicity, message-delivery model.
-2. **A2: ElectionSafety** — prove at most one leader per term using HQ20 + TallyVotes composition.
-3. **A3: LeaderCompleteness** — the hardest gap: compose HQ20 + IU16 + RSS5 to prove that
-   election winners have all committed entries; this discharges `hqc_preserved`.
-4. **A4+A5: ConcreteTransitions + CommitRule** — discharge the remaining 4 step hypotheses.
-5. **Target 11** (`progress_set`) — lower priority than closing the election model gap.
+1. **A6: AEBroadcastInvariant** (`AEBroadcastInvariant.lean`) — prove `HAEInvariant` as
+   an inductive invariant. ECM5 gives the single-step version; the inductive case
+   generalises it to all voters after a broadcast sequence. ~10–20 theorems.
+2. **raft_log_append Phase 5**: prove P6 (batch suffix matches) and P7 (beyond-batch
+   discarded) — completes the `RaftLog::append` correctness spec.
+3. **Task 7 (Critique)**: Update CRITIQUE.md with Runs 43–46 (ECM section, paper review).
+4. **Task 11 (Paper)**: Update paper.tex with theorem counts (505/32), new sections.
+5. **Target 11** (`progress_set`) — lower priority than closing the inductive gap.
 6. **Task 8** (Aeneas extraction) — blocked on OCaml/opam in no-new-privileges containers.
+
+---
+
+## ECM Gap Progress (Runs 43–46)
+
+**Status after Run 46**: `hqc_preserved` is now closed from the `hae` (log-agreement) hypothesis.
+The remaining concrete gap is deriving `hae` inductively.
+
+| File | Theorems | Status | Key contribution |
+|------|---------|--------|-----------------|
+| `FVSquad/ElectionReachability.lean` | 12 (ER1–ER12) | ✅ proved, 0 sorry | Shared-source → CandidateLogCovers |
+| `FVSquad/ElectionConcreteModel.lean` | 8 (ECM1–ECM7) | ✅ proved, 0 sorry | hqc_preserved from hae (ECM6) |
+| `FVSquad/RaftLogAppend.lean` | 14 (RA1–RA9+3) | ✅ Phase 4, 0 sorry | append spec + P4/P5 prefix preservation |
+
+### New target: `hae_inductive` (Phase 1 — Research)
+
+**Goal**: Prove `HAEInvariant cs lead` as an inductive invariant over a sequence of
+concrete Raft steps. This invariant states:
+
+```lean
+def HAEInvariant (cs : ClusterState E) (lead : Nat) (voterLog : Nat → LogId) :=
+  ∀ w k, k ≤ (voterLog w).index → cs.logs w k = cs.logs lead k
+```
+
+**Proof path**:
+1. Show `HAEInvariant` holds after the leader broadcasts AE to all voters and all accept.
+2. Show `HAEInvariant` is preserved by further `ValidAEStep` applications (ECM5 seeds this).
+3. Compose with ECM6 to get `hqc_preserved` without `hae` as an explicit precondition.
+
+**Approximate new theorems needed**: 10–20 in a new file `AEBroadcastInvariant.lean`.
+
+**Difficulty**: Medium — the inductive structure is clear from ECM5; the main challenge
+is formalising "all voters have accepted" as a model-level predicate.
+
+| Priority | ID | Proposed file | Goal | Phase | Difficulty |
+|----------|----|--------------|------|-------|-----------|
+| **A6** | `hae_inductive` | `FVSquad/AEBroadcastInvariant.lean` | Inductive `hae` across AE history | 1 | Medium |
 
 ---
 
@@ -90,9 +128,9 @@ The file derives `CandidateLogCovers` from concrete election conditions:
 | ER11 | Shared source + DecidableEq → leaderCompleteness | End-to-end (shared) |
 | ER12 | AE prefix preservation: prior agreements survive AE step | Inductive invariant |
 
-**Remaining gap**: `hqc_preserved` still needs `CandLogMatching` and the `HWM` condition
-to be derived from the concrete election protocol state. `ER5` and `ER6/ER7` reduce this
-to showing that log-matching holds between the candidate and voters at the vote index.
+**Remaining gap** (after ECM, Runs 43–46): The concrete proof obligation reduces to
+showing that the `hae` invariant holds inductively across the AE broadcast history.
+ECM5 gives it for a single step. The `AEBroadcastInvariant.lean` target (A6) closes this.
 
 **lakefile.toml**: added `globs = ["FVSquad.+*"]` so all modules are included in `lake build`.
 
