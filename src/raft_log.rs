@@ -2354,4 +2354,102 @@ mod test {
         assert_eq!(rl.maybe_persist_snap(1), true, "case 15: snap(1) with persisted=0");
         assert_eq!(rl.persisted, 1, "case 15: new persisted");
     }
+
+    /// Lean-4 correspondence test for `maybe_commit` / `commit_to`.
+    ///
+    /// Mirrors the `#guard` assertions in
+    /// `formal-verification/lean/FVSquad/MaybeCommitCorrespondence.lean`.
+    ///
+    /// Fixture: log with entries [(1,1),(2,1),(3,2),(4,2),(5,3)] in storage,
+    /// committed = 0 initially.
+    #[test]
+    fn test_maybe_commit_correspondence() {
+        let l = default_logger();
+        let base_entries = [(1u64, 1u64), (2, 1), (3, 2), (4, 2), (5, 3)];
+
+        // Build a RaftLog with the given entries stabilised in storage.
+        let make_log = |ents: &[(u64, u64)]| {
+            let store = MemStorage::new();
+            let entries: Vec<_> = ents.iter().map(|&(i, t)| new_entry(i, t)).collect();
+            store.wl().append(&entries).expect("append");
+            RaftLog::new(store, l.clone(), &Config::default())
+        };
+
+        // -----------------------------------------------------------------------
+        // Cases 1–10: maybe_commit
+        // (committed_start, max_index, term, expected_result, expected_new_committed)
+        // -----------------------------------------------------------------------
+        let cases: &[(u64, u64, u64, bool, u64)] = &[
+            (0, 3, 2, true,  3), // case 1: advance to 3 (log[3]=term 2, term arg=2)
+            (3, 3, 2, false, 3), // case 2: no advance — maxIndex = committed
+            (4, 3, 2, false, 4), // case 3: no advance — maxIndex < committed
+            (0, 3, 1, false, 0), // case 4: no advance — term mismatch (log[3]=2, want 1)
+            (0, 6, 1, false, 0), // case 5: no advance — no entry at index 6
+            (2, 3, 2, true,  3), // case 6: single-step advance
+            (1, 5, 3, true,  5), // case 7: advance to last entry
+            (0, 1, 1, true,  1), // case 8: advance to first entry
+            (0, 1, 2, false, 0), // case 9: no advance — wrong term at 1 (log[1]=1)
+            (0, 4, 2, true,  4), // case 10: advance to index 4 (log[4]=2, term arg=2)
+        ];
+
+        for (i, &(committed_start, max_index, term, expected_result, expected_committed)) in
+            cases.iter().enumerate()
+        {
+            let mut rl = make_log(&base_entries);
+            if committed_start > 0 {
+                rl.commit_to(committed_start);
+            }
+            assert_eq!(
+                rl.committed, committed_start,
+                "case {}: fixture committed mismatch",
+                i + 1
+            );
+            let got = rl.maybe_commit(max_index, term);
+            assert_eq!(
+                got,
+                expected_result,
+                "case {}: maybe_commit({max_index}, {term}) with committed={committed_start} = {got}, want {expected_result}",
+                i + 1
+            );
+            assert_eq!(
+                rl.committed,
+                expected_committed,
+                "case {}: new committed = {}, want {}",
+                i + 1,
+                rl.committed,
+                expected_committed
+            );
+        }
+
+        // -----------------------------------------------------------------------
+        // Cases 11–14: commit_to
+        // (committed_start, to_commit, expected_committed)
+        // -----------------------------------------------------------------------
+        let commit_to_cases: &[(u64, u64, u64)] = &[
+            (3, 5, 5), // case 11: basic advance
+            (5, 3, 5), // case 12: no-op — monotone (5 ≥ 3)
+            (5, 5, 5), // case 13: no-op — equal
+            (0, 3, 3), // case 14: advance from zero
+        ];
+
+        for (i, &(committed_start, to_commit, expected_committed)) in
+            commit_to_cases.iter().enumerate()
+        {
+            let mut rl = make_log(&base_entries);
+            if committed_start > 0 {
+                rl.commit_to(committed_start);
+            }
+            rl.commit_to(to_commit);
+            assert_eq!(
+                rl.committed,
+                expected_committed,
+                "commit_to case {}: committed {} + commit_to({}) = {}, want {}",
+                i + 11,
+                committed_start,
+                to_commit,
+                rl.committed,
+                expected_committed
+            );
+        }
+    }
 }

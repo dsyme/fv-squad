@@ -1,0 +1,12 @@
+[
+  {"id": 1,  "committed_start": 0, "max_index": 3, "term": 2, "expected_result": true,  "expected_committed": 3, "note": "advance to 3 (log[3]=term 2)"},
+  {"id": 2,  "committed_start": 3, "max_index": 3, "term": 2, "expected_result": false, "expected_committed": 3, "note": "no advance — maxIndex = committed"},
+  {"id": 3,  "committed_start": 4, "max_index": 3, "term": 2, "expected_result": false, "expected_committed": 4, "note": "no advance — maxIndex < committed"},
+  {"id": 4,  "committed_start": 0, "max_index": 3, "term": 1, "expected_result": false, "expected_committed": 0, "note": "term mismatch (log[3]=2, want 1)"},
+  {"id": 5,  "committed_start": 0, "max_index": 6, "term": 1, "expected_result": false, "expected_committed": 0, "note": "no entry at index 6"},
+  {"id": 6,  "committed_start": 2, "max_index": 3, "term": 2, "expected_result": true,  "expected_committed": 3, "note": "single-step advance"},
+  {"id": 7,  "committed_start": 1, "max_index": 5, "term": 3, "expected_result": true,  "expected_committed": 5, "note": "advance to last entry"},
+  {"id": 8,  "committed_start": 0, "max_index": 1, "term": 1, "expected_result": true,  "expected_committed": 1, "note": "advance to first entry"},
+  {"id": 9,  "committed_start": 0, "max_index": 1, "term": 2, "expected_result": false, "expected_committed": 0, "note": "wrong term at 1 (log[1]=1)"},
+  {"id": 10, "committed_start": 0, "max_index": 4, "term": 2, "expected_result": true,  "expected_committed": 4, "note": "advance to index 4 (log[4]=2)"}
+]
