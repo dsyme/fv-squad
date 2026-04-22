@@ -1,9 +1,9 @@
 {
   "lean_version": "4.28.0",
-  "theorem_count": 514,
+  "theorem_count": 511,
   "lean_file_count": 48,
   "sorry_count": 0,
-  "last_run": 71,
+  "last_run": 74,
   "hqc_preserved_gap": "CLOSED via AEBroadcastInvariant.lean (ABI8). Remaining: connect broadcast model to full election lifecycle.",
   "aeneas_status": "permanently_blocked_no_new_privileges",
   "toolchain_notes": "no Mathlib, use theorem not lemma. lakefile.toml globs=[FVSquad.+*]. LogUnstable/IsUpToDate NO namespace. ReadOnly has namespace FVSquad.ReadOnly. Lean4 operator precedence: existential binder \u2203 x \u2208 l, P stops at = (prec 50), so write \u2203 x \u2208 l, (x.1 == c) = true with explicit parens. Bool if-then-else desugars to ite (b = true) so use if_pos/if_neg not simp only [h, ite_true/ite_false]. List.any_map exists in stdlib.",
@@ -257,5 +257,10 @@
   "informal_specs_written": [
     "find_conflict_by_term"
   ],
-  "last_commit": "4c4d59a"
+  "last_commit": "4c4d59a",
+  "last_run_tasks": [
+    "Task 5",
+    "Task 7"
+  ],
+  "last_run_summary": "PR31-PR35 in Progress.lean proved (maybeDecrTo non-Replicate + optimisticUpdate). ProgressCorrespondence.lean created with 46 #guard tests. CRITIQUE.md updated."
 }
