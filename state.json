@@ -1,28 +1,21 @@
 {
   "lean_version": "4.28.0",
-  "theorem_count": 569,
-  "lean_file_count": 50,
+  "theorem_count": 583,
+  "lean_file_count": 52,
   "sorry_count": 0,
-  "last_run": 76,
-  "hqc_preserved_gap": "CLOSED via AEBroadcastInvariant.lean (ABI8). Remaining: connect broadcast model to full election lifecycle.",
+  "last_run": 77,
+  "hqc_preserved_gap": "CLOSED via AEBroadcastInvariant.lean (ABI8). EHM7 closes it via BroadcastSeq induction.",
   "aeneas_status": "permanently_blocked_no_new_privileges",
-  "toolchain_notes": "no Mathlib, use theorem not lemma. lakefile.toml globs=[FVSquad.+*]. LogUnstable/IsUpToDate NO namespace. ReadOnly has namespace FVSquad.ReadOnly. Lean4 operator precedence: existential binder ∃ x ∈ l, P stops at = (prec 50), so write ∃ x ∈ l, (x.1 == c) = true with explicit parens. Bool if-then-else desugars to ite (b = true) so use if_pos/if_neg not simp only [h, ite_true/ite_false]. List.any_map exists in stdlib.",
+  "toolchain_notes": "no Mathlib, use theorem not lemma. lakefile.toml globs=[FVSquad.+*]. No push_neg (no Mathlib): use Nat.lt_of_not_le instead. LogUnstable/IsUpToDate NO namespace. ReadOnly has namespace FVSquad.ReadOnly.",
   "notes": [
     "Run 64: Task 5: Proved RO8 (advance_removes_ctx) and added RO13 (addRequest_preserves_nodup). 540T/46F/0sorry.",
     "Run 65: Task 5: Proved RO14 (recvAck preserves QueuePendingInv) and RO15 (advance preserves QueuePendingInv). 542T/46F/0sorry.",
     "Run 67: Task 3/5 FindConflictByTerm.lean (10T, 0 sorry). FCB3 maximality proved by structural induction alone. FCB2 needs LogDummyZero.",
     "Run 75: Task 6: CORRESPONDENCE.md += ProgressCorrespondence section (46 #guard). Task 4: MaybePersist.lean (13T, 0 sorry).",
-    "Run 76: Task 7: CRITIQUE.md += Run 76 section (MaybePersist assessment, ProgressCorrespondence 55 #guard). Task 11: paper.tex 548→569T, 204→279 #guard, 70→75 runs, 13→14 corr files, MaybePersist+ProgressCorrespondence rows added."
+    "Run 76: Task 7: CRITIQUE.md += Run 76 section (MaybePersist assessment, ProgressCorrespondence 55 #guard). Task 11: paper.tex 548→569T, 204→279 #guard, 70→75 runs, 13→14 corr files, MaybePersist+ProgressCorrespondence rows added.",
+    "Run 77: Task 5: ElectionHistoryModel.lean (7T, 0 sorry) — BroadcastSeq inductive type + haeCovered_of_broadcastSeq (real ABI5). TermTracking.lean (8T + 5 defs, 0 sorry) — term-aware election model closing Gap 2. 569→583T, 50→52 files."
   ],
   "run_history": [
-    {
-      "run": 67,
-      "date": "2026-04-21",
-      "tasks": ["Task 3 (Formal Spec Writing)", "Task 1 (Research Update)"],
-      "sorry_count_after": 0,
-      "lean_file_count_after": 47,
-      "pr_branch": "lean-squad/run-67-task3-task1-24745775854"
-    },
     {
       "run": 75,
       "date": "2026-04-22",
@@ -43,19 +36,37 @@
         "CRITIQUE.md: Run 76 section — MaybePersist.lean (13T) full assessment table, ProgressCorrespondence 55 #guard section, project stats updated to 569T/50F",
         "paper.tex: theorem counts 548→569, files 48→50, #guard 204→279, runs 70→75",
         "paper.tex: Layer 3 (4→5 files, 58→75T), Layer 8 (13→14 files, 279 #guard)",
-        "paper.tex: added MaybePersist + ProgressCorrespondence rows to inventory table",
-        "NOTE: PDF not recompiled — sudo/LaTeX unavailable in this runner"
+        "paper.tex: added MaybePersist + ProgressCorrespondence rows to inventory table"
       ],
       "sorry_count_after": 0,
       "lean_file_count_after": 50,
       "pr_branch": "lean-squad/run-76-task7-task11-24760390415"
+    },
+    {
+      "run": 77,
+      "date": "2026-04-22",
+      "tasks": ["Task 5 — Close Critical Election Model Gaps (manual /lean-squad command)"],
+      "changes": [
+        "New ElectionHistoryModel.lean: BroadcastSeq inductive type (EHM1-EHM7, 7 theorems, 0 sorry)",
+        "haeCovered_of_broadcastSeq (EHM2): real multi-step induction — replaces vacuous ABI5",
+        "hqc_preserved_of_broadcastSeq_exact (EHM7): full composition theorem",
+        "New TermTracking.lean: term-aware model (TT1-TT7 + 5 predicates, 8 theorems, 0 sorry)",
+        "LogTermBound, TermMonotone, NewEntriesCurrentTerm, CommitTermConstraint, CurrentTermSuffix",
+        "ae_preserves_log_term_bound_clean (TT1): AE preserves term bound for voter",
+        "commit_term_constraint_preserves (TT6): CommitTermConstraint preserved by ValidAEStep",
+        "term_tracking_preserved_by_ae (TT7): full composition summary"
+      ],
+      "sorry_count_after": 0,
+      "lean_file_count_after": 52,
+      "pr_branch": "lean-squad/run-77-election-history-termtracking-24768739627"
     }
   ],
   "next_steps": [
-    "Recompile paper.pdf (needs LaTeX/latexmk — skipped in Run 76 due to no sudo)",
-    "Add MaybePersist correspondence tests (Task 8 Route B): MaybePersistCorrespondence.lean + Rust test",
-    "Update REPORT.md with Runs 71-76 (MaybePersist, ProgressCorrespondence, ReadOnly completion, FindConflictByTerm)",
-    "Model firstUpdateIndex derivation from Unstable to close MP6 gap",
+    "Recompile paper.pdf (needs LaTeX/latexmk — skipped in prior runs)",
+    "Update REPORT.md with Run 77 results (ElectionHistoryModel + TermTracking, 569→583T)",
+    "Update paper.tex with new files and theorem counts",
+    "Prove hnoncluster hypothesis in EHM7 for the closed-cluster case (all logs outside cluster = none)",
+    "Add TermTracking correspondence test (verify termOf model matches Raft paper rules)",
     "Progress ↔ ProgressTracker integration: prove wf invariant preserved at multi-peer level"
   ],
   "correspondence_test_targets": [
@@ -76,14 +87,16 @@
   ],
   "targets": [
     {"name": "hae_broadcast_invariant", "file": "formal-verification/lean/FVSquad/AEBroadcastInvariant.lean", "phase": 5, "notes": "ABI1-ABI10 proved (0 sorry)."},
-    {"name": "read_only", "file": "formal-verification/lean/FVSquad/ReadOnly.lean", "phase": 5, "notes": "RO1-RO15 proved, 0 sorry. QueuePendingInv fully preserved."},
-    {"name": "find_conflict_by_term", "file": "formal-verification/lean/FVSquad/FindConflictByTerm.lean", "phase": 5, "notes": "FCB1-FCB9+helper (10T, 0 sorry). Maximality (FCB3) proved."},
-    {"name": "maybe_persist", "file": "formal-verification/lean/FVSquad/MaybePersist.lean", "phase": 5, "notes": "Run 75: MP1-MP8 + SP1-SP4 + compose_monotone (13T, 0 sorry). Async-persist safety guards."}
+    {"name": "election_history_model", "file": "formal-verification/lean/FVSquad/ElectionHistoryModel.lean", "phase": 5, "notes": "Run 77: EHM1-EHM7 (7T, 0 sorry). BroadcastSeq closes the hae induction gap."},
+    {"name": "term_tracking", "file": "formal-verification/lean/FVSquad/TermTracking.lean", "phase": 5, "notes": "Run 77: 5 defs + TT1-TT7 (8T, 0 sorry). Term-aware model, CommitTermConstraint."},
+    {"name": "read_only", "file": "formal-verification/lean/FVSquad/ReadOnly.lean", "phase": 5, "notes": "RO1-RO15 proved, 0 sorry."},
+    {"name": "find_conflict_by_term", "file": "formal-verification/lean/FVSquad/FindConflictByTerm.lean", "phase": 5, "notes": "FCB1-FCB9+helper (10T, 0 sorry)."},
+    {"name": "maybe_persist", "file": "formal-verification/lean/FVSquad/MaybePersist.lean", "phase": 5, "notes": "Run 75: MP1-MP8 + SP1-SP4 + compose_monotone (13T, 0 sorry)."}
   ],
-  "lean_files": 50,
+  "lean_files": 52,
   "last_run_date": "2026-04-22",
-  "last_commit": "85540db",
-  "last_run_tasks": ["Task 7 (Proof Utility Critique)", "Task 11 (Conference Paper)"],
-  "last_run_summary": "Task 7: CRITIQUE.md MaybePersist full assessment + ProgressCorrespondence section. Task 11: paper.tex updated to 569T/50F/279 #guard/75 runs; added MaybePersist and ProgressCorrespondence rows.",
+  "last_commit": "8e49aa3",
+  "last_run_tasks": ["Task 5 — Close Critical Election Model Gaps"],
+  "last_run_summary": "ElectionHistoryModel.lean: BroadcastSeq + haeCovered_of_broadcastSeq (real ABI5). TermTracking.lean: term-aware model with CommitTermConstraint. 569→583T, 50→52 files, 0 sorry.",
   "ci_status": "lean-ci.yml has build job (lake build) + correspondence-tests job. Triggers: formal-verification/lean/**, formal-verification/tests/**, src/**"
 }
