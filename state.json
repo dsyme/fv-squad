@@ -1,9 +1,9 @@
 {
   "lean_version": "4.28.0",
-  "theorem_count": 548,
+  "theorem_count": 514,
   "lean_file_count": 48,
   "sorry_count": 0,
-  "last_run": "Run 70 (2026-04-21): Task 10 REPORT.md + Task 11 paper.tex (204 #guard, 13 corr.files, 70 runs). PR: lean-squad/run-70-task11-task10-24752155366.",
+  "last_run": 71,
   "hqc_preserved_gap": "CLOSED via AEBroadcastInvariant.lean (ABI8). Remaining: connect broadcast model to full election lifecycle.",
   "aeneas_status": "permanently_blocked_no_new_privileges",
   "toolchain_notes": "no Mathlib, use theorem not lemma. lakefile.toml globs=[FVSquad.+*]. LogUnstable/IsUpToDate NO namespace. ReadOnly has namespace FVSquad.ReadOnly. Lean4 operator precedence: existential binder \u2203 x \u2208 l, P stops at = (prec 50), so write \u2203 x \u2208 l, (x.1 == c) = true with explicit parens. Bool if-then-else desugars to ite (b = true) so use if_pos/if_neg not simp only [h, ite_true/ite_false]. List.any_map exists in stdlib.",
@@ -125,13 +125,28 @@
       "sorry_count_after": 0,
       "lean_file_count_after": 48,
       "pr_branch": "lean-squad/run-70-task11-task10-24752155366"
+    },
+    {
+      "run": 71,
+      "date": "2026-04-22",
+      "tasks": [
+        "Task 8 (Route B, progress)",
+        "Task 5 (PR31-PR35)"
+      ],
+      "added_theorems": 5,
+      "added_files": [
+        "ProgressCorrespondence.lean"
+      ],
+      "sorry_delta": 0,
+      "notes": "PR31-PR35: maybeDecrTo wf-preservation. 12 #guard correspondence tests for maybeUpdate/maybeDecrTo. lake build: 51 jobs, 0 sorry."
     }
   ],
   "next_steps": [
-    "Connect AEBroadcastInvariant to full Raft election lifecycle (election -> AE broadcast -> ABI8)",
-    "Task 5: prove remaining sorry-free progress toward full concrete protocol proof",
-    "Recompile paper.pdf when LaTeX becomes available",
-    "progress_set (src/tracker/progress_set.rs): informal spec + Lean spec for quorum_active"
+    "Recompile paper.pdf",
+    "Fix unused variable warnings in AEBroadcastInvariant",
+    "Connect AEBroadcastInvariant to election lifecycle",
+    "Add Rust-side progress correspondence tests in src/tracker/progress.rs",
+    "Update CORRESPONDENCE.md with Progress section"
   ],
   "correspondence_test_targets": [
     {
@@ -213,7 +228,8 @@
       "guard_count": 16,
       "status": "complete",
       "correspondence_level": "abstraction"
-    }
+    },
+    "progress"
   ],
   "targets": [
     {
@@ -236,9 +252,10 @@
       "notes": "Run 67: FCB1-FCB9 + logNonDecreasing_le (10 theorems, 0 sorry). Maximality (FCB3) proved without monotonicity assumption. Base case uses LogDummyZero."
     }
   ],
-  "lean_files": 48,
-  "last_run_date": "2026-04-21",
+  "lean_files": 49,
+  "last_run_date": "2026-04-22",
   "informal_specs_written": [
     "find_conflict_by_term"
-  ]
+  ],
+  "last_commit": "4c4d59a"
 }
