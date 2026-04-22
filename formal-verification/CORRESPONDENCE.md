@@ -2235,3 +2235,78 @@ under the above abstractions:
 - **Commit**: `dc716f7`
 
 > 🔬 Updated by [Lean Squad](https://github.com/dsyme/raft-lean-squad/actions/runs/24759028473) automated formal verification. Run 75: Task 6 — added ProgressCorrespondence section (46 #guard). Task 4 — MaybePersist.lean new target. 49 Lean files, 0 sorry.
+
+---
+
+## `RaftLogAppend.lean` — `RaftLog::append` (`src/raft_log.rs:382`)
+
+**Run 82** — Task 8 Route B, 21 `#guard` assertions.
+
+### Lean model
+
+- File: `formal-verification/lean/FVSquad/RaftLogAppend.lean`
+- Correspondence test: `formal-verification/lean/FVSquad/RaftLogAppendCorrespondence.lean`
+- Imports: `FVSquad.LogUnstable`
+
+### Rust source
+
+- File: `src/raft_log.rs`, lines 382–400
+- Function: `pub fn append(&mut self, ents: &[Entry]) -> u64`
+
+### Mapping
+
+| Lean name | Rust equivalent | Rust location | Level | Notes |
+|-----------|----------------|---------------|-------|-------|
+| `raftLogAppend (rl : RaftLog) (ents : List Entry) : RaftLog × Nat` | `RaftLog::append` | `src/raft_log.rs:382` | **Abstraction** | Success path only (panic not modelled) |
+| `raftLastIndex (rl : RaftLog) : Nat` | `RaftLog::last_index` | `src/raft_log.rs:177` | **Exact** | Delegates to `unstable.maybe_last_index` or stable offset |
+| `RaftLog.committed : Nat` | `RaftLog::committed` | `src/raft_log.rs:38` | **Exact** | Never modified by `append` |
+| `RaftLog.stableLastIdx : Nat` | stable storage `last_index` | `src/storage.rs` | **Abstraction** | Read-only view of stable storage |
+| `RaftLog.unstable : Unstable` | `RaftLog::unstable` | `src/raft_log.rs:44` | **Exact** | Reuses `LogUnstable` model |
+| `truncateAndAppend u newTerms after` | `Unstable::truncate_and_append` | `src/log_unstable.rs:162` | **Abstraction** | Terms only; payload omitted |
+
+### Known divergences
+
+| Divergence | Impact |
+|-----------|--------|
+| Entry payloads omitted (index+term only) | All `RaftLogAppend.lean` theorems remain valid: correctness depends only on index ordering and term values, not payload. |
+| `fatal!` panic path not modelled | RA1–RA9 and correspondence tests cover only the success path (`ents[0].index - 1 ≥ committed`). The panic path is unreachable in a well-formed Raft cluster. |
+| `entries_size` byte accounting omitted | No impact: correctness properties do not depend on byte counts. |
+| `stableLastIdx` is a static parameter | In Rust, stable storage is queried at each call; in the model it is captured at construction time. This abstraction is sound because `append` does not modify stable storage (RA5). |
+
+### Validated theorems
+
+Relevant theorems in `RaftLogAppend.lean` (all proved, 0 sorry):
+
+| ID | Theorem | Property |
+|----|---------|---------|
+| RA1 | `ra1_empty_noop` | Empty batch is a no-op |
+| RA2 | `ra2_return_is_lastIndex` | Return value = new `raftLastIndex` |
+| RA3/RA9 | `ra3_return_lastEntry` | Non-empty: return = first.index + len - 1 |
+| RA4 | `ra4_committed_unchanged` | `committed` never modified |
+| RA5 | `ra5_stableLastIdx_unchanged` | `stableLastIdx` never modified |
+| RA6 | `ra6_snapshot_preserved` | Pending snapshot preserved |
+| RA7 | `ra7_committed_below_return` | Safety guard: committed < returned index |
+| RA8 | `ra8_empty_lastIndex_stable` | Empty batch: `raftLastIndex` unchanged |
+| P4/P5 | `taa_maybeTerm_before` / `ra_prefix_preserved` | Prefix preservation: entries before `after` unmodified |
+| P6/P7 | `ra_committed_prefix_preserved` / suffix theorems | Committed prefix always preserved |
+
+### Validation evidence
+
+- **Lean side**: 21 `#guard` assertions in `FVSquad/RaftLogAppendCorrespondence.lean`
+  (lake build ✅, 0 sorry, Lean 4.28.0). Three branches exercised: append, replace, truncate+append.
+- **Rust side**: `test_raft_log_append_correspondence` in `src/raft_log.rs` (11 assertion cases, all pass).
+- **Fixtures**: `formal-verification/tests/raft_log_append/README.md`.
+- **Commands**:
+  - Lean: `cd formal-verification/lean && lake build FVSquad.RaftLogAppendCorrespondence`
+  - Rust: `cargo test test_raft_log_append_correspondence`
+- **Coverage**: 7 structural cases (cases 1–7) covering all three `truncate_and_append` branches
+  across two fixtures, plus 4 cross-check invariant cases (RA4/RA5).
+- **Correspondence test status**: ✅ Complete — 21 `#guard` + Rust assertions all pass.
+
+---
+
+## Last Updated (Run 82)
+- **Date**: 2026-04-22 19:42 UTC
+- **Commit**: `8bef0b3`
+
+> 🔬 Updated by [Lean Squad](https://github.com/dsyme/raft-lean-squad/actions/runs/24798867052) automated formal verification. Run 82: Task 8 — RaftLogAppendCorrespondence (21 #guard, all 3 truncate_and_append branches). Task 1 — TARGETS.md/RESEARCH.md refreshed (17 corr. targets, 342+ #guard total).

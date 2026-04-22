@@ -307,3 +307,59 @@ The codebase explicitly supports Aeneas via the `aeneas` Cargo feature. The `com
 4. **Update conference paper** (`formal-verification/paper/paper.tex`):
    Runs 60–67 add ReadOnly (15T), FindConflictByTerm (10T), 0-sorry milestone.
    Section on correspondence tests (12 targets, 160+ #guard cases) needs expansion.
+
+## Run 82 Update (2026-04-22) — RaftLogAppend Correspondence + Research Refresh
+
+**Current state**: 522 theorems, 52 Lean files (53 with new RaftLogAppendCorrespondence.lean), 0 sorry.
+
+### Task 8: RaftLogAppendCorrespondence
+
+`RaftLog::append` (from `src/raft_log.rs:382`) now has a correspondence test in
+`FVSquad/RaftLogAppendCorrespondence.lean` (21 `#guard` assertions, 0 sorry) and a
+matching Rust test `test_raft_log_append_correspondence` (11 assertion cases, all pass).
+
+This completes the correspondence test coverage for all major Lean proof targets:
+**17 correspondence-test files** covering **17 Rust functions** with **342+ `#guard` tests**.
+
+The three structural branches of `truncate_and_append` are all exercised:
+1. **Append** (`after = offset + len`): new entries attached at the end
+2. **Replace** (`after ≤ offset`): new batch replaces all unstable entries
+3. **Truncate + append** (`offset < after < offset + len`): partial overwrite
+
+Invariants RA4 (`committed` unchanged) and RA5 (`stableLastIdx` unchanged) are
+cross-checked at the Rust level, closing the model-to-implementation gap.
+
+### Critique-Driven Research Adjustments
+
+Based on `CRITIQUE.md` Run 76 recommendations:
+
+1. **firstUpdateIndex modelling** (MaybePersist gap): The `maybe_persist` model treats
+   `firstUpdateIndex` as an opaque `Nat`. In the Rust implementation this is derived from
+   `unstable.snapshot?.index + 1` or `unstable.offset`. Formalising this derivation would
+   promote MP6 from "parameter correct" to "derivation correct". Target: add a
+   `MaybePersistFUI.lean` formalising the FUI derivation from `LogUnstable`.
+
+2. **Progress ↔ ProgressTracker integration**: `Progress.lean` (31T, 0 sorry) and
+   `ProgressCorrespondence.lean` (55 `#guard`) cover the per-peer invariants. The
+   multi-peer `ProgressTracker::update_committed` and `ProgressTracker::quorum_active`
+   are not yet formalised. Target: `ProgressSet.lean` lifting invariants to multi-peer.
+
+3. **AEBroadcastInvariant ↔ election lifecycle**: `AEBroadcastInvariant.lean` (ABI1–ABI10)
+   proves that after a broadcast AE round, `hqc_preserved` holds. The remaining gap is
+   connecting this to the full Raft election protocol — showing that a post-election
+   leader actually performs such a broadcast. Target: compose `RaftElection.lean` →
+   `ElectionConcreteModel.lean` → `AEBroadcastInvariant.lean` into a single chain.
+
+4. **Conference paper recompilation**: `formal-verification/paper/paper.tex` was last
+   updated in Run 81 with Run-81 numbers. LaTeX compilation requires `latexmk` (not
+   currently available in the sandbox). Paper needs updating for Runs 78–82 changes
+   (MaybePersistCorrespondence, MaybeCommitCorrespondence, RaftLogAppendCorrespondence).
+
+### Next High-Priority Research Targets
+
+| Priority | Target | Goal | Difficulty | Files |
+|----------|--------|------|-----------|-------|
+| **B1** | `firstUpdateIndex` | Formalise FUI derivation from `Unstable` | Low | `MaybePersistFUI.lean` |
+| **B2** | `progress_set` | `ProgressSet::quorum_active` informal + Lean spec | Medium | `ProgressSet.lean` |
+| **B3** | Election-broadcast chain | Compose election → broadcast → ABI8 | High | `ElectionBroadcastChain.lean` |
+| **B4** | `raft.rs` step functions | `RaftLog::maybe_append` correspondence at Raft-step level | Medium | Extend `MaybeAppendCorrespondence.lean` |

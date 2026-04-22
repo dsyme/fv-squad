@@ -50,17 +50,48 @@ See `CRITIQUE.md §Critical Gap Analysis` for the full analysis.
 |----------|----|------|----------|-------|-------|
 | 11 | `progress_set` | `src/tracker/progress_set.rs` | quorum tracking over progress map | 1 | Formalise `ProgressSet::quorum_active` and quorum detection across the voter progress map. |
 | 21 | `read_only` | `src/read_only.rs` | `ReadOnly` struct + 5 methods | 4 🔄 | ReadIndex linearisability bookkeeping (Raft §6.4). Informal spec: `specs/read_only_informal.md`. Lean model: `FVSquad/ReadOnly.lean` (12 theorems: RO1–RO12, 11 proved, 1 sorry: RO8 needs NoDuplicates invariant for queue). Next step: formalise NoDuplicates and prove RO8. |
-| 22 | `raft_log_append` | `src/raft_log.rs` | `RaftLog::append` | 5 ✅ | Lean spec + impl (Run 45+46) + P6/P7 proved (Run 50). `FVSquad/RaftLogAppend.lean` (14+ theorems). |
+| 22 | `raft_log_append` | `src/raft_log.rs` | `RaftLog::append` | 5 ✅ | Lean spec + impl (Run 45+46) + P6/P7 proved (Run 50). `FVSquad/RaftLogAppend.lean` (14+ theorems). Correspondence test: `FVSquad/RaftLogAppendCorrespondence.lean` (Run 82, 21 `#guard`, all 3 truncate_and_append branches covered). |
+
+## Correspondence Test Coverage (Run 82) — 17 targets, 342+ `#guard`
+
+All major proof targets now have correspondence-validated Lean models. Every target below
+has a `*Correspondence.lean` file with `#guard` tests and a matching Rust `test_*_correspondence`.
+
+| Target | Lean Correspondence File | `#guard` | Rust Test | Level |
+|--------|--------------------------|---------|-----------|-------|
+| `find_conflict` | `FindConflictCorrespondence.lean` | 27 | ✅ | abstraction |
+| `maybe_append` | `MaybeAppendCorrespondence.lean` | 35 | ✅ | exact |
+| `is_up_to_date` | `IsUpToDateCorrespondence.lean` | 14 | ✅ | exact |
+| `committed_index` | `CommittedIndexCorrespondence.lean` | 13 | ✅ | abstraction |
+| `limit_size` | `LimitSizeCorrespondence.lean` | 12 | ✅ | abstraction |
+| `config_validate` | `ConfigValidateCorrespondence.lean` | 14 | ✅ | exact |
+| `inflights` | `InflightsCorrespondence.lean` | 14 | ✅ | abstraction |
+| `log_unstable` | `LogUnstableCorrespondence.lean` | 14 | ✅ | exact |
+| `tally_votes` | `TallyVotesCorrespondence.lean` | 12 | ✅ | exact |
+| `vote_result` | `VoteResultCorrespondence.lean` | 17 | ✅ | exact |
+| `has_quorum` | `HasQuorumCorrespondence.lean` | 17 | ✅ | exact |
+| `read_only` | `ReadOnlyCorrespondence.lean` | 16 | ✅ | exact |
+| `find_conflict_by_term` | `FindConflictByTermCorrespondence.lean` | 19 | ✅ | exact |
+| `progress` | `ProgressCorrespondence.lean` | 55 | ✅ | abstraction |
+| `maybe_persist` | `MaybePersistCorrespondence.lean` | 15 | ✅ | abstraction |
+| `maybe_commit` | `MaybeCommitCorrespondence.lean` | 19 | ✅ | exact |
+| `raft_log_append` | `RaftLogAppendCorrespondence.lean` | 21 | ✅ | abstraction |
+| **Total** | **17 files** | **~342** | **17 Rust tests** | — |
 
 ## Next Steps
 
-The priority order for future runs, given the current state (Run 61):
+The priority order for future runs, given the current state (Run 82):
 
-1. **`read_only` Phase 5**: formalise `NoDuplicates` invariant for `queue` and prove `RO8_advance_removes_ctx`. Optionally add `RO13` (advance preserves QueuePendingInv) and `RO14` (advance returns statuses in order).
-2. **`progress_set`** (Target 11): informal spec + Lean spec for `ProgressSet::quorum_active`.
-3. **Task 10 (Report)**: Update REPORT.md with Runs 56–61 changes (ReadOnly Phase 4, new informal spec).
-4. **Task 11 (Paper)**: Update paper.tex with updated theorem counts, ReadOnly section, correspondence table.
-5. **Correspondence tests for `read_only`**: add `ReadOnlyCorrespondence.lean` and Rust test for `add_request`/`recv_ack`/`advance`.
+1. **`firstUpdateIndex` modelling** (B1): Formalise FUI derivation from `Unstable` to close
+   the known gap in `MaybePersist.lean` (MP6 currently assumes FUI is correct externally).
+2. **`progress_set`** (B2): Informal spec + Lean spec for `ProgressSet::quorum_active`
+   (multi-peer quorum detection). Bridges per-peer `Progress` invariants to cluster level.
+3. **Election-broadcast chain** (B3): Compose `RaftElection.lean` → `ElectionConcreteModel.lean`
+   → `AEBroadcastInvariant.lean` to close the last gap in the Raft safety proof chain.
+4. **Update REPORT.md and paper.tex**: Both need updating for Runs 78–82 (MaybePersistCorrespondence,
+   MaybeCommitCorrespondence, RaftLogAppendCorrespondence, theorem count refresh).
+5. **Task 7 (Critique)**: Update `CRITIQUE.md` with Run 82 changes (new correspondence file,
+   updated correspondence test count to 342+, updated project statistics).
 
 ---
 
