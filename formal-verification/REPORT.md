@@ -2,17 +2,18 @@
 
 > 🔬 *Lean Squad — automated formal verification for `dsyme/raft-lean-squad`.*
 
-**Status**: 🔄 **ADVANCED** — 522 theorems, 51 Lean files, **0 `sorry`**, machine-checked
+**Status**: 🔄 **ADVANCED** — 575 theorems, 55 Lean files, **0 `sorry`**, machine-checked
 by Lean 4.28.0 (stdlib only). Top-level safety theorem proved **conditionally**. Ten-layer
-proof architecture. Layer 8 (correspondence validation): **15 files, 288 `#guard`
-assertions, 14 Rust tests**. Layer 9 (ReadOnly): 15 theorems, **0 sorry**, fully proved.
+proof architecture. Layer 8 (correspondence validation): **18 files, 373 `#guard`
+assertions, 18 Rust tests**. Layer 9 (ReadOnly): 15 theorems, **0 sorry**, fully proved.
 Layer 10 (FindConflictByTerm): 10 theorems, 0 sorry. MaybePersist: 13 theorems, 0 sorry.
+MaybePersistFUI: 8 theorems, 0 sorry.
 
 ---
 
 ## Last Updated
-- **Date**: 2026-04-22 10:10 UTC
-- **Commit**: `a9222b1` — Run 78: MaybePersistCorrespondence (15 #guard) + REPORT.md update
+- **Date**: 2026-04-23 09:30 UTC
+- **Commit**: `afd6f17` — Run 86: Correspondence counts + CI improvements
 
 ---
 
@@ -24,7 +25,7 @@ in `dsyme/fv-squad` over 62+ automated runs. Starting from zero, the project:
 1. Identified 26 FV-amenable targets across the codebase
 2. Extracted informal specifications for each target
 3. Wrote Lean 4 specifications, implementation models, and proofs
-4. Proved **538 theorems** across **46 Lean files** with **1 `sorry`** (RO8: `advance_removes_ctx` pending NoDuplicates invariant)
+4. Proved **575 theorems** across **55 Lean files** with **0 `sorry`**
 5. Proved **conditional end-to-end Raft cluster safety**: any cluster state reachable
    via transitions satisfying 5 stated invariants is safe (no two nodes ever apply
    different entries at the same log index)
@@ -42,8 +43,9 @@ in `dsyme/fv-squad` over 62+ automated runs. Starting from zero, the project:
     sequence — ABI5 (haeCovered_induction) proves that after sequentially applying `ValidAEStep`
     to every voter with `prevLogIndex=0`, the log-agreement hypothesis holds for all voters
 12. Achieved **0 sorry** milestone (Run 55) before adding Layer 9 ReadOnly work
-13. Added **Layer 8: 13 correspondence validation files** (204 `#guard` + 13 Rust tests)
-14. Added **Layer 9: ReadOnly.lean** (12 theorems, 11 proved, RO8 sorry pending NoDuplicates)
+13. Added **Layer 8: 18 correspondence validation files** (373 `#guard` + 18 Rust tests)
+14. Added **Layer 9: ReadOnly.lean** (15 theorems, fully proved, 0 sorry)
+15. Added **MaybePersistFUI.lean**: firstUpdateIndex derivation (FU1–FU8, 8 theorems, 0 sorry)
 
 All five `RaftReachable.step` hypotheses are now addressed: `hnew_cert` closed by CR8,
 `hno_overwrite` by CPS1, `hcommitted_mono` by CPS11, `hqc_preserved` closed by ECM6
@@ -97,7 +99,7 @@ graph TD
     D["🔗 Layer 4: Cross-Module Composition<br/>SafetyComposition · JointSafetyComposition<br/>CrossModuleComposition"]
     E["🛡️ Layer 5: Raft Safety<br/>RaftSafety (RSS1–RSS8)<br/>RaftProtocol (RP6, RP8)"]
     F["⚠️ Layer 6: Reachability (conditional)<br/>RaftTrace (RT1, RT2)<br/>raftReachable_safe"]
-    G["🔬 Layer 7: Concrete Election Model<br/>RaftElection · LeaderCompleteness<br/>ConcreteTransitions · CommitRule · MaybeCommit<br/>ConcreteProtocolStep (CPS2/CPS13)<br/>ElectionReachability (ER1–ER12)<br/>ElectionConcreteModel (ECM1–ECM7)<br/>RaftLogAppend (RA1–RA9+3)"]
+    G["🔬 Layer 7: Concrete Election Model<br/>RaftElection · LeaderCompleteness<br/>ConcreteTransitions · CommitRule · MaybeCommit<br/>ConcreteProtocolStep (CPS2/CPS13)<br/>ElectionReachability (ER1–ER12)<br/>ElectionConcreteModel (ECM1–ECM7)<br/>RaftLogAppend (RA1–RA9+3)<br/>MaybePersistFUI (FU1–FU8)"]
 
     A --> B
     B --> C
@@ -238,7 +240,7 @@ graph TD
     RSS8_2["RSS8 (RaftSafety)"] --> RT2
 ```
 
-### Layer 7 — Concrete Election Model (11 files, ~117 theorems)
+### Layer 7 — Concrete Election Model (12 files, ~125 theorems)
 
 Bridges the abstract `RaftReachable.step` hypotheses to concrete Raft protocol operations.
 The newest additions are `AEBroadcastInvariant.lean` (inductive `hae` over a broadcast
@@ -257,7 +259,8 @@ graph TD
     ECM["ElectionConcreteModel.lean<br/>8 theorems<br/>ECM6: hqc_preserved from hae<br/>ECM5: single AE step → partial hae"]
     RLA["RaftLogAppend.lean<br/>19 theorems<br/>RA1–RA9: append spec<br/>P4/P5/P6/P7: prefix+batch"]
     ABI["AEBroadcastInvariant.lean<br/>10 theorems<br/>ABI5: haeCovered_induction<br/>ABI7: hqc_preserved_of_broadcast"]
-    FCC["FindConflictCorrespondence.lean<br/>2 theorems + 17 #guard<br/>Correspondence tests<br/>(2 sorry pending)"]
+    FCC["FindConflictCorrespondence.lean<br/>4 theorems + 27 #guard<br/>Correspondence tests"]
+    MPFUI["MaybePersistFUI.lean<br/>8 theorems<br/>FU1–FU8: firstUpdateIndex<br/>derivation correctness"]
 
     RE --> LC
     CT --> ER
@@ -279,6 +282,8 @@ graph TD
 - `ra_prefix_preserved` (P5): the prefix of the log before `append` is preserved
 - `ra_batch_term` (P6): each batch entry appears at the expected index with the correct term
 - `ra_beyond_batch_none` (P7): no entries exist beyond the last batch entry after `append`
+- `fu1_unstable_snap_blocks` (FU1): when snap is set, `firstUpdateIndex` returns `snap.index + 1` — the snapshot fences off persistence below its own horizon
+- `fu8_unstable_fui_gt_persisted` (FU8): the derived `firstUpdateIndex` is strictly greater than the current `persisted` value — the safety invariant that prevents premature persistence advance
 
 | File | Theorems | Phase | Key result |
 |------|----------|-------|------------|
@@ -314,9 +319,10 @@ graph TD
 | `ElectionConcreteModel.lean` | 8 | 5 ✅ | ECM1–ECM7: hqc_preserved from hae (log agreement); closes gap via ECM6 |
 | `RaftLogAppend.lean` | 19 | 5 ✅ | RA1–RA9+P4/P5/P6/P7: RaftLog::append spec + prefix+batch preservation |
 | `AEBroadcastInvariant.lean` | 10 | 5 ✅ | ABI1–ABI10: inductive hae over broadcast sequence; ABI7 closes hqc_preserved |
-| `FindConflictCorrespondence.lean` | 2+17 | 4 🔄 | 17 #guard correspondence tests; 2 sorry on helper lemmas |
+| `MaybePersistFUI.lean` | 8 | 5 ✅ | FU1–FU8: firstUpdateIndex derivation; snap blocks advance; fui > persisted safety |
+| `FindConflictCorrespondence.lean` | 4+27 | 5 ✅ | 27 #guard correspondence tests; 0 sorry |
 | `Basic.lean` | helpers | — | Shared definitions |
-| **Total** | **522** | **5 ✅** | **2 sorry** (FindConflictCorrespondence helpers) |
+| **Total** | **575** | **5 ✅** | **0 sorry** |
 
 ---
 
@@ -948,3 +954,86 @@ reflected in the current main. Counts above are based on current main branch.*
 
 > ✅ `lake build` passed with Lean 4.28.0. **0 sorry**. 522 theorems machine-checked.
 > 🔬 *Runs 71–78 update (2026-04-22 10:10 UTC). [Lean Squad](https://github.com/dsyme/raft-lean-squad/actions/runs/24772022913)*
+
+
+---
+
+## Runs 79–87 Update: Expanded Correspondence Validation + MaybePersistFUI
+
+### New Correspondence Targets (Runs 79–83, 82)
+
+Runs 79–83 added correspondence validation files for five additional targets:
+
+| Target | Correspondence File | `#guard` | Rust Test | Level |
+|--------|--------------------|---------:|-----------|-------|
+| `vote_result` | `VoteResultCorrespondence.lean` | 17 | `test_vote_result_correspondence` | exact |
+| `has_quorum` | `HasQuorumCorrespondence.lean` | 17 | `test_has_quorum_correspondence` | exact |
+| `maybe_commit` | `MaybeCommitCorrespondence.lean` | 19 | `test_maybe_commit_correspondence` | abstraction |
+| `raft_log_append` | `RaftLogAppendCorrespondence.lean` | 24 | `test_raft_log_append_correspondence` | abstraction |
+| `progress` (updates) | `ProgressCorrespondence.lean` | 55 | `test_progress_correspondence` | abstraction |
+
+`RaftLogAppendCorrespondence.lean` (Run 82) validates all three branches of the
+`truncate_and_append` operation: empty-log, truncate-only, and truncate-and-append cases,
+covering 24 `#guard` assertions across 8 scenarios.
+
+### MaybePersistFUI — firstUpdateIndex Derivation (Run 84)
+
+`MaybePersistFUI.lean` formalises the `maybe_persist` path that derives
+`firstUpdateIndex` from the `Unstable` struct's `entries` and `snapshot` fields.
+Eight theorems (FU1–FU8), all proved with 0 sorry:
+
+| ID | Theorem | Property |
+|----|---------|---------|
+| FU1 | `fu1_unstable_snap_blocks` | Snap set → FUI = snap.index + 1 |
+| FU2 | `fu2_no_snap_entries_empty` | No snap + empty entries → FUI = 0 |
+| FU3 | `fu3_no_snap_entries_nonempty` | No snap + entries → FUI = entries[0].index |
+| FU4 | `fu4_fui_monotone` | FUI is monotonically bounded by entries' first index |
+| FU5 | `fu5_snap_fui_above_snap_index` | FUI > snap.index when snap set |
+| FU6 | `fu6_unstable_invariant` | `Unstable` invariant: entries strictly after snap |
+| FU7 | `fu7_snap_fui_formula` | When `Unstable` invariant holds: FUI = snap.index + 1 |
+| FU8 | `fu8_unstable_fui_gt_persisted` | FUI > persisted — the key safety invariant |
+
+**FU8 is the critical safety property**: it proves that `firstUpdateIndex` is strictly
+greater than `persisted`, which is the pre-condition that prevents `maybe_persist` from
+advancing the persisted index past the stable-storage boundary.
+
+`MaybePersistFUICorrespondence.lean` adds **28 `#guard` assertions** across three groups:
+- **Group A (10 cases)**: snap-set path — FUI = snap.index + 1 at varying indices
+- **Group B (10 cases)**: no-snap path with entries — FUI = entries[0].index
+- **Group C (8 cases)**: no-snap + empty entries — FUI = 0; no-entries Unstable invariant
+
+The companion Rust test `test_maybe_persist_fui_correspondence` in `src/raft_log.rs`
+verifies 18 cases (covering all three groups) against the actual implementation.
+
+### Correspondence Count Corrections (Run 86)
+
+Run 86 audited all `#guard` counts in `CORRESPONDENCE.md` against the actual Lean files
+and corrected seven stale entries from prior runs:
+
+| File | Old count | Corrected count |
+|------|----------:|----------------:|
+| `ProgressCorrespondence.lean` | 46 | 55 |
+| `VoteResultCorrespondence.lean` | 12 | 17 |
+| `HasQuorumCorrespondence.lean` | 12 | 17 |
+| `ReadOnlyCorrespondence.lean` | 14 | 16 |
+| `MaybePersistCorrespondence.lean` | 15 | 23 |
+| `RaftLogAppendCorrespondence.lean` | 21 | 24 |
+| `MaybePersistFUICorrespondence.lean` | 20 | 28 |
+
+### Layer 8 Complete (18 targets)
+
+Layer 8 (correspondence validation) now covers **18 targets** with **18 Lean files**,
+**373 `#guard` assertions**, and **18 Rust test functions**:
+
+| Metric | Run 78 | Run 87 |
+|--------|--------|--------|
+| Lean files | 51 | **55** |
+| Theorems | 522 | **575** |
+| sorry | 0 | **0** ✅ |
+| Correspondence files | 15 | **18** |
+| #guard assertions (corr. files) | 288 | **373** |
+| #guard assertions (all files) | ~300 | **398** |
+| Rust tests | 14 | **18** |
+
+> ✅ `lake build` passed with Lean 4.28.0. **0 sorry**. 575 theorems machine-checked.
+> 🔬 *Runs 79–87 update (2026-04-23 09:30 UTC). [Lean Squad](https://github.com/dsyme/raft-lean-squad/actions/runs/24827684064)*
