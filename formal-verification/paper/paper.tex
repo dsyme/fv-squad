@@ -794,6 +794,21 @@ broadcasts AppendEntries to voters one by one.  The key theorem,
 ABI8 (\texttt{hqc\_preserved\_of\_broadcast}), establishes that after a
 complete AE broadcast round, the cluster satisfies \texttt{hqc\_preserved}.
 
+\texttt{ElectionBroadcastChain.lean} (6~theorems) closes the gap left by
+the \texttt{haeCovered\_induction} placeholder in
+\texttt{AEBroadcastInvariant.lean}.  It introduces \texttt{BroadcastSeq},
+an inductive type threading cluster states through a sequence of
+single-voter AppendEntries steps.  EBC1--EBC2 prove log-stability for
+non-stepping nodes; EBC3 proves per-voter agreement through the tail;
+EBC4 (\texttt{broadcastSeq\_haeCovered}) is the key structural-induction
+theorem establishing \texttt{HaeCovered} for the entire voter list;
+EBC5 lifts \texttt{HaeCovered} to a universal \texttt{hae} hypothesis;
+and EBC6 (\texttt{electionBroadcastChain\_hqc\_preserved}) chains these
+through ECM4 (\texttt{hqc\_preserved\_of\_hae}) to deliver
+\texttt{hqc\_preserved} from a complete broadcast sequence---the concrete
+bridge previously missing between the AE broadcast invariant and
+\texttt{hqc\_preserved}.
+
 \texttt{RaftLogAppend.lean} (19~theorems) formalises \texttt{raft\_log.rs::append}
 as a Lean 4 function over a \texttt{RaftLog} record, proving
 RA1--RA9: the empty-input invariant, the return-value specification
@@ -866,7 +881,7 @@ scan finds the largest valid index).
 \subsection{Proof Statistics}
 
 Table~\ref{tab:inventory} summarises the full file inventory.
-Total: 575 theorems, 55~files (37 proof files + 18 correspondence-test files),
+Total: 581 theorems, 56~files (38 proof files + 18 correspondence-test files),
 0 \texttt{sorry}, $\approx$15{,}000 lines of Lean.
 
 \begin{table*}[p]
@@ -907,6 +922,7 @@ ConcreteProtocolStep & 14 & CPS2: A5 bridge (concrete$\to$abstract) \\
 ElectionReachability & 12 & ER1--ER10: high-water-mark + shared-source \\
 ElectionConcreteModel &  8 & ECM1--ECM7: hae $\to$ hqc\_preserved \\
 AEBroadcastInvariant & 10 & ABI8: hqc\_preserved\_of\_broadcast \\
+ElectionBroadcastChain &  6 & EBC4: broadcast seq $\Rightarrow$ HaeCovered; EBC6: full chain \\
 MaybePersistFUI   &  8 & FU1: snap blocks advance; FU8: fui $>$ persisted \\
 RaftLogAppend     & 19 & RA1--RA9, P4--P7: append spec \\
 ReadOnly          & 14 & RO8: advance removes ctx; RO14--RO15: inv \\
@@ -931,7 +947,7 @@ RaftLogAppendCorrespondence & 0 & 24 \texttt{\#guard}, abstraction \\
 MaybePersistFUICorrespondence & 0 & 28 \texttt{\#guard}, abstraction \\
 Basic             & -- & Shared definitions \\
 \midrule
-\textbf{Total}    & \textbf{575} & \textbf{0 sorry; 373 \texttt{\#guard}} \\
+\textbf{Total}    & \textbf{581} & \textbf{0 sorry; 373 \texttt{\#guard}} \\
 \bottomrule
 \end{tabular}
 \caption{Full file inventory (all at Phase~5, 0 sorry). Correspondence files contribute \texttt{\#guard} assertions but no named theorems.}
@@ -1082,11 +1098,11 @@ report, and even an initial draft of this paper were produced autonomously.
 The human never selected a target, wrote a specification, suggested a
 proof strategy, or debugged a failing proof.
 
-Across 88 runs spanning $\approx$13 weeks, the agent produced:
+Across 90 runs spanning $\approx$14 weeks, the agent produced:
 \begin{itemize}\setlength\itemsep{0pt}
   \item 26 informal specification documents
-  \item 55 Lean~4 source files ($\approx$15{,}000 lines)
-  \item 575 machine-checked theorems
+  \item 56 Lean~4 source files ($\approx$15{,}000 lines)
+  \item 581 machine-checked theorems
   \item 373 compile-time \texttt{\#guard} correspondence assertions
   \item 18 Rust correspondence test functions
   \item 1 formulation bug caught and corrected
@@ -1447,11 +1463,11 @@ $\sim$42,000 lines of Dafny proof.
 Woos~et~al.~\cite{vard} verified simplified Raft with $\sim$50,000
 lines of Coq across 90 invariants.
 
-Our $\approx$15{,}000 lines of Lean and 575 theorems are modest by comparison.
+Our $\approx$15{,}000 lines of Lean and 581 theorems are modest by comparison.
 However, the relevant metric is not raw scale but \emph{effort}:
 those projects required person-years of expert proof engineering,
 while ours required zero human proof engineering and approximately
-88 LLM agent runs (each $\sim$15--30 minutes of wall-clock time)
+90 LLM agent runs (each $\sim$15--30 minutes of wall-clock time)
 plus two one-line human comments.  If the approach scales---and the
 successful progression from Layer~1 through Layer~8 suggests it
 can---the implications for the cost of formal verification are
@@ -1475,7 +1491,7 @@ Starting from zero, the Lean Squad agent---running as a scheduled
 GitHub Actions job with no human in the loop---autonomously selected
 26 verification targets in a production Raft implementation, designed
 a ten-layer proof architecture, wrote all specifications and proofs,
-and produced 575 machine-checked theorems across 55 files in 88 runs,
+and produced 581 machine-checked theorems across 56 files in 90 runs,
 culminating in the end-to-end safety theorem
 \texttt{raftReachable\_safe} with zero \texttt{sorry}, plus the A5
 bridge (CPS2) connecting concrete AppendEntries steps to the abstract
