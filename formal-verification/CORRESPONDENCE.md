@@ -7,9 +7,8 @@ correspondence level, known divergences, and the impact on any proofs that rely 
 definition.
 
 ## Last Updated
-- **Date**: 2026-04-22 10:00 UTC
-- **Commit**: `a9222b1`
-- **Commit**: `eb368a1` — Run 53: Task 8 Route B (IsUpToDateCorrespondence: 12 #guard tests; CommittedIndexCorrespondence: 8 #guard tests)
+- **Date**: 2026-04-23 10:00 UTC
+- **Commit**: `819f143` — Run 88: Task 6 — Fixed duplicate Last Updated sections; corrected IsUpToDate 12→14 and ConfigValidate/Inflights/LogUnstable "Test cases" sub-headers 12→14; updated project totals (575T, 398 `#guard`, 55F, 0 sorry)
 
 ---
 
@@ -387,7 +386,7 @@ mirroring the JSON fixture (verified passing: `cargo test test_maybe_append_corr
 
 ### Target: `RaftLog::is_up_to_date` — executable correspondence tests
 
-**New in Run 53.** This file provides 12 `#guard` assertions that cross-check the Lean
+**New in Run 53.** This file provides 14 `#guard` assertions that cross-check the Lean
 model `isUpToDate` (from `IsUpToDate.lean`) against concrete computed values matching
 the expected behaviour of `RaftLog::is_up_to_date`.
 
@@ -395,7 +394,7 @@ the expected behaviour of `RaftLog::is_up_to_date`.
 |-----------|-----------------|----------------|-------|
 | `voter33`, `voter00`, `voter510` | — (test fixtures) | Exact | `LogId` values encoding `(last_term, last_index)` state |
 | `isUpToDate voter cand_term cand_index` | `RaftLog::is_up_to_date(last_index, term)` | Exact | Boolean comparison; Rust logic is identical one-liner |
-| 12 `#guard` assertions | 12-case Rust `#[test]` in `src/raft_log.rs` | Exact | Both sides cover the same 12 scenarios |
+| 14 `#guard` assertions | 14-case Rust `#[test]` in `src/raft_log.rs` | Exact | Both sides cover the same 14 scenarios |
 
 **Correspondence test fixture**: `formal-verification/tests/is_up_to_date/cases.json`
 (12 cases: 9 from the existing `test_is_up_to_date` Rust test + 3 edge cases).
@@ -410,7 +409,7 @@ Lean:  cand_term > voter.term || (cand_term == voter.term && cand_index >= voter
 Rust:  term > self.last_term() || (term == self.last_term() && last_index >= self.last_index())
 ```
 
-**Validation evidence**: `formal-verification/tests/is_up_to_date/` — 12 cases, all
+**Validation evidence**: `formal-verification/tests/is_up_to_date/` — 14 cases, all
 passing on both Lean (`lake build`) and Rust (`cargo test`) sides.
 
 **No sorry in this file.** All `#guard` assertions are compile-time checked.
@@ -1798,11 +1797,9 @@ The Lean model uses `id : Nat → Nat` as the size function; the Rust uses `comp
 |-----------|-----------------|---------------|----------------|-------|
 | `configValidate cfg` | `cfg.validate().is_ok()` | `src/config.rs#L166` | Exact | Same 8-constraint conjunction; returns `Bool` vs `Result<()>` |
 
-### Test cases (12 `#guard`)
+### Test cases (14 `#guard`)
 
-Covers: default config (valid), each of 8 constraint violations (C1–C8), and two multi-field valid configs (min_election_tick = election_tick; LeaseBased with check_quorum).
-
-### Validation evidence
+Covers: default config (valid), each of 8 constraint violations (C1–C8), two multi-field valid configs (min_election_tick = election_tick; LeaseBased with check_quorum), and 2 additional boundary cases.
 
 - **Lean side**: 14 `#guard` tests in `FVSquad/ConfigValidateCorrespondence.lean` (lake build ✅)
 - **Rust side**: `test_config_validate_correspondence` in `src/config.rs` (12 cases, `cargo test ✅`)
@@ -1829,9 +1826,9 @@ The Lean `configValidate` function computes the same boolean verdict as `Config:
 | `Inflights.count` | `Inflights::count()` | `inflights.rs#L55` | Abstraction | `queue.length` vs ring-buffer occupancy |
 | `Inflights.full` | `Inflights::full()` | `inflights.rs#L61` | Exact | `count == cap` |
 
-### Test cases (12 `#guard`)
+### Test cases (14 `#guard`)
 
-Covers: fresh buffer (count=0, full=false), single add, two adds, full state, `freeTo` with various thresholds, `freeFirstOne`, `reset`, cap=1 edge case.
+Covers: fresh buffer (count=0, full=false), single add, two adds, full state, `freeTo` with various thresholds, `freeFirstOne`, `reset`, cap=1 edge case, and 2 additional boundary cases.
 
 ### Validation evidence
 
@@ -1857,9 +1854,9 @@ The Lean model uses a simple `List Nat` queue; the Rust uses a circular ring buf
 | `maybeLastIndex u` | `Unstable::maybe_last_index()` | `log_unstable.rs#L85` | Exact | Entries last index, else snap index |
 | `maybeTerm u i` | `Unstable::maybe_term(idx)` | `log_unstable.rs#L107` | Exact | Entry term lookup + snapshot fallback |
 
-### Test cases (12 `#guard`)
+### Test cases (14 `#guard`)
 
-Covers: `maybeFirstIndex` with entries-only (→ none) and snapshot (→ some); `maybeLastIndex` with entries, empty, snapshot-only; `maybeTerm` at various indices — in-range, out-of-range, at snapshot index, before snapshot.
+Covers: `maybeFirstIndex` with entries-only (→ none) and snapshot (→ some); `maybeLastIndex` with entries, empty, snapshot-only; `maybeTerm` at various indices — in-range, out-of-range, at snapshot index, before snapshot; plus 2 additional edge cases.
 
 ### Validation evidence
 
@@ -2246,14 +2243,6 @@ under the above abstractions:
 
 ---
 
-## Last Updated
-- **Date**: 2026-04-22 03:45 UTC
-- **Commit**: `dc716f7`
-
-> 🔬 Updated by [Lean Squad](https://github.com/dsyme/raft-lean-squad/actions/runs/24759028473) automated formal verification. Run 75: Task 6 — added ProgressCorrespondence section (46 #guard). Task 4 — MaybePersist.lean new target. 49 Lean files, 0 sorry.
-
----
-
 ## `RaftLogAppend.lean` — `RaftLog::append` (`src/raft_log.rs:382`)
 
 **Run 82** — Task 8 Route B, 21 `#guard` assertions.
@@ -2372,8 +2361,4 @@ Relevant theorems in `RaftLogAppend.lean` (all proved, 0 sorry):
 
 ---
 
-## Last Updated
-- **Date**: 2026-04-23 06:11 UTC
-- **Commit**: `66415d4`
-
-> 🔬 Updated by [Lean Squad](https://github.com/dsyme/raft-lean-squad/actions/runs/24819856169) automated formal verification. Run 86: Task 6 — Correspondence Review. Corrected stale `#guard` counts: ProgressCorrespondence (46→55), VoteResultCorrespondence (12→17), HasQuorumCorrespondence (12→17), ReadOnlyCorrespondence (14→16), MaybePersistCorrespondence (15→23), RaftLogAppendCorrespondence (21→24), MaybePersistFUICorrespondence (20→28). Updated project-wide totals (575 theorems, 398 `#guard`, 55 Lean files, 0 sorry).
+> 🔬 Updated by [Lean Squad](https://github.com/dsyme/raft-lean-squad/actions/runs/24828993663) automated formal verification. Run 88: Task 6 — Correspondence Review. Fixed duplicate Last Updated headers; corrected IsUpToDate 12→14 `#guard`; corrected ConfigValidate/Inflights/LogUnstable "Test cases" sub-headers 12→14. Totals: 575 theorems, 398 `#guard`, 55 Lean files, 0 sorry.
