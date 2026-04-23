@@ -2603,4 +2603,187 @@ mod test {
             );
         }
     }
+
+    /// Lean-4 correspondence test for `firstUpdateIndex` derivation and
+    /// `maybePersistFui` (concrete FUI variant).
+    ///
+    /// Mirrors the `#guard` assertions in
+    /// `formal-verification/lean/FVSquad/MaybePersistFUICorrespondence.lean`.
+    ///
+    /// ## Group A — firstUpdateIndex derivation (4 cases)
+    /// ## Group B — no-snapshot path (8 cases, FUI = offset = 7, persisted = 3)
+    /// ## Group C — snapshot path (cases, FUI = snap.index = 3)
+    #[test]
+    fn test_maybe_persist_fui_correspondence() {
+        let l = default_logger();
+
+        // Helper: build a RaftLog with optional snapshot + stabilised entries
+        let make_persist_log = |snap_idx: u64, snap_term: u64, ents: &[(u64, u64)]| {
+            let store = MemStorage::new();
+            if snap_idx > 0 {
+                store
+                    .wl()
+                    .apply_snapshot(new_snapshot(snap_idx, snap_term))
+                    .expect("apply_snapshot");
+            }
+            let mut rl = RaftLog::new(store, l.clone(), &Config::default());
+            if !ents.is_empty() {
+                let entries: Vec<_> = ents.iter().map(|&(i, t)| new_entry(i, t)).collect();
+                rl.append(&entries);
+                let unstable = rl.unstable_entries().to_vec();
+                if let Some(e) = unstable.last() {
+                    rl.stable_entries(e.get_index(), e.get_term());
+                    rl.mut_store().wl().append(&unstable).expect("append");
+                }
+            }
+            rl
+        };
+
+        // Helper: compute first_update_index without calling maybe_persist
+        let fui = |rl: &RaftLog<MemStorage>| -> u64 {
+            match &rl.unstable.snapshot {
+                Some(s) => s.get_metadata().index,
+                None => rl.unstable.offset,
+            }
+        };
+
+        // -----------------------------------------------------------------------
+        // Group A — firstUpdateIndex derivation
+        // -----------------------------------------------------------------------
+
+        // A1: No snapshot → FUI = offset = 7
+        {
+            let rl = make_persist_log(3, 1, &[(4u64, 1u64), (5, 2), (6, 3)]);
+            assert_eq!(fui(&rl), 7, "A1: no snapshot → FUI = offset = 7");
+        }
+
+        // A2: Snapshot at index 3 loaded into unstable → FUI = 3
+        {
+            let mut rl = make_persist_log(0, 0, &[]);
+            let mut snap = eraftpb::Snapshot::default();
+            snap.mut_metadata().index = 3;
+            snap.mut_metadata().term = 1;
+            rl.restore(snap);
+            assert_eq!(fui(&rl), 3, "A2: snapshot at 3 → FUI = 3");
+        }
+
+        // A3: Snapshot at index 0, offset = 1 → FUI = 0
+        {
+            let mut rl = make_persist_log(0, 0, &[]);
+            let mut snap = eraftpb::Snapshot::default();
+            snap.mut_metadata().index = 0;
+            snap.mut_metadata().term = 0;
+            rl.restore(snap);
+            assert_eq!(fui(&rl), 0, "A3: snapshot at 0 → FUI = 0");
+        }
+
+        // A4: Snapshot at index 6, offset=7 → FUI = 6 (snap.index = offset - 1)
+        {
+            let mut rl = make_persist_log(0, 0, &[]);
+            let mut snap = eraftpb::Snapshot::default();
+            snap.mut_metadata().index = 6;
+            snap.mut_metadata().term = 1;
+            rl.restore(snap);
+            assert_eq!(rl.unstable.offset, 7, "A4: offset = 7");
+            assert_eq!(fui(&rl), 6, "A4: snapshot at 6, offset=7 → FUI = 6");
+        }
+
+        // -----------------------------------------------------------------------
+        // Group B — no-snapshot path (FUI = offset = 7, persisted = 3)
+        // -----------------------------------------------------------------------
+        let make_b_log = || make_persist_log(3, 1, &[(4u64, 1u64), (5, 2), (6, 3)]);
+
+        // B1: All guards pass → true, persisted advances to 5
+        {
+            let mut rl = make_b_log();
+            assert_eq!(rl.maybe_persist(5, 2), true, "B1: (5,2) advances");
+            assert_eq!(rl.persisted, 5, "B1: persisted = 5");
+        }
+
+        // B2: Guard 1 fails — index (3) not > persisted (3)
+        {
+            let mut rl = make_b_log();
+            assert_eq!(rl.maybe_persist(3, 2), false, "B2: 3 ≤ persisted(3)");
+        }
+
+        // B3: Guard 2 fails — index (7) = FUI (7)
+        {
+            let mut rl = make_b_log();
+            assert_eq!(rl.maybe_persist(7, 3), false, "B3: 7 ≥ FUI(7)");
+        }
+
+        // B4: Guard 3 fails — term mismatch (store.term(5)=2, arg=99)
+        {
+            let mut rl = make_b_log();
+            assert_eq!(rl.maybe_persist(5, 99), false, "B4: term mismatch");
+        }
+
+        // B5: All guards pass at index 4 → true, persisted advances to 4
+        {
+            let mut rl = make_b_log();
+            assert_eq!(rl.maybe_persist(4, 1), true, "B5: (4,1) advances");
+            assert_eq!(rl.persisted, 4, "B5: persisted = 4");
+        }
+
+        // B6: All guards pass at index 6 → true, persisted advances to 6
+        {
+            let mut rl = make_b_log();
+            assert_eq!(rl.maybe_persist(6, 3), true, "B6: (6,3) advances");
+            assert_eq!(rl.persisted, 6, "B6: persisted = 6");
+        }
+
+        // B7: Guard 2 fails — index (8) > FUI (7)
+        {
+            let mut rl = make_b_log();
+            assert_eq!(rl.maybe_persist(8, 1), false, "B7: 8 > FUI(7)");
+        }
+
+        // B8: Guard 3 fails — wrong term for index 6 (term=3 in store, arg=1)
+        {
+            let mut rl = make_b_log();
+            assert_eq!(rl.maybe_persist(6, 1), false, "B8: wrong term for 6");
+        }
+
+        // -----------------------------------------------------------------------
+        // Group C — snapshot path: snapshot loaded into unstable (FUI = snap.index = 3)
+        // -----------------------------------------------------------------------
+        let make_c_log = || {
+            let mut rl = make_persist_log(0, 0, &[]);
+            let mut snap = eraftpb::Snapshot::default();
+            snap.mut_metadata().index = 3;
+            snap.mut_metadata().term = 1;
+            rl.restore(snap);
+            rl
+        };
+
+        // Verify FUI = snap.index = 3 for all C cases
+        {
+            let rl = make_c_log();
+            assert_eq!(fui(&rl), 3, "C: FUI = snap.index = 3");
+        }
+
+        // C2: Guard 2 fails — snap blocks: index(3) = FUI(3)
+        {
+            let mut rl = make_c_log();
+            assert_eq!(rl.maybe_persist(3, 1), false, "C2: 3 ≥ FUI(3)");
+        }
+
+        // C3: Guard 2 fails — snap blocks: index(4) > FUI(3)
+        {
+            let mut rl = make_c_log();
+            assert_eq!(rl.maybe_persist(4, 1), false, "C3: 4 > FUI(3)");
+        }
+
+        // C4: Guard 2 fails — snap blocks: index(5) > FUI(3)
+        {
+            let mut rl = make_c_log();
+            assert_eq!(rl.maybe_persist(5, 2), false, "C4: 5 > FUI(3)");
+        }
+
+        // C-large: large index also blocked by snapshot FUI
+        {
+            let mut rl = make_c_log();
+            assert_eq!(rl.maybe_persist(100, 1), false, "C-large: blocked by snap");
+        }
+    }
 }

@@ -423,7 +423,7 @@ passing on both Lean (`lake build`) and Rust (`cargo test`) sides.
 
 ### Target: `Configuration::committed_index` — executable correspondence tests
 
-**New in Run 53.** This file provides 8 `#guard` assertions that cross-check the Lean
+**New in Run 53 (expanded in Run 68).** This file provides 13 `#guard` assertions that cross-check the Lean
 model `committedIndex` (from `CommittedIndex.lean`) against concrete computed values
 matching the expected behaviour of `Configuration::committed_index(false, l)`.
 
@@ -431,13 +431,13 @@ matching the expected behaviour of `Configuration::committed_index(false, l)`.
 |-----------|-----------------|----------------|-------|
 | `makeAcked pairs` | — (test helper) | Exact | Builds `AckedFn` (`Nat → Nat`) from association list; missing → 0 |
 | `committedIndex voters acked` | `Configuration::committed_index(false, l)` | Abstraction | `use_group_commit=false` path only; see divergences |
-| 8 `#guard` assertions | 8-case Rust `#[test]` in `src/quorum/majority.rs` | Exact | Both sides cover the same 8 scenarios |
+| 13 `#guard` assertions | Rust `#[test]` in `src/quorum/majority.rs` | Exact | Both sides cover the same scenarios |
 
 **Correspondence test fixture**: `formal-verification/tests/committed_index/cases.json`
-(8 cases: single voter, two voters, three voters with distinct/same acked values,
-five voters, missing voter, all-same-acked).
+(13 cases: single voter, two voters, three voters with distinct/same acked values,
+five voters, missing voter, all-same-acked, edge cases).
 
-**Rust side**: `src/quorum/majority.rs::tests::test_committed_index_correspondence` — 8 cases
+**Rust side**: `src/quorum/majority.rs::tests::test_committed_index_correspondence` — cases
 mirroring the JSON fixture (verified passing: `cargo test test_committed_index_correspondence`).
 
 **Correspondence level**: **Abstraction** — the tested `use_group_commit=false` path is
@@ -448,7 +448,7 @@ exactly modelled; known divergences:
 - **Group-commit path** (`use_group_commit=true`): not modelled in `CommittedIndex.lean`
 - **`u64` vs `Nat`**: Rust uses `u64`; overflow not tested (log indices are practical `Nat` values)
 
-**Validation evidence**: `formal-verification/tests/committed_index/` — 8 cases, all
+**Validation evidence**: `formal-verification/tests/committed_index/` — 13 cases, all
 passing on both Lean (`lake build`) and Rust (`cargo test`) sides.
 
 **No sorry in this file.** All `#guard` assertions are compile-time checked.
@@ -1350,6 +1350,22 @@ obligation. MC12 shows `maybeCommit = commitTo` when the term check passes.
 
 **Assessment**: Abstraction is sound. MC4 is the critical A6 closure theorem.
 
+### Validation evidence
+
+- **Lean side**: 19 `#guard` assertions in `FVSquad/MaybeCommitCorrespondence.lean`
+  (lake build ✅, 0 sorry, Lean 4.28.0). Covers `maybeCommit` (14 cases) and
+  `commitTo` (5 cases) on a shared log fixture with terms at indices 1–5.
+- **Rust side**: `test_maybe_commit_correspondence` in `src/raft_log.rs` (14 assertion
+  cases, all pass).
+- **Fixtures**: `formal-verification/tests/maybe_commit/` (14 cases).
+- **Commands**:
+  - Lean: `cd formal-verification/lean && lake build FVSquad.MaybeCommitCorrespondence`
+  - Rust: `cargo test test_maybe_commit_correspondence`
+- **Coverage**: Cases 1–14 exercise `maybeCommit`: happy-path advance, term-mismatch
+  no-op, already-committed no-op, zero-index boundary, at-max-index; plus `commitTo`
+  monotone-advance, no-op, equal, from-zero cases.
+- **Correspondence test status**: ✅ Complete — 19 `#guard` + 14 Rust assertions all pass.
+
 ---
 
 ## `FVSquad/ConcreteTransitions.lean` — AppendEntries Model and HLogConsistency (A4)
@@ -2130,7 +2146,7 @@ The `find_conflict_by_term` function is invoked in the `handle_append_response` 
 path. FCB9 establishes that the leader's backward scan correctly identifies the maximum
 skip position given the follower's hint — a key step toward proving that the optimised
 AppendEntries protocol converges in O(conflicting terms) rounds rather than O(conflicting
-entries). No correspondence test file has been written for this target yet.
+entries).
 
 **Assessment**: The Lean model is a sound abstraction of the success path. Storage errors
 and the `Err` early-return path are the only unmodelled branches. These are unreachable
@@ -2138,7 +2154,7 @@ under normal operation (storage failure is a fatal condition). No mismatches fou
 
 ### Validation evidence
 
-- **Lean side**: 10 proved theorems in `FVSquad/FindConflictByTerm.lean` + 12 `#guard` assertions
+- **Lean side**: 10 proved theorems in `FVSquad/FindConflictByTerm.lean` + 19 `#guard` assertions
   in `FVSquad/FindConflictByTermCorrespondence.lean` (lake build ✅, 0 sorry).
 - **Rust side**: `test_find_conflict_by_term_correspondence` in `src/raft_log.rs` (12 cases, all pass).
 - **Fixtures**: `formal-verification/tests/find_conflict_by_term/cases.json` (12 cases).
@@ -2305,8 +2321,59 @@ Relevant theorems in `RaftLogAppend.lean` (all proved, 0 sorry):
 
 ---
 
-## Last Updated (Run 82)
-- **Date**: 2026-04-22 19:42 UTC
-- **Commit**: `8bef0b3`
+## `MaybePersistFUI` — `firstUpdateIndex` Derivation from `Unstable`
 
-> 🔬 Updated by [Lean Squad](https://github.com/dsyme/raft-lean-squad/actions/runs/24798867052) automated formal verification. Run 82: Task 8 — RaftLogAppendCorrespondence (21 #guard, all 3 truncate_and_append branches). Task 1 — TARGETS.md/RESEARCH.md refreshed (17 corr. targets, 342+ #guard total).
+**Lean file**: `formal-verification/lean/FVSquad/MaybePersistFUI.lean`
+**Rust source**: `src/raft_log.rs` lines 560–565 (inside `maybe_persist`)
+
+### Mapped definitions
+
+| Lean name | Rust name | Rust location | Correspondence level |
+|-----------|-----------|---------------|----------------------|
+| `firstUpdateIndex (some idx) offset` | `s.get_metadata().index` (snapshot present) | `raft_log.rs:561–562` | **exact** |
+| `firstUpdateIndex none offset` | `self.unstable.offset` (no snapshot) | `raft_log.rs:563` | **exact** |
+| `maybePersistFui` | `RaftLog::maybe_persist` (full model) | `raft_log.rs:545–576` | **abstraction** (inherits MaybePersist approximations) |
+
+### Key theorems and their meaning
+
+| ID | Lean name | Description |
+|----|-----------|-------------|
+| FU1 | `fui_snap_case` | FUI = `snap.index` when snapshot is present |
+| FU2 | `fui_no_snap_case` | FUI = `offset` when no snapshot |
+| FU3 | `fui_snap_lt_offset` | Unstable invariant: `snap.idx < offset → FUI < offset` |
+| FU4 | `maybePersistFui_eq_abstract` | Concrete model equals abstract with derived FUI |
+| FU5 | `maybePersistFui_monotone` | `persisted` never decreases |
+| FU6 | `maybePersistFui_true_iff` | Full advance characterisation |
+| FU7 | `maybePersistFui_snap_blocks_advance_at` | Snapshot blocks advancing to/above snap.index |
+| FU8 | `maybePersistFui_no_snap_uses_offset` | No-snapshot path uses offset as the FUI bound |
+
+### Divergences and approximations
+
+1. **`store.term()` fallibility**: Rust uses `store.term(index).is_ok_and(|t| t == term)` which
+   can return `Err` for indices not in stable storage. Lean models `logTerm` as a total function
+   (default 0). This means some Lean `#guard true` predictions become `false` in Rust when the
+   entry is not in storage. See Group C tests in the correspondence file.
+2. **`Unstable` struct**: Only `snapshotIndex` and `offset` are modelled. The entry slice, logger,
+   and other fields are abstracted away.
+3. **Integer bounds**: Lean uses `Nat`; Rust uses `u64`. Overflow is not modelled.
+
+### Validation evidence
+
+- **Lean side**: 20 `#guard` assertions in `FVSquad/MaybePersistFUICorrespondence.lean`
+  (lake build ✅, 0 sorry, Lean 4.28.0). Three groups: FUI derivation (A), no-snapshot path (B),
+  snapshot path (C).
+- **Rust side**: `test_maybe_persist_fui_correspondence` in `src/raft_log.rs` (18 assertion cases,
+  all pass).
+- **Fixtures**: `formal-verification/tests/maybe_persist_fui/README.md`.
+- **Commands**:
+  - Lean: `cd formal-verification/lean && lake build FVSquad.MaybePersistFUICorrespondence`
+  - Rust: `cargo test test_maybe_persist_fui_correspondence`
+- **Correspondence test status**: ✅ Complete — 20 `#guard` + Rust assertions all pass.
+
+---
+
+## Last Updated
+- **Date**: 2026-04-23 04:00 UTC
+- **Commit**: `aa9e59c`
+
+> 🔬 Updated by [Lean Squad](https://github.com/dsyme/raft-lean-squad/actions/runs/24815645361) automated formal verification. Run 85: Task 6 — Correspondence Review. Added `MaybeCommit` validation evidence (19 #guard), updated `CommittedIndexCorrespondence` count (8→13), updated `FindConflictByTermCorrespondence` count (12→19). Total: 18 correspondence test targets, 55 Lean files, ~530 theorems, 0 sorry.
