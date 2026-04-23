@@ -2355,6 +2355,157 @@ mod test {
         assert_eq!(rl.persisted, 1, "case 15: new persisted");
     }
 
+    /// Lean-4 correspondence test for `RaftLog::append` / `raftLogAppend`.
+    ///
+    /// Mirrors the 21 `#guard` assertions in
+    /// `formal-verification/lean/FVSquad/RaftLogAppendCorrespondence.lean`.
+    ///
+    /// Two fixtures:
+    ///  - **baseLog**: stable entries [(1,1),(2,2)], unstable empty (offset=3)
+    ///  - **extLog**: same stable storage, plus unstable [(3,2),(4,3)] already in flight
+    #[test]
+    fn test_raft_log_append_correspondence() {
+        let l = default_logger();
+
+        // Helper: build a RaftLog backed by stable entries [(1,1),(2,2)].
+        // After construction: unstable.offset = 3, unstable.entries = [].
+        let make_base_log = || {
+            let store = MemStorage::new();
+            store
+                .wl()
+                .append(&[new_entry(1, 1), new_entry(2, 2)])
+                .expect("append stable");
+            RaftLog::new(store, l.clone(), &Config::default())
+        };
+
+        // Helper: build extLog — same stable storage + unstable [(3,2),(4,3)].
+        let make_ext_log = || {
+            let mut rl = make_base_log();
+            rl.append(&[new_entry(3, 2), new_entry(4, 3)]);
+            assert_eq!(rl.unstable.offset, 3, "extLog setup: offset");
+            assert_eq!(rl.unstable.entries.len(), 2, "extLog setup: entries len");
+            rl
+        };
+
+        // Convenience: extract term vector from unstable entries.
+        let terms = |rl: &RaftLog<MemStorage>| -> Vec<u64> {
+            rl.unstable.entries.iter().map(|e| e.get_term()).collect()
+        };
+
+        // -----------------------------------------------------------------------
+        // Cases 1–4: baseLog (unstable empty at offset 3)
+        // -----------------------------------------------------------------------
+
+        // Case 1: empty batch → last_index = stableLastIdx = 2
+        {
+            let mut rl = make_base_log();
+            let idx = rl.append(&[]);
+            assert_eq!(idx, 2, "case 1: last_index");
+        }
+
+        // Case 2: append [(3,2)] — branch 1 (after = offset + len = 3 + 0)
+        //   result: entries=[term 2], offset=3, last_index=3
+        {
+            let mut rl = make_base_log();
+            let idx = rl.append(&[new_entry(3, 2)]);
+            assert_eq!(idx, 3, "case 2: last_index");
+            assert_eq!(terms(&rl), vec![2], "case 2: entry terms");
+            assert_eq!(rl.unstable.offset, 3, "case 2: offset");
+        }
+
+        // Case 3: replace from index 1 — branch 2 (after=1 ≤ offset=3)
+        //   result: entries=[term 2], offset=1, last_index=1
+        {
+            let mut rl = make_base_log();
+            let idx = rl.append(&[new_entry(1, 2)]);
+            assert_eq!(idx, 1, "case 3: last_index");
+            assert_eq!(terms(&rl), vec![2], "case 3: entry terms");
+            assert_eq!(rl.unstable.offset, 1, "case 3: offset");
+        }
+
+        // Case 4: replace from index 2 — branch 2 (after=2 ≤ offset=3)
+        //   result: entries=[term 3, term 3], offset=2, last_index=3
+        {
+            let mut rl = make_base_log();
+            let idx = rl.append(&[new_entry(2, 3), new_entry(3, 3)]);
+            assert_eq!(idx, 3, "case 4: last_index");
+            assert_eq!(terms(&rl), vec![3, 3], "case 4: entry terms");
+            assert_eq!(rl.unstable.offset, 2, "case 4: offset");
+        }
+
+        // -----------------------------------------------------------------------
+        // Cases 5–7: extLog (unstable has entries [2,3] at offset 3)
+        // -----------------------------------------------------------------------
+
+        // Case 5: empty batch → last_index = 4 (offset 3 + len 2 - 1)
+        {
+            let mut rl = make_ext_log();
+            let idx = rl.append(&[]);
+            assert_eq!(idx, 4, "case 5: last_index");
+        }
+
+        // Case 6: append at end [(5,4)] — branch 1 (after=5 = offset+len=5)
+        //   result: entries=[2,3,4], offset=3, last_index=5
+        {
+            let mut rl = make_ext_log();
+            let idx = rl.append(&[new_entry(5, 4)]);
+            assert_eq!(idx, 5, "case 6: last_index");
+            assert_eq!(terms(&rl), vec![2, 3, 4], "case 6: entry terms");
+            assert_eq!(rl.unstable.offset, 3, "case 6: offset");
+        }
+
+        // Case 7: truncate then append [(4,4)] — branch 3 (offset=3 < after=4 < offset+len=5)
+        //   entries.truncate(4-3=1) → [2], then ++ [(4,4)] → [2, 4]
+        //   result: entries=[2,4], offset=3, last_index=4
+        {
+            let mut rl = make_ext_log();
+            let idx = rl.append(&[new_entry(4, 4)]);
+            assert_eq!(idx, 4, "case 7: last_index");
+            assert_eq!(terms(&rl), vec![2, 4], "case 7: entry terms");
+            assert_eq!(rl.unstable.offset, 3, "case 7: offset");
+        }
+
+        // -----------------------------------------------------------------------
+        // Cross-checks: RA4 (committed unchanged) and RA5 (stable storage unchanged)
+        // -----------------------------------------------------------------------
+
+        // committed is never modified by append (mirrors theorem RA4)
+        {
+            let mut rl = make_base_log();
+            rl.append(&[new_entry(3, 2)]);
+            assert_eq!(rl.committed, 0, "cross-check: committed unchanged (base)");
+        }
+        {
+            let mut rl = make_ext_log();
+            rl.append(&[new_entry(4, 4)]);
+            assert_eq!(rl.committed, 0, "cross-check: committed unchanged (ext)");
+        }
+
+        // Stable storage last_index unchanged (mirrors theorem RA5)
+        {
+            use crate::storage::Storage;
+            let mut rl = make_base_log();
+            let pre_stable = rl.store.last_index().unwrap();
+            rl.append(&[new_entry(3, 2)]);
+            assert_eq!(
+                rl.store.last_index().unwrap(),
+                pre_stable,
+                "cross-check: stable storage unchanged (base)"
+            );
+        }
+        {
+            use crate::storage::Storage;
+            let mut rl = make_ext_log();
+            let pre_stable = rl.store.last_index().unwrap();
+            rl.append(&[new_entry(5, 4)]);
+            assert_eq!(
+                rl.store.last_index().unwrap(),
+                pre_stable,
+                "cross-check: stable storage unchanged (ext)"
+            );
+        }
+    }
+
     /// Lean-4 correspondence test for `maybe_commit` / `commit_to`.
     ///
     /// Mirrors the `#guard` assertions in
