@@ -355,11 +355,77 @@ Based on `CRITIQUE.md` Run 76 recommendations:
    currently available in the sandbox). Paper needs updating for Runs 78–82 changes
    (MaybePersistCorrespondence, MaybeCommitCorrespondence, RaftLogAppendCorrespondence).
 
-### Next High-Priority Research Targets
+### Next High-Priority Research Targets (Run 85 Update)
 
-| Priority | Target | Goal | Difficulty | Files |
-|----------|--------|------|-----------|-------|
-| **B1** | `firstUpdateIndex` | Formalise FUI derivation from `Unstable` | Low | `MaybePersistFUI.lean` |
-| **B2** | `progress_set` | `ProgressSet::quorum_active` informal + Lean spec | Medium | `ProgressSet.lean` |
-| **B3** | Election-broadcast chain | Compose election → broadcast → ABI8 | High | `ElectionBroadcastChain.lean` |
-| **B4** | `raft.rs` step functions | `RaftLog::maybe_append` correspondence at Raft-step level | Medium | Extend `MaybeAppendCorrespondence.lean` |
+> **Run 84 completed**: B1 (`firstUpdateIndex` / `MaybePersistFUI.lean`) is **done** — 8
+> theorems (FU1–FU8, 0 sorry) formalise the FUI derivation from `Unstable` fields (snap case
+> and no-snap case), plus 20 `#guard` correspondence tests in `MaybePersistFUICorrespondence.lean`
+> and a Rust test with 18 cases. FU7 (`maybePersistFui_snap_blocks_advance_at`) is the key
+> safety property.
+
+The current state (Run 84/85): **55 Lean files, ~530 theorems, 0 sorry, 18 correspondence
+test targets with 362+ `#guard` tests**.
+
+| Priority | Target | Goal | Difficulty | Files | Status |
+|----------|--------|------|-----------|-------|--------|
+| ~~**B1**~~ | ~~`firstUpdateIndex`~~ | ~~Formalise FUI derivation~~ | ~~Low~~ | `MaybePersistFUI.lean` | ✅ **Done (Run 84)** |
+| **B2** | `progress_set` | `ProgressSet::quorum_active` informal + Lean spec | Medium | `ProgressSet.lean` | ⬜ Not started |
+| **B3** | Election-broadcast chain | Compose election → broadcast → ABI8 | High | `ElectionBroadcastChain.lean` | ⬜ Not started |
+| **B4** | REPORT.md + paper.tex | Update for Runs 78–84 (18 corr files, 362+ #guard) | Low | `REPORT.md`, `paper.tex` | ⬜ Needs update |
+
+### B2 Detail: `ProgressSet::quorum_active`
+
+**File**: `src/tracker/progress_set.rs`  
+**Function**: `ProgressSet::quorum_active(&self) -> bool`
+
+**What it does**: Returns `true` if a majority of voters in the configuration have been
+"recently active" (their `Progress.recent_active` flag is set). Used to detect whether the
+cluster is still live enough to respond without confirming quorum each time (avoid lease
+transfers on short partitions).
+
+**Key properties to verify**:
+1. If `|voters| = 0`, result is vacuously true
+2. Monotone: adding a `recent_active=true` voter cannot flip `false → true` in reverse
+3. Consistency with `HasQuorum`: `quorum_active ↔ hasQuorum(voters, fn(v) => progress(v).recent_active)`
+4. Lifting: per-peer `Progress` invariants (PR1–PR35) apply to each tracked peer
+
+**Proof tractability**: Medium — builds directly on `HasQuorum.lean` and `Progress.lean`.
+The key insight is that `quorum_active` is syntactic sugar for `has_quorum` applied to
+the `recent_active` boolean field.
+
+**Approximations**: `ProgressSet` has a `group_commit_mode: bool` flag and joint
+configuration support. The initial spec can focus on the simple (non-joint) case.
+
+### B3 Detail: Election-Broadcast Chain
+
+**Goal**: Close the final gap in the Raft safety proof by showing that after a legitimate
+election, the new leader performs the initial AE broadcast described in
+`ElectionConcreteModel.lean`, and therefore `hqc_preserved` holds inductively.
+
+**Proof path**:
+1. `RaftElection.lean` (RE1–RE15): election safety (one leader per term)
+2. `ElectionConcreteModel.lean` (ECM1–ECM7): after broadcast, `hqc_preserved` holds
+3. `AEBroadcastInvariant.lean` (ABI1–ABI10): inductive invariant for broadcast sequences
+4. New: `ElectionBroadcastChain.lean` — compose all three to show `RaftReachable` is
+   closed under full election + replication
+
+**Difficulty**: High. Requires connecting the abstract election model to the concrete
+`RaftReachable` step, which bundles 5 hypotheses each of which needs to be discharged.
+
+### Critique-Driven Adjustments (Run 82–85)
+
+Based on Run 76 `CRITIQUE.md` recommendations and subsequent work:
+
+1. **B1 (FUI modelling)** — DONE. `MaybePersistFUI.lean` (Run 84) closes MP6 gap.
+   FU4 proves `maybePersistFui_eq_abstract` (concrete = abstract with derived FUI).
+
+2. **B2 (ProgressSet)** — Still pending. The per-peer `Progress.lean` (31T) and
+   `ProgressCorrespondence.lean` (55 #guard) provide a solid foundation.
+
+3. **B3 (election-broadcast chain)** — Still pending. All component lemmas exist;
+   the remaining task is composing them into a single end-to-end chain.
+
+4. **Critique freshness** — `CRITIQUE.md` is from Run 76 (569T/50F). Current state is
+   ~530T/55F (some theorem renamings may account for the count difference). An updated
+   critique reviewing the Run 77–84 additions would be valuable.
+
