@@ -1,32 +1,19 @@
 {
   "lean_version": "4.28.0",
-  "theorem_count": 530,
+  "theorem_count": 575,
   "lean_file_count": 55,
   "sorry_count": 0,
-  "last_run": 85,
+  "last_run": 86,
   "hqc_preserved_gap": "CLOSED",
   "aeneas_status": "permanently_blocked_no_new_privileges",
   "toolchain_notes": "no Mathlib, use theorem not lemma. lakefile.toml globs=[FVSquad.+*]. No push_neg (no Mathlib): use Nat.lt_of_not_le instead. LogUnstable/IsUpToDate NO namespace. ReadOnly has namespace FVSquad.ReadOnly.",
   "notes": [
     "Run 82: RaftLogAppendCorrespondence.lean (21 #guard, all 3 truncate_and_append branches). TARGETS.md 17-target corr table. RESEARCH.md Run 82 section. CORRESPONDENCE.md RaftLogAppend section. 342+ #guard total across 17 corr files.",
     "Run 84: MaybePersistFUI.lean (FU1-FU8, 8T, 0 sorry) — formalises firstUpdateIndex derivation from Unstable fields (snap case + no-snap case, Unstable invariant, safety: snap blocks advance at/above snap.index). MaybePersistFUICorrespondence.lean (20 #guard, 3 groups A/B/C). Rust test_maybe_persist_fui_correspondence (18 cases). 18 correspondence test targets total.",
-    "Run 85: Task 1 (Research) — RESEARCH.md updated: B1 marked DONE, B2/B3 detailed descriptions added (ProgressSet::quorum_active + election-broadcast chain), current state stats (55 files, ~530T, 18 corr targets, 362+ #guard). TARGETS.md: 18 targets, ~362 #guard table. Task 6 (Correspondence Review) — CORRESPONDENCE.md: MaybeCommit validation evidence added (19 #guard), CommittedIndex count 8→13, FindConflictByTerm count 12→19."
+    "Run 85: Task 1 (Research) — RESEARCH.md updated: B1 marked DONE, B2/B3 detailed descriptions added (ProgressSet::quorum_active + election-broadcast chain), current state stats (55 files, ~530T, 18 corr targets, 362+ #guard). TARGETS.md: 18 targets, ~362 #guard table. Task 6 (Correspondence Review) — CORRESPONDENCE.md: MaybeCommit validation evidence added (19 #guard), CommittedIndex count 8→13, FindConflictByTerm count 12→19.",
+    "Run 86: Task 6 (Correspondence Review) — CORRESPONDENCE.md: fixed 7 stale #guard counts (Progress 46→55, VoteResult 12→17, HasQuorum 12→17, ReadOnly 14→16, MaybePersist 15→23, RaftLogAppend 21→24, MaybePersistFUI 20→28). Project-wide totals updated (575T, 398 #guard, 55F, 0 sorry). Task 9 (CI) — lean-ci.yml: Report proof statistics now shows #guard count + correspondence file count; correspondence-tests job shows pass/fail counts, warns if <18 test functions."
   ],
   "run_history": [
-    {
-      "run": 82,
-      "date": "2026-04-22",
-      "tasks": ["Task 8 Route B (RaftLogAppendCorrespondence)", "Task 1 (Research)"],
-      "changes": [
-        "New RaftLogAppendCorrespondence.lean: 21 #guard (all 3 truncate_and_append branches), 0 sorry",
-        "TARGETS.md: 17-target correspondence coverage table",
-        "RESEARCH.md: Run 82 section",
-        "CORRESPONDENCE.md: new RaftLogAppend section"
-      ],
-      "sorry_count_after": 0,
-      "lean_file_count_after": 53,
-      "pr_branch": "lean-squad/run-82-task8-task1-24798867052-3a5e51deb8e4b340"
-    },
     {
       "run": 84,
       "date": "2026-04-23",
@@ -53,12 +40,26 @@
       "sorry_count_after": 0,
       "lean_file_count_after": 55,
       "pr_branch": "lean-squad/run-85-task1-task6-24815645361"
+    },
+    {
+      "run": 86,
+      "date": "2026-04-23",
+      "tasks": ["Task 6 (Correspondence Review)", "Task 9 (CI Automation)"],
+      "changes": [
+        "CORRESPONDENCE.md: corrected 7 stale #guard counts (Progress 46→55, VoteResult 12→17, HasQuorum 12→17, ReadOnly 14→16, MaybePersist 15→23, RaftLogAppend 21→24, MaybePersistFUI 20→28)",
+        "CORRESPONDENCE.md: updated project-wide totals to 575T, 398 #guard, 55F, 0 sorry",
+        "lean-ci.yml: Report proof statistics step now shows #guard count + correspondence file count",
+        "lean-ci.yml: correspondence-tests job shows per-test pass/fail counts, warns if <18 test functions"
+      ],
+      "sorry_count_after": 0,
+      "lean_file_count_after": 55,
+      "pr_branch": "lean-squad/run-86-task6-task9-24819856169"
     }
   ],
   "next_steps": [
     "B2: progress_set — ProgressSet::quorum_active informal spec + Lean spec (ProgressSet.lean)",
     "B3: election-broadcast chain — compose RaftElection -> ElectionConcreteModel -> AEBroadcastInvariant",
-    "B4: Update REPORT.md and paper.tex for Runs 78-84 (18 corr files, 362+ #guard, MaybePersistFUI)"
+    "B4: Update REPORT.md and paper.tex for Runs 78-86 (18 corr files, 398 #guard, 575 theorems, MaybePersistFUI)"
   ],
   "correspondence_test_targets": [
     {"name": "find_conflict", "guard_count": 27, "status": "complete"},
@@ -75,21 +76,21 @@
     {"name": "read_only", "guard_count": 16, "status": "complete"},
     {"name": "find_conflict_by_term", "guard_count": 19, "status": "complete"},
     {"name": "progress", "guard_count": 55, "status": "complete"},
-    {"name": "maybe_persist", "guard_count": 21, "status": "complete"},
+    {"name": "maybe_persist", "guard_count": 23, "status": "complete"},
     {"name": "maybe_commit", "guard_count": 19, "status": "complete"},
-    {"name": "raft_log_append", "guard_count": 21, "status": "complete"},
-    {"name": "maybe_persist_fui", "guard_count": 20, "lean_file": "FVSquad/MaybePersistFUICorrespondence.lean", "rust_test": "test_maybe_persist_fui_correspondence", "status": "complete"}
+    {"name": "raft_log_append", "guard_count": 24, "status": "complete"},
+    {"name": "maybe_persist_fui", "guard_count": 28, "status": "complete"}
   ],
   "targets": [
     {"name": "hae_broadcast_invariant", "file": "formal-verification/lean/FVSquad/AEBroadcastInvariant.lean", "phase": 5, "notes": "ABI1-ABI10 proved (0 sorry)."},
     {"name": "read_only", "file": "formal-verification/lean/FVSquad/ReadOnly.lean", "phase": 5, "notes": "RO1-RO15 proved, 0 sorry."},
-    {"name": "find_conflict_by_term", "file": "formal-verification/lean/FVSquad/FindConflictByTerm.lean", "phase": 5, "notes": "FCB1-FCB9+helper (10T, 0 sorry). Correspondence: 19 #guard (updated Run 85)."},
-    {"name": "maybe_persist", "file": "formal-verification/lean/FVSquad/MaybePersist.lean", "phase": 5, "notes": "MP1-MP8 + SP1-SP4 + compose_monotone (13T, 0 sorry). Correspondence: 21 #guard in MaybePersistCorrespondence.lean."},
-    {"name": "maybe_persist_fui", "file": "formal-verification/lean/FVSquad/MaybePersistFUI.lean", "phase": 5, "notes": "Run 84: FU1-FU8 (8T, 0 sorry). Correspondence: 20 #guard in MaybePersistFUICorrespondence.lean (18 Rust cases)."},
-    {"name": "raft_log_append", "file": "formal-verification/lean/FVSquad/RaftLogAppend.lean", "phase": 5, "notes": "RA1-RA9 + prefix/suffix theorems (14+ T, 0 sorry). Correspondence: 21 #guard in RaftLogAppendCorrespondence.lean (Run 82)."},
-    {"name": "maybe_commit", "file": "formal-verification/lean/FVSquad/MaybeCommit.lean", "phase": 5, "notes": "MC1-MC12 (12T, 0 sorry). Correspondence: 19 #guard in MaybeCommitCorrespondence.lean. CORRESPONDENCE.md validation evidence added Run 85."}
+    {"name": "find_conflict_by_term", "file": "formal-verification/lean/FVSquad/FindConflictByTerm.lean", "phase": 5, "notes": "FCB1-FCB9+helper (10T, 0 sorry). Correspondence: 19 #guard."},
+    {"name": "maybe_persist", "file": "formal-verification/lean/FVSquad/MaybePersist.lean", "phase": 5, "notes": "MP1-MP8 + SP1-SP4 + compose_monotone (13T, 0 sorry). Correspondence: 23 #guard in MaybePersistCorrespondence.lean."},
+    {"name": "maybe_persist_fui", "file": "formal-verification/lean/FVSquad/MaybePersistFUI.lean", "phase": 5, "notes": "Run 84: FU1-FU8 (8T, 0 sorry). Correspondence: 28 #guard in MaybePersistFUICorrespondence.lean (18 Rust cases)."},
+    {"name": "raft_log_append", "file": "formal-verification/lean/FVSquad/RaftLogAppend.lean", "phase": 5, "notes": "RA1-RA9 + prefix/suffix theorems (14+ T, 0 sorry). Correspondence: 24 #guard in RaftLogAppendCorrespondence.lean."},
+    {"name": "maybe_commit", "file": "formal-verification/lean/FVSquad/MaybeCommit.lean", "phase": 5, "notes": "MC1-MC12 (12T, 0 sorry). Correspondence: 19 #guard in MaybeCommitCorrespondence.lean."}
   ],
-  "ci_status": "lean-ci.yml has build job (lake build) + correspondence-tests job. Triggers: formal-verification/lean/**, formal-verification/tests/**, src/**",
+  "ci_status": "lean-ci.yml has build job (lake build + theorem/guard/file stats) + correspondence-tests job (cargo test correspondence, shows pass/fail counts, warns if <18 functions). Triggers: formal-verification/lean/**, formal-verification/tests/**, src/**",
   "lean_files": 55,
   "last_run_date": "2026-04-23"
 }
