@@ -2305,8 +2305,59 @@ Relevant theorems in `RaftLogAppend.lean` (all proved, 0 sorry):
 
 ---
 
-## Last Updated (Run 82)
-- **Date**: 2026-04-22 19:42 UTC
-- **Commit**: `8bef0b3`
+## `MaybePersistFUI` — `firstUpdateIndex` Derivation from `Unstable`
 
-> 🔬 Updated by [Lean Squad](https://github.com/dsyme/raft-lean-squad/actions/runs/24798867052) automated formal verification. Run 82: Task 8 — RaftLogAppendCorrespondence (21 #guard, all 3 truncate_and_append branches). Task 1 — TARGETS.md/RESEARCH.md refreshed (17 corr. targets, 342+ #guard total).
+**Lean file**: `formal-verification/lean/FVSquad/MaybePersistFUI.lean`
+**Rust source**: `src/raft_log.rs` lines 560–565 (inside `maybe_persist`)
+
+### Mapped definitions
+
+| Lean name | Rust name | Rust location | Correspondence level |
+|-----------|-----------|---------------|----------------------|
+| `firstUpdateIndex (some idx) offset` | `s.get_metadata().index` (snapshot present) | `raft_log.rs:561–562` | **exact** |
+| `firstUpdateIndex none offset` | `self.unstable.offset` (no snapshot) | `raft_log.rs:563` | **exact** |
+| `maybePersistFui` | `RaftLog::maybe_persist` (full model) | `raft_log.rs:545–576` | **abstraction** (inherits MaybePersist approximations) |
+
+### Key theorems and their meaning
+
+| ID | Lean name | Description |
+|----|-----------|-------------|
+| FU1 | `fui_snap_case` | FUI = `snap.index` when snapshot is present |
+| FU2 | `fui_no_snap_case` | FUI = `offset` when no snapshot |
+| FU3 | `fui_snap_lt_offset` | Unstable invariant: `snap.idx < offset → FUI < offset` |
+| FU4 | `maybePersistFui_eq_abstract` | Concrete model equals abstract with derived FUI |
+| FU5 | `maybePersistFui_monotone` | `persisted` never decreases |
+| FU6 | `maybePersistFui_true_iff` | Full advance characterisation |
+| FU7 | `maybePersistFui_snap_blocks_advance_at` | Snapshot blocks advancing to/above snap.index |
+| FU8 | `maybePersistFui_no_snap_uses_offset` | No-snapshot path uses offset as the FUI bound |
+
+### Divergences and approximations
+
+1. **`store.term()` fallibility**: Rust uses `store.term(index).is_ok_and(|t| t == term)` which
+   can return `Err` for indices not in stable storage. Lean models `logTerm` as a total function
+   (default 0). This means some Lean `#guard true` predictions become `false` in Rust when the
+   entry is not in storage. See Group C tests in the correspondence file.
+2. **`Unstable` struct**: Only `snapshotIndex` and `offset` are modelled. The entry slice, logger,
+   and other fields are abstracted away.
+3. **Integer bounds**: Lean uses `Nat`; Rust uses `u64`. Overflow is not modelled.
+
+### Validation evidence
+
+- **Lean side**: 20 `#guard` assertions in `FVSquad/MaybePersistFUICorrespondence.lean`
+  (lake build ✅, 0 sorry, Lean 4.28.0). Three groups: FUI derivation (A), no-snapshot path (B),
+  snapshot path (C).
+- **Rust side**: `test_maybe_persist_fui_correspondence` in `src/raft_log.rs` (18 assertion cases,
+  all pass).
+- **Fixtures**: `formal-verification/tests/maybe_persist_fui/README.md`.
+- **Commands**:
+  - Lean: `cd formal-verification/lean && lake build FVSquad.MaybePersistFUICorrespondence`
+  - Rust: `cargo test test_maybe_persist_fui_correspondence`
+- **Correspondence test status**: ✅ Complete — 20 `#guard` + Rust assertions all pass.
+
+---
+
+## Last Updated (Run 84)
+- **Date**: 2026-04-23 01:15 UTC
+- **Commit**: `65736c7`
+
+> 🔬 Updated by [Lean Squad](https://github.com/dsyme/raft-lean-squad/actions/runs/24810835794) automated formal verification. Run 84: Task 4 — MaybePersistFUI.lean (FU1–FU8, 8 theorems, 0 sorry). Task 8 — MaybePersistFUICorrespondence.lean (20 #guard, 3 groups, 0 sorry). Total: 18 correspondence test targets.
