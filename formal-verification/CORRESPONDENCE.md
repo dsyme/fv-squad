@@ -545,12 +545,12 @@ Rust source: [`src/raft_log.rs#L267`](../src/raft_log.rs#L267)
 | `MaybeAppend.lean` | `src/raft_log.rs` `maybe_append` | Abstraction | 18 | Stable/unstable split abstracted; panic not modelled; Nat vs u64 |
 | `Inflights.lean` | `src/tracker/inflights.rs` `Inflights` | Abstraction | 49 | Abstract (List) + concrete (InflightsConc) models; ALL correspondence theorems proved (0 sorry); phase 5 complete |
 | `Progress.lean` | `src/tracker/progress.rs` `Progress` | Abstraction | 31 | `PendingSnapshot` variant abstracted to single index; async effects omitted |
-| `ProgressCorrespondence.lean` | `src/tracker/progress.rs` `Progress` operations | Abstraction | 46 `#guard` | 46 `#guard` correspondence tests (maybeUpdate, maybeDecrTo, optimisticUpdate, transitions) |
+| `ProgressCorrespondence.lean` | `src/tracker/progress.rs` `Progress` operations | Abstraction | 55 `#guard` | 55 `#guard` correspondence tests (maybeUpdate, maybeDecrTo, optimisticUpdate, transitions) |
 | `IsUpToDate.lean` | `src/raft_log.rs` `RaftLog::is_up_to_date` | Abstraction | 17 | Log viewed as (term, index) pairs; persistent/unstable split not modelled |
 | `LogUnstable.lean` | `src/log_unstable.rs` `Unstable` | Abstraction | 37 | I/O (persist/stable) not modelled; wf Case-2 caller guarantee documented |
 | `TallyVotes.lean` | `src/tracker.rs` `ProgressTracker::tally_votes` | Abstraction | 28 | HashMap→function; JointConfig→List; mutation→pure return |
 
-**Total: 300 public theorems/lemmas, 0 sorry, 13 Lean files (+ `Basic.lean`).**
+**Total for early targets above: 300+ public theorems/lemmas (see per-file sections for updated counts). Project-wide: 575 theorems, 398 `#guard` assertions, 55 Lean files, 0 sorry.**
 
 ---
 
@@ -676,7 +676,7 @@ All 31 theorems proved (0 sorry). Key: `wf` invariant (`matched+1≤next_idx`) e
 
 ---
 
-## `FVSquad/ProgressCorrespondence.lean` — Progress Correspondence Tests (46 `#guard`, 0 sorry)
+## `FVSquad/ProgressCorrespondence.lean` — Progress Correspondence Tests (55 `#guard`, 0 sorry)
 
 **New in Run 74.** Task 8 Route B correspondence test for the `Progress` state-machine
 (`src/tracker/progress.rs`).
@@ -692,7 +692,7 @@ All 31 theorems proved (0 sorry). Key: `wf` invariant (`matched+1≤next_idx`) e
 | `Progress.becomeReplicate` | `Progress::become_replicate` | `progress.rs` | Exact | State transition to fast-path |
 | `Progress.wf` | *(invariant)* `matched + 1 ≤ next_idx` | `progress.rs` | Exact | Core `Progress` well-formedness invariant |
 
-### Test cases (46 `#guard`)
+### Test cases (55 `#guard`)
 
 Tests cover:
 - **`maybeUpdate`** (PR14–PR17, PR20): forward-progress on `matched` index in Replicate/Probe; stale update no-op; wf preservation
@@ -703,7 +703,7 @@ Tests cover:
 
 ### Validation evidence
 
-- **Lean side**: 46 `#guard` tests in `FVSquad/ProgressCorrespondence.lean` (lake build ✅, 0 sorry)
+- **Lean side**: 55 `#guard` tests in `FVSquad/ProgressCorrespondence.lean` (lake build ✅, 0 sorry)
 - **Rust side**: Rust implementation manually cross-checked against each `#guard` case;
   the Lean model definitions (especially `maybeDecrTo`) were verified to match the Rust logic via `PR26`
 - **Fixture**: Inline in `ProgressCorrespondence.lean`
@@ -715,7 +715,7 @@ The Lean model abstracts away:
 2. **`recent_active`**: pure metadata field; no invariants involving it
 3. **`commit_group_id` / `committed_index`**: separate bookkeeping; not part of state machine
 
-All 46 `#guard` tests pass at compile time. The `wf` invariant (`matched+1≤next_idx`) is
+All 55 `#guard` tests pass at compile time. The `wf` invariant (`matched+1≤next_idx`) is
 verified to be preserved by `maybeUpdate`, `maybeDecrTo`, and `optimisticUpdate` in all tested
 cases.
 
@@ -1902,7 +1902,7 @@ The Lean `tallyVotes` exactly mirrors the `ProgressTracker::tally_votes` algorit
 
 ---
 
-## `FVSquad/VoteResultCorrespondence.lean` — VoteResult Correspondence Tests (12 `#guard`, 0 sorry)
+## `FVSquad/VoteResultCorrespondence.lean` — VoteResult Correspondence Tests (17 `#guard`, 0 sorry)
 
 **New in Run 55.** Task 8 Route B correspondence test for `Configuration::vote_result`
 (`src/quorum/majority.rs:189`).
@@ -1914,7 +1914,7 @@ The Lean `tallyVotes` exactly mirrors the `ProgressTracker::tally_votes` algorit
 
 ### Validation evidence
 
-- **Lean side**: 12 `#guard` tests in `FVSquad/VoteResultCorrespondence.lean` (lake build ✅)
+- **Lean side**: 17 `#guard` tests in `FVSquad/VoteResultCorrespondence.lean` (lake build ✅)
 - **Rust side**: `test_vote_result_correspondence` in `src/quorum/majority.rs` (12 cases, `cargo test ✅`)
 - **Fixture**: `formal-verification/tests/vote_result/cases.json`
 
@@ -1930,7 +1930,7 @@ The Lean `voteResult` algorithm matches the Rust `Configuration::vote_result` al
 
 ---
 
-## `FVSquad/HasQuorumCorrespondence.lean` — HasQuorum Correspondence Tests (12 `#guard`, 0 sorry)
+## `FVSquad/HasQuorumCorrespondence.lean` — HasQuorum Correspondence Tests (17 `#guard`, 0 sorry)
 
 **New in Run 55.** Task 8 Route B correspondence test for `ProgressTracker::has_quorum`
 (`src/tracker.rs:357`).
@@ -1942,7 +1942,7 @@ The Lean `voteResult` algorithm matches the Rust `Configuration::vote_result` al
 
 ### Validation evidence
 
-- **Lean side**: 12 `#guard` tests in `FVSquad/HasQuorumCorrespondence.lean` (lake build ✅)
+- **Lean side**: 17 `#guard` tests in `FVSquad/HasQuorumCorrespondence.lean` (lake build ✅)
 - **Rust side**: `test_has_quorum_correspondence` in `src/quorum/majority.rs` (12 cases, `cargo test ✅`)
 - **Fixture**: `formal-verification/tests/has_quorum/cases.json`
 
@@ -2037,7 +2037,7 @@ invariants and operation semantics are faithfully captured. No mismatches found.
 
 ---
 
-## `FVSquad/ReadOnlyCorrespondence.lean` — ReadOnly Correspondence Tests (14 `#guard`, 0 sorry)
+## `FVSquad/ReadOnlyCorrespondence.lean` — ReadOnly Correspondence Tests (16 `#guard`, 0 sorry)
 
 **New in Run 62.** Task 8 Route B correspondence test for the `ReadOnly` data structure
 (`src/read_only.rs`).
@@ -2054,7 +2054,7 @@ invariants and operation semantics are faithfully captured. No mismatches found.
 
 ### Validation evidence
 
-- **Lean side**: 14 `#guard` tests in `FVSquad/ReadOnlyCorrespondence.lean` (lake build ✅)
+- **Lean side**: 16 `#guard` tests in `FVSquad/ReadOnlyCorrespondence.lean` (lake build ✅)
 - **Rust side**: `test_read_only_correspondence` in `src/read_only.rs` (15 cases, `cargo test ✅`)
 - **Fixture**: Inline in `ReadOnlyCorrespondence.lean` and `src/read_only.rs`
 
@@ -2232,7 +2232,7 @@ under the above abstractions:
 
 ### Validation evidence
 
-- **Lean side**: 15 `#guard` assertions in `FVSquad/MaybePersistCorrespondence.lean`
+- **Lean side**: 23 `#guard` assertions in `FVSquad/MaybePersistCorrespondence.lean`
   (lake build ✅, 0 sorry, Lean 4.28.0).
 - **Rust side**: `test_maybe_persist_correspondence` in `src/raft_log.rs` (15 cases, all pass).
 - **Fixtures**: `formal-verification/tests/maybe_persist/cases.json` (15 cases).
@@ -2308,7 +2308,7 @@ Relevant theorems in `RaftLogAppend.lean` (all proved, 0 sorry):
 
 ### Validation evidence
 
-- **Lean side**: 21 `#guard` assertions in `FVSquad/RaftLogAppendCorrespondence.lean`
+- **Lean side**: 24 `#guard` assertions in `FVSquad/RaftLogAppendCorrespondence.lean`
   (lake build ✅, 0 sorry, Lean 4.28.0). Three branches exercised: append, replace, truncate+append.
 - **Rust side**: `test_raft_log_append_correspondence` in `src/raft_log.rs` (11 assertion cases, all pass).
 - **Fixtures**: `formal-verification/tests/raft_log_append/README.md`.
@@ -2317,7 +2317,7 @@ Relevant theorems in `RaftLogAppend.lean` (all proved, 0 sorry):
   - Rust: `cargo test test_raft_log_append_correspondence`
 - **Coverage**: 7 structural cases (cases 1–7) covering all three `truncate_and_append` branches
   across two fixtures, plus 4 cross-check invariant cases (RA4/RA5).
-- **Correspondence test status**: ✅ Complete — 21 `#guard` + Rust assertions all pass.
+- **Correspondence test status**: ✅ Complete — 24 `#guard` + Rust assertions all pass.
 
 ---
 
@@ -2359,7 +2359,7 @@ Relevant theorems in `RaftLogAppend.lean` (all proved, 0 sorry):
 
 ### Validation evidence
 
-- **Lean side**: 20 `#guard` assertions in `FVSquad/MaybePersistFUICorrespondence.lean`
+- **Lean side**: 28 `#guard` assertions in `FVSquad/MaybePersistFUICorrespondence.lean`
   (lake build ✅, 0 sorry, Lean 4.28.0). Three groups: FUI derivation (A), no-snapshot path (B),
   snapshot path (C).
 - **Rust side**: `test_maybe_persist_fui_correspondence` in `src/raft_log.rs` (18 assertion cases,
@@ -2368,12 +2368,12 @@ Relevant theorems in `RaftLogAppend.lean` (all proved, 0 sorry):
 - **Commands**:
   - Lean: `cd formal-verification/lean && lake build FVSquad.MaybePersistFUICorrespondence`
   - Rust: `cargo test test_maybe_persist_fui_correspondence`
-- **Correspondence test status**: ✅ Complete — 20 `#guard` + Rust assertions all pass.
+- **Correspondence test status**: ✅ Complete — 28 `#guard` + Rust assertions all pass.
 
 ---
 
 ## Last Updated
-- **Date**: 2026-04-23 04:00 UTC
-- **Commit**: `aa9e59c`
+- **Date**: 2026-04-23 06:11 UTC
+- **Commit**: `66415d4`
 
-> 🔬 Updated by [Lean Squad](https://github.com/dsyme/raft-lean-squad/actions/runs/24815645361) automated formal verification. Run 85: Task 6 — Correspondence Review. Added `MaybeCommit` validation evidence (19 #guard), updated `CommittedIndexCorrespondence` count (8→13), updated `FindConflictByTermCorrespondence` count (12→19). Total: 18 correspondence test targets, 55 Lean files, ~530 theorems, 0 sorry.
+> 🔬 Updated by [Lean Squad](https://github.com/dsyme/raft-lean-squad/actions/runs/24819856169) automated formal verification. Run 86: Task 6 — Correspondence Review. Corrected stale `#guard` counts: ProgressCorrespondence (46→55), VoteResultCorrespondence (12→17), HasQuorumCorrespondence (12→17), ReadOnlyCorrespondence (14→16), MaybePersistCorrespondence (15→23), RaftLogAppendCorrespondence (21→24), MaybePersistFUICorrespondence (20→28). Updated project-wide totals (575 theorems, 398 `#guard`, 55 Lean files, 0 sorry).

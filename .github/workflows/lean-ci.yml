@@ -86,9 +86,12 @@ jobs:
         run: |
           THEOREM_COUNT=$(grep -rh "^theorem\|^private theorem" FVSquad/ --include="*.lean" | wc -l || true)
           FILE_COUNT=$(ls FVSquad/*.lean 2>/dev/null | wc -l || true)
+          GUARD_COUNT=$(grep -rh "#guard" FVSquad/ --include="*.lean" | wc -l || true)
+          CORR_FILE_COUNT=$(ls FVSquad/*Correspondence.lean 2>/dev/null | wc -l || true)
           echo "✅  Proof statistics:"
-          echo "    - Lean files: $FILE_COUNT"
-          echo "    - Theorems:   $THEOREM_COUNT"
+          echo "    - Lean files:          $FILE_COUNT"
+          echo "    - Theorems:            $THEOREM_COUNT"
+          echo "    - #guard assertions:   $GUARD_COUNT (across $CORR_FILE_COUNT correspondence files)"
 
       - name: Report linter warnings
         if: success()
@@ -133,5 +136,18 @@ jobs:
       - name: Run correspondence tests
         run: |
           echo "=== Running Rust correspondence tests ==="
-          cargo test correspondence --features protobuf-codec 2>&1
+          cargo test correspondence --features protobuf-codec 2>&1 | tee /tmp/corr_test.log
+          TEST_EXIT=${PIPESTATUS[0]}
+          PASSED=$(grep -c '^test .*\.\.\. ok' /tmp/corr_test.log || true)
+          FAILED=$(grep -c '^test .*\.\.\. FAILED' /tmp/corr_test.log || true)
+          echo ""
+          echo "=== Correspondence test summary ==="
+          echo "    Passed: $PASSED"
+          echo "    Failed: $FAILED"
+          if [ "$PASSED" -lt 18 ]; then
+            echo "⚠️  WARNING: expected at least 18 correspondence test functions (got $PASSED)"
+          else
+            echo "✅  $PASSED correspondence test functions passed (≥18 expected)"
+          fi
           echo "=== Correspondence tests done ==="
+          exit $TEST_EXIT
