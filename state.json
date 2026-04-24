@@ -1,11 +1,11 @@
 {
-  "last_run": 96,
-  "lean_files": 60,
+  "last_run": 97,
+  "lean_files": 61,
   "theorem_count": 563,
   "sorry_count": 0,
-  "correspondence_targets": 21,
-  "guard_tests": 383,
-  "notes": "Run 96: ProgressTracker.lean added (Task 4+5). PT1-PT15: all_wf preserved by all tracker ops. 548->563T/59->60F. PR: lean-squad/run-96-task4-task5-24876390458.",
+  "correspondence_targets": 22,
+  "guard_tests": 416,
+  "notes": "Run 97: election_model informal spec (Task 2) + ProgressTrackerCorrespondence.lean 33 #guard + Rust test (Task 8). 60->61F.",
   "targets": {
     "unstable_persist_bridge": {
       "phase": 5,
@@ -36,6 +36,18 @@
       "file": "formal-verification/lean/FVSquad/ProgressTracker.lean",
       "sorry_count": 0,
       "notes": "Run 96: 15 theorems PT1-PT15. all_wf preserved by removePeer/insertPeer/updatePeer/applyChanges/initTracker + all 6 Progress transitions. 0 sorry."
+    },
+    "progress_tracker_correspondence": {
+      "phase": 5,
+      "file": "formal-verification/lean/FVSquad/ProgressTrackerCorrespondence.lean",
+      "sorry_count": 0,
+      "notes": "Run 97: 33 #guard tests, abstraction level. Rust test: 15 assertions. Route B."
+    },
+    "election_model": {
+      "phase": 2,
+      "file": "formal-verification/specs/election_model_informal.md",
+      "sorry_count": 0,
+      "notes": "Run 97: informal spec complete. Next: Task 3 Lean spec."
     }
   }
 }

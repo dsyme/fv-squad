@@ -2,7 +2,7 @@
   "lean_version": "4.28.0",
   "theorem_count": 563,
   "sorry_count": 0,
-  "last_run": "Run 96 (2026-04-24): Task 4+5 (ProgressTracker.lean, 15 theorems PT1-PT15). PR: lean-squad/run-96-task4-task5-24876390458.",
+  "last_run": "Run 97 (2026-04-24): Task 2 (election_model informal spec) + Task 8 (ProgressTrackerCorrespondence.lean: 33 #guard + Rust test). PR: lean-squad/run-97-task2-task8-24883585261.",
   "hqc_preserved_gap": "CLOSED via AEBroadcastInvariant+ElectionBroadcastChain. Remaining: connect broadcast to full election lifecycle.",
   "aeneas_status": "permanently_blocked_no_new_privileges",
   "toolchain_notes": "no Mathlib, stdlib only. WF7/WF8 use Nat.not_le.mpr. LogUnstable/IsUpToDate have NO namespace.",
@@ -10,7 +10,8 @@
     "Run 51: Task 10 (REPORT.md: 505->522, Layer 7 11 files, Runs 49-50 section) + Task 7 (CRITIQUE.md: ABI section 10T, FCC section 2T+17guards, RaftLogAppend P6/P7, Gaps updated, Trajectory step 14 resolved).",
     "Run 52: Task 8 Route B: MaybeAppendCorrespondence.lean (32 #guard, 8 cases), makeLog_none proved in FindConflictCorrespondence. 35 lean files, sorry 2\u21921.",
     "Run 53: Task 8 Route B: IsUpToDateCorrespondence.lean (12 #guard, exact correspondence), CommittedIndexCorrespondence.lean (8 #guard, abstraction level). 37 lean files, sorry stays 1. 4 correspondence test targets total.",
-    "Run 96: Task 4+5: ProgressTracker.lean (15T, PT1-PT15). all_wf preserved by removePeer/insertPeer/updatePeer/applyChanges/initTracker and all 6 Progress state transitions. 548->563T, 59->60F, 0 sorry."
+    "Run 96: Task 4+5: ProgressTracker.lean (15T, PT1-PT15). all_wf preserved by removePeer/insertPeer/updatePeer/applyChanges/initTracker and all 6 Progress state transitions. 548->563T, 59->60F, 0 sorry.",
+    "Run 97: Task 2: election_model_informal.md (I1-I5, vote-granting rules, A1 gap target). Task 8: ProgressTrackerCorrespondence.lean (33 #guard, 15 Rust assertions, abstraction level). 60->61F, 0 sorry."
   ],
   "run_history": [
     {
@@ -83,14 +84,31 @@
       "sorry_count_after": 0,
       "lean_file_count_after": 60,
       "pr_branch": "lean-squad/run-96-task4-task5-24876390458"
+    },
+    {
+      "run": 97,
+      "date": "2026-04-24",
+      "tasks": [
+        "Task 2 (Informal Spec)",
+        "Task 8 Route B (Correspondence)"
+      ],
+      "changes": [
+        "Added specs/election_model_informal.md: NodeState, vote-granting rules, I1-I5 invariants, 4 open questions",
+        "Added ProgressTrackerCorrespondence.lean: 33 #guard tests (removePeer, insertPeer, updatePeer, applyChange, applyChanges, initTracker, all_wf)",
+        "Added test_progress_tracker_correspondence to src/tracker.rs (15 cases, all pass)",
+        "Added formal-verification/tests/progress_tracker/README.md"
+      ],
+      "sorry_count_after": 0,
+      "lean_file_count_after": 61,
+      "pr_branch": "lean-squad/run-97-task2-task8-24883585261"
     }
   ],
   "next_steps": [
-    "Progress \u2194 ProgressTracker DONE: PT1-PT15 prove all_wf preserved by all tracker ops",
-    "Unstable.wf inductive preservation: restore/stableEntries wf already proved (restore_wf, stableEntries_wf)",
-    "Election model gap: connect AEBroadcastInvariant to full Raft election lifecycle (election \u2192 AE broadcast \u2192 ABI8)",
-    "Update paper (formal-verification/paper/) with Runs 92-96 results",
-    "Correspondence tests for ProgressTracker operations"
+    "election_model: write Lean 4 spec (Task 3) \u2014 NodeState, transitions, vote-granting, election safety",
+    "ReadOnly: prove RO8 via NoDuplicates invariant (1 sorry remaining)",
+    "Progress Tracker correspondence done: PT ops validated (Run 97)",
+    "Update paper (formal-verification/paper/) with Runs 93-97 results",
+    "A2-A5: election_safety, leader_completeness, concrete_transitions, commit_rule"
   ],
   "correspondence_test_targets": [
     {
@@ -146,9 +164,15 @@
       "file": "FVSquad/TallyVotesCorrespondence.lean",
       "guard_count": 10,
       "status": "complete"
+    },
+    {
+      "name": "progress_tracker",
+      "file": "FVSquad/ProgressTrackerCorrespondence.lean",
+      "guard_count": 33,
+      "status": "complete"
     }
   ],
-  "lean_files": 60,
+  "lean_files": 61,
   "last_run_date": "2026-04-21",
   "targets": [
     {
@@ -186,6 +210,12 @@
       "file": "formal-verification/lean/FVSquad/ProgressTracker.lean",
       "phase": 5,
       "notes": "Run 96: PT1-PT15 proved. all_wf preserved by all tracker ops. 0 sorry."
+    },
+    {
+      "name": "election_model",
+      "file": "formal-verification/specs/election_model_informal.md",
+      "phase": 2,
+      "notes": "Run 97: informal spec written (I1-I5, vote-granting, NodeState). Next: Lean spec (Task 3)."
     }
   ],
   "ci_status": "lean-ci.yml has build job (lake build) + correspondence-tests job (cargo test correspondence). Triggers: formal-verification/lean/**, formal-verification/tests/**, src/**"
