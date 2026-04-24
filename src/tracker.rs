@@ -517,4 +517,129 @@ mod tests {
             );
         }
     }
+
+    // Task 8 Route B — progress_tracker correspondence test.
+    // Mirrors FVSquad/ProgressTrackerCorrespondence.lean (#guard 1–33).
+    // Tests removePeer, insertPeer, applyChange, applyChanges semantics
+    // against the Lean model's expected results.
+    #[test]
+    fn test_progress_tracker_correspondence() {
+        use crate::confchange::MapChangeType;
+
+        // Build a 3-peer tracker mirroring pm3 = [(1, pRep), (2, pProbe), (3, pRep)]
+        // pRep:   matched=5, next_idx=6, Replicate, recent_active=true
+        // pProbe: matched=2, next_idx=7, Probe,     recent_active=true
+        fn make_pm3() -> ProgressTracker {
+            let mut t = ProgressTracker::new(10);
+            t.conf = Configuration::new([1u64, 2, 3].iter().copied(), std::iter::empty());
+            let mut p1 = Progress::new(6, 10);
+            p1.matched = 5;
+            p1.recent_active = true;
+            p1.become_replicate();
+            t.progress.insert(1, p1);
+
+            let mut p2 = Progress::new(7, 10);
+            p2.matched = 2;
+            p2.recent_active = true;
+            t.progress.insert(2, p2); // stays Probe
+
+            let mut p3 = Progress::new(6, 10);
+            p3.matched = 5;
+            p3.recent_active = true;
+            p3.become_replicate();
+            t.progress.insert(3, p3);
+            t
+        }
+
+        // --- removePeer (Lean: #guard 1–5) ---
+        // Case 1: removing present peer reduces count by 1
+        {
+            let mut t = make_pm3();
+            t.apply_conf(t.conf.clone(), vec![(2u64, MapChangeType::Remove)], 10);
+            assert_eq!(t.progress.len(), 2, "removePeer reduces count");
+        }
+        // Case 2: removing absent peer leaves count unchanged
+        {
+            let mut t = make_pm3();
+            t.apply_conf(t.conf.clone(), vec![(99u64, MapChangeType::Remove)], 10);
+            assert_eq!(t.progress.len(), 3, "removePeer absent: count unchanged");
+        }
+        // Case 3: removed peer no longer present
+        {
+            let mut t = make_pm3();
+            t.apply_conf(t.conf.clone(), vec![(1u64, MapChangeType::Remove)], 10);
+            assert!(!t.progress.contains_key(&1), "removePeer: peer absent after removal");
+        }
+        // Case 4-5: other peers remain after removal
+        {
+            let mut t = make_pm3();
+            t.apply_conf(t.conf.clone(), vec![(1u64, MapChangeType::Remove)], 10);
+            assert!(t.progress.contains_key(&2), "peer 2 remains after removing peer 1");
+            assert!(t.progress.contains_key(&3), "peer 3 remains after removing peer 1");
+        }
+
+        // --- insertPeer/Add (Lean: #guard 6–10) ---
+        // Case 6: inserting a new peer increases count
+        {
+            let mut t = make_pm3();
+            t.apply_conf(t.conf.clone(), vec![(10u64, MapChangeType::Add)], 8);
+            assert_eq!(t.progress.len(), 4, "insertPeer new: count +1");
+        }
+        // Case 8-9: new peer is present and uses Progress::new semantics (matched=0)
+        {
+            let mut t = make_pm3();
+            t.apply_conf(t.conf.clone(), vec![(10u64, MapChangeType::Add)], 8);
+            let p = t.progress.get(&10).expect("peer 10 present after Add");
+            assert_eq!(p.matched, 0, "new peer matched=0 (Progress::new)");
+            assert_eq!(p.next_idx, 8, "new peer next_idx = supplied next_idx");
+        }
+        // Case 7: re-adding existing peer id does not duplicate (HashMap replaces)
+        {
+            let mut t = make_pm3();
+            t.apply_conf(t.conf.clone(), vec![(1u64, MapChangeType::Add)], 8);
+            assert_eq!(t.progress.len(), 3, "re-add existing: no duplication");
+        }
+
+        // --- applyChanges sequence (Lean: #guard 20–23) ---
+        // Case 20: empty changes: map unchanged
+        {
+            let mut t = make_pm3();
+            t.apply_conf(t.conf.clone(), vec![], 10);
+            assert_eq!(t.progress.len(), 3, "empty changes: size unchanged");
+        }
+        // Case 21: Add then Remove same id: net size unchanged
+        {
+            let mut t = make_pm3();
+            t.apply_conf(t.conf.clone(), vec![(7u64, MapChangeType::Add)], 10);
+            assert_eq!(t.progress.len(), 4, "after Add 7: size 4");
+            t.apply_conf(t.conf.clone(), vec![(7u64, MapChangeType::Remove)], 10);
+            assert_eq!(t.progress.len(), 3, "after Remove 7: size back to 3");
+        }
+        // Case 23: adding two new distinct peers in sequence: size +2
+        {
+            let mut t = make_pm3();
+            t.apply_conf(
+                t.conf.clone(),
+                vec![(7u64, MapChangeType::Add), (8u64, MapChangeType::Add)],
+                10,
+            );
+            assert_eq!(t.progress.len(), 5, "add two new peers: size +2");
+        }
+
+        // --- wf invariant: matched+1 ≤ next_idx for all peers after operations ---
+        {
+            let mut t = make_pm3();
+            t.apply_conf(
+                t.conf.clone(),
+                vec![(2u64, MapChangeType::Remove), (9u64, MapChangeType::Add)],
+                3,
+            );
+            for (_id, p) in t.iter() {
+                assert!(
+                    p.matched + 1 <= p.next_idx,
+                    "wf invariant: matched+1 ≤ next_idx for all peers"
+                );
+            }
+        }
+    }
 }
