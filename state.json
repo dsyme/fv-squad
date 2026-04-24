@@ -1,41 +1,15 @@
 {
-  "last_run": 100,
-  "lean_files": 62,
-  "theorem_count": 601,
+  "last_run": 101,
+  "lean_files": 63,
+  "theorem_count": 608,
   "sorry_count": 0,
   "correspondence_targets": 23,
   "guard_tests": 439,
-  "notes": "Run 99: RI1-RI15 election invariants + processVoteRequest. 578->593T. Run 100: RV1-RV8 voteGranted biconditionals + ElectionCorrespondence.lean (23 #guard, 15 voteGranted + 8 processVoteRequest). 593->601T, 62F, 0 sorry.",
+  "notes": "Run 101: MS1-MS7 MultiStepReachability.lean — ValidAEList + N-step safety certificate. Closes multi-step generalisation gap from RP8/RaftTrace. CI threshold updated 17→20. 601→608T, 62→63F, 0 sorry.",
   "targets": {
-    "election_model": {
-      "phase": 5,
-      "file": "formal-verification/lean/FVSquad/RaftElection.lean",
-      "sorry_count": 0,
-      "notes": "Run 100: RV1-RV8 added (biconditionals + max-term + role-unchanged). 56->64 theorems. ElectionCorrespondence.lean: 23 #guard tests (Route B)."
-    },
-    "unstable_persist_bridge": {
-      "phase": 5,
-      "file": "formal-verification/lean/FVSquad/UnstablePersistBridge.lean",
-      "sorry_count": 0,
-      "notes": "UPB1-UPB8 all proved."
-    },
-    "progress_tracker": {
-      "phase": 5,
-      "file": "formal-verification/lean/FVSquad/ProgressTracker.lean",
-      "sorry_count": 0,
-      "notes": "PT1-PT15 proved. all_wf preserved by all ops."
-    },
-    "progress_tracker_correspondence": {
-      "phase": 5,
-      "file": "formal-verification/lean/FVSquad/ProgressTrackerCorrespondence.lean",
-      "sorry_count": 0,
-      "notes": "33 #guard tests, Route B. Run 97."
-    },
-    "election_correspondence": {
-      "phase": 5,
-      "file": "formal-verification/lean/FVSquad/ElectionCorrespondence.lean",
-      "sorry_count": 0,
-      "notes": "Run 100: 23 #guard tests (15 voteGranted + 8 processVoteRequest). Rust test passes. Route B."
-    }
+    "election_model": {"phase": 5, "file": "formal-verification/lean/FVSquad/RaftElection.lean", "sorry_count": 0, "notes": "Run 100: RV1-RV8 added. 64 theorems total."},
+    "multistep_reachability": {"phase": 5, "file": "formal-verification/lean/FVSquad/MultiStepReachability.lean", "sorry_count": 0, "notes": "Run 101: MS1-MS7. N-step RaftReachable + cluster safety."},
+    "progress_tracker": {"phase": 5, "file": "formal-verification/lean/FVSquad/ProgressTracker.lean", "sorry_count": 0, "notes": "PT1-PT15 proved."},
+    "election_correspondence": {"phase": 5, "file": "formal-verification/lean/FVSquad/ElectionCorrespondence.lean", "sorry_count": 0, "notes": "Run 100: 23 #guard tests. Route B."}
   }
 }

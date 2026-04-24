@@ -1,83 +1,23 @@
 {
   "lean_version": "4.28.0",
-  "theorem_count": 601,
+  "theorem_count": 608,
   "sorry_count": 0,
-  "last_run": 100,
+  "last_run": 101,
   "hqc_preserved_gap": "CLOSED via AEBroadcastInvariant+ElectionBroadcastChain. Remaining: connect broadcast to full election lifecycle.",
   "aeneas_status": "permanently_blocked_no_new_privileges",
   "toolchain_notes": "no Mathlib, stdlib only. WF7/WF8 use Nat.not_le.mpr. LogUnstable/IsUpToDate have NO namespace.",
   "notes": [
-    "Run 52: Task 8 Route B: MaybeAppendCorrespondence.lean (32 #guard, 8 cases), makeLog_none proved in FindConflictCorrespondence. 35 lean files, sorry 2\u21921.",
-    "Run 53: Task 8 Route B: IsUpToDateCorrespondence.lean (12 #guard, exact correspondence), CommittedIndexCorrespondence.lean (8 #guard, abstraction level). 37 lean files, sorry stays 1. 4 correspondence test targets total.",
+    "Run 52: Task 8 Route B: MaybeAppendCorrespondence.lean (32 #guard, 8 cases), makeLog_none proved in FindConflictCorrespondence. 35 lean files, sorry 2→1.",
     "Run 96: Task 4+5: ProgressTracker.lean (15T, PT1-PT15). all_wf preserved by removePeer/insertPeer/updatePeer/applyChanges/initTracker and all 6 Progress state transitions. 548->563T, 59->60F, 0 sorry.",
-    "Run 100: Task 5 (RV1-RV8): biconditionals for voteGranted, max-term theorem, role-unchanged, all-voters-voted. Task 8: ElectionCorrespondence.lean (23 #guard, 15 voteGranted + 8 processVoteRequest, Rust test passes). 593->601T, 62F, 0 sorry."
+    "Run 100: Task 5 (RV1-RV8): biconditionals for voteGranted, max-term theorem, role-unchanged, all-voters-voted. Task 8: ElectionCorrespondence.lean (23 #guard, 15 voteGranted + 8 processVoteRequest, Rust test passes). 593->601T, 62F, 0 sorry.",
+    "Run 101: Task 5 (MS1-MS7): MultiStepReachability.lean — ValidAEList + N-step reachability. Closes multi-step gap from RaftProtocol RP8 and RaftTrace comments. Task 9: CI threshold updated 17->20. 601->608T, 62->63F, 0 sorry."
   ],
   "run_history": [
     {
-      "run": 95,
-      "date": "2026-04-24",
-      "tasks": [
-        "Task 5 (Proof Assistance)",
-        "Task 10 (Project Report)"
-      ],
-      "changes": [
-        "Added WF7 (truncateAndAppend_wf): unified wf-preservation theorem for all 3 truncateAndAppend branches",
-        "Added WF8 (truncateAndAppend_gt_wf): corollary for after>offset case (no snapshot precondition needed)",
-        "LogUnstable.lean: 39\u219241 theorems; project total: 546\u2192548",
-        "REPORT.md updated: 548T, 59F, 383G, 21 correspondence files, 0 sorry"
-      ],
-      "sorry_count_after": 0,
-      "lean_file_count_after": 59,
-      "pr_branch": "lean-squad/run-95-task5-task10-24875317456"
-    },
-    {
-      "run": 96,
-      "date": "2026-04-24",
-      "tasks": [
-        "Task 4 (Implementation Extraction)",
-        "Task 5 (Proof Assistance)"
-      ],
-      "changes": [
-        "Added ProgressTracker.lean: ProgressMap model + 15 theorems (PT1-PT15)",
-        "PT1-PT3: removePeer/insertPeer/updatePeer preserve all_wf",
-        "PT4-PT5: applyChange/applyChanges preserve all_wf (inductive)",
-        "PT7-PT12: becomeProbe/becomeReplicate/becomeSnapshot/maybeUpdate/maybeDecrTo/optimisticUpdate lift to tracker level",
-        "PT13-PT15: initTracker, applyChanges on init, repeated updatePeer are all_wf",
-        "lake build passed, 0 sorry. 548->563T, 59->60F"
-      ],
-      "sorry_count_after": 0,
-      "lean_file_count_after": 60,
-      "pr_branch": "lean-squad/run-96-task4-task5-24876390458"
-    },
-    {
-      "run": 97,
-      "date": "2026-04-24",
-      "tasks": [
-        "Task 2 (Informal Spec)",
-        "Task 8 Route B (Correspondence)"
-      ],
-      "changes": [
-        "Added specs/election_model_informal.md: NodeState, vote-granting rules, I1-I5 invariants, 4 open questions",
-        "Added ProgressTrackerCorrespondence.lean: 33 #guard tests (removePeer, insertPeer, updatePeer, applyChange, applyChanges, initTracker, all_wf)",
-        "Added test_progress_tracker_correspondence to src/tracker.rs (15 cases, all pass)",
-        "Added formal-verification/tests/progress_tracker/README.md"
-      ],
-      "sorry_count_after": 0,
-      "lean_file_count_after": 61,
-      "pr_branch": "lean-squad/run-97-task2-task8-24883585261"
-    },
-    {
       "run": 98,
       "date": "2026-04-24",
-      "tasks": [
-        "Task 4 (Implementation Extraction)",
-        "Task 5 (Proof Assistance)"
-      ],
-      "changes": [
-        "Extended RaftElection.lean with becomeFollower, becomeCandidate, becomeLeader",
-        "RT1-RT15: 15 theorems about election state transitions. lake build passed, 0 sorry.",
-        "563->578T, 61F"
-      ],
+      "tasks": ["Task 4 (Implementation Extraction)", "Task 5 (Proof Assistance)"],
+      "changes": ["Extended RaftElection.lean with becomeFollower, becomeCandidate, becomeLeader", "RT1-RT15: 15 theorems about election state transitions. lake build passed, 0 sorry.", "563->578T, 61F"],
       "sorry_count_after": 0,
       "lean_file_count_after": 61,
       "pr_branch": "lean-squad/run-98-task4-task5-24887975706"
@@ -85,144 +25,49 @@
     {
       "run": 100,
       "date": "2026-04-24",
-      "tasks": [
-        "Task 5 (Proof Assistance)",
-        "Task 8 Route B (Correspondence)"
-      ],
-      "changes": [
-        "Added RV1-RV8 theorems to RaftElection.lean (biconditionals, max-term, role-unchanged, all-voters-voted)",
-        "Added ElectionCorrespondence.lean: 23 #guard tests (15 voteGranted + 8 processVoteRequest)",
-        "Added test_election_vote_granted_correspondence to src/raft.rs (23 assertions, all pass)",
-        "Added formal-verification/tests/election_vote_granted/README.md"
-      ],
+      "tasks": ["Task 5 (Proof Assistance)", "Task 8 Route B (Correspondence)"],
+      "changes": ["Added RV1-RV8 theorems to RaftElection.lean (biconditionals, max-term, role-unchanged, all-voters-voted)", "Added ElectionCorrespondence.lean: 23 #guard tests (15 voteGranted + 8 processVoteRequest)", "Added test_election_vote_granted_correspondence to src/raft.rs (23 assertions, all pass)", "Added formal-verification/tests/election_vote_granted/README.md"],
       "sorry_count_after": 0,
       "lean_file_count_after": 62,
       "pr_branch": "lean-squad/run-100-task5-task8-24902351030"
+    },
+    {
+      "run": 101,
+      "date": "2026-04-24",
+      "tasks": ["Task 5 (Proof Assistance)", "Task 9 (CI)"],
+      "changes": ["Added MultiStepReachability.lean: ValidAEList inductive type + MS1-MS7 (7 theorems)", "MS1: listStep_raftReachable — closes multi-step gap", "MS2: listStep_safe — N-step end-to-end safety certificate", "MS3-MS5: from_init variants + CCI", "MS6: committed_mono across sequence", "MS7: ae_sequence_no_rollback across sequence", "CI: correspondence threshold updated 17→20", "601->608T, 62->63F, 0 sorry"],
+      "sorry_count_after": 0,
+      "lean_file_count_after": 63,
+      "pr_branch": "lean-squad/run-101-task5-task9-24912493044"
     }
   ],
   "next_steps": [
-    "Update REPORT.md and paper.tex with Runs 98-100 (RT1-RT15, RI1-RI15, RV1-RV8)",
-    "Task 7 (Critique): update CRITIQUE.md with election model progress",
-    "A3 leader_completeness: strengthen HLogConsistency derivation",
-    "progress_set: Lean spec for ProgressSet::quorum_active",
-    "Task 11 (Conference Paper): update paper.tex with election model results"
+    "Task 7 (Critique): update CRITIQUE.md with election model + MultiStep progress",
+    "Task 10 (Report): update REPORT.md with Runs 98-101 (RT1-RT15, RI1-RI15, RV1-RV8, MS1-MS7)",
+    "A3 leader_completeness: strengthen HLogConsistency derivation via ER2 chain",
+    "Task 11 (Conference Paper): update paper.tex with election model and N-step safety results"
   ],
   "correspondence_test_targets": [
-    {
-      "name": "find_conflict",
-      "file": "FindConflictCorrespondence.lean",
-      "guard_count": 17,
-      "status": ""
-    },
-    {
-      "name": "maybe_append",
-      "file": "MaybeAppendCorrespondence.lean",
-      "guard_count": 32,
-      "status": ""
-    },
-    {
-      "name": "is_up_to_date",
-      "file": "IsUpToDateCorrespondence.lean",
-      "guard_count": 12,
-      "status": ""
-    },
-    {
-      "name": "committed_index",
-      "file": "CommittedIndexCorrespondence.lean",
-      "guard_count": 8,
-      "status": ""
-    },
-    {
-      "name": "limit_size",
-      "file": "FVSquad/LimitSizeCorrespondence.lean",
-      "guard_count": 10,
-      "status": "complete"
-    },
-    {
-      "name": "config_validate",
-      "file": "FVSquad/ConfigValidateCorrespondence.lean",
-      "guard_count": 12,
-      "status": "complete"
-    },
-    {
-      "name": "inflights",
-      "file": "FVSquad/InflightsCorrespondence.lean",
-      "guard_count": 12,
-      "status": "complete"
-    },
-    {
-      "name": "log_unstable",
-      "file": "FVSquad/LogUnstableCorrespondence.lean",
-      "guard_count": 12,
-      "status": "complete"
-    },
-    {
-      "name": "tally_votes",
-      "file": "FVSquad/TallyVotesCorrespondence.lean",
-      "guard_count": 10,
-      "status": "complete"
-    },
-    {
-      "name": "progress_tracker",
-      "file": "FVSquad/ProgressTrackerCorrespondence.lean",
-      "guard_count": 33,
-      "status": "complete"
-    },
-    {
-      "name": "election_vote_granted",
-      "file": "FVSquad/ElectionCorrespondence.lean",
-      "guard_count": 23,
-      "status": "complete"
-    }
+    {"name": "find_conflict", "file": "FindConflictCorrespondence.lean", "guard_count": 17, "status": ""},
+    {"name": "maybe_append", "file": "MaybeAppendCorrespondence.lean", "guard_count": 32, "status": ""},
+    {"name": "is_up_to_date", "file": "IsUpToDateCorrespondence.lean", "guard_count": 12, "status": ""},
+    {"name": "committed_index", "file": "CommittedIndexCorrespondence.lean", "guard_count": 8, "status": ""},
+    {"name": "limit_size", "file": "FVSquad/LimitSizeCorrespondence.lean", "guard_count": 10, "status": "complete"},
+    {"name": "config_validate", "file": "FVSquad/ConfigValidateCorrespondence.lean", "guard_count": 12, "status": "complete"},
+    {"name": "inflights", "file": "FVSquad/InflightsCorrespondence.lean", "guard_count": 12, "status": "complete"},
+    {"name": "log_unstable", "file": "FVSquad/LogUnstableCorrespondence.lean", "guard_count": 12, "status": "complete"},
+    {"name": "tally_votes", "file": "FVSquad/TallyVotesCorrespondence.lean", "guard_count": 10, "status": "complete"},
+    {"name": "progress_tracker", "file": "FVSquad/ProgressTrackerCorrespondence.lean", "guard_count": 33, "status": "complete"},
+    {"name": "election_vote_granted", "file": "FVSquad/ElectionCorrespondence.lean", "guard_count": 23, "status": "complete"}
   ],
-  "lean_files": 62,
+  "lean_files": 63,
   "last_run_date": "2026-04-24",
   "targets": [
-    {
-      "name": "hae_broadcast_invariant",
-      "file": "formal-verification/lean/FVSquad/AEBroadcastInvariant.lean",
-      "phase": 5,
-      "notes": "Run 49: ABI1-ABI10 proved (0 sorry). ABI8=hqc_preserved_of_broadcast closes broa"
-    },
-    {
-      "name": "find_conflict_correspondence",
-      "file": "formal-verification/lean/FVSquad/FindConflictCorrespondence.lean",
-      "phase": 4,
-      "notes": "Run 49: 17 #guard tests pass. 1 sorry (makeLog_some) remaining. makeLog_none pro"
-    },
-    {
-      "name": "maybe_append_correspondence",
-      "file": "formal-verification/lean/FVSquad/MaybeAppendCorrespondence.lean",
-      "phase": 5,
-      "notes": "Run 52: 32 #guard tests, 8 cases, 0 sorry."
-    },
-    {
-      "name": "is_up_to_date_correspondence",
-      "file": "formal-verification/lean/FVSquad/IsUpToDateCorrespondence.lean",
-      "phase": 5,
-      "notes": "Run 53: 12 #guard tests, exact correspondence, 0 sorry."
-    },
-    {
-      "name": "committed_index_correspondence",
-      "file": "formal-verification/lean/FVSquad/CommittedIndexCorrespondence.lean",
-      "phase": 5,
-      "notes": "Run 53: 8 #guard tests, abstraction level (use_group_commit=false path), 0 sorry"
-    },
-    {
-      "name": "progress_tracker_invariant",
-      "file": "formal-verification/lean/FVSquad/ProgressTracker.lean",
-      "phase": 5,
-      "notes": "Run 96: PT1-PT15 proved. all_wf preserved by all tracker ops. 0 sorry."
-    },
-    {
-      "name": "election_model",
-      "file": "formal-verification/lean/FVSquad/RaftElection.lean",
-      "phase": 5,
-      "notes": "Run 100: RV1-RV8 added. 56->64 theorems. ElectionCorrespondence.lean: 23 #guard "
-    }
+    {"name": "hae_broadcast_invariant", "file": "formal-verification/lean/FVSquad/AEBroadcastInvariant.lean", "phase": 5, "notes": "Run 49: ABI1-ABI10 proved (0 sorry)."},
+    {"name": "election_model", "file": "formal-verification/lean/FVSquad/RaftElection.lean", "phase": 5, "notes": "Run 100: RV1-RV8 added. 56->64 theorems. ElectionCorrespondence.lean: 23 #guard."},
+    {"name": "multistep_reachability", "file": "formal-verification/lean/FVSquad/MultiStepReachability.lean", "phase": 5, "notes": "Run 101: MS1-MS7. ValidAEList + N-step safety. Closes multi-step gap from RP8 and RaftTrace."}
   ],
-  "ci_status": "lean-ci.yml has build job (lake build) + correspondence-tests job (cargo test correspondence). Triggers: formal-verification/lean/**, formal-verification/tests/**, src/**",
-  "run_count": 100,
-  "last_task": "Task 5 (RV1-RV8 election theorems) + Task 8 Route B (ElectionCorrespondence)",
-  "election_model_phase": 5
+  "ci_status": "lean-ci.yml has build job (lake build) + correspondence-tests job (cargo test correspondence). Threshold updated to 20. Triggers: formal-verification/lean/**, formal-verification/tests/**, src/**",
+  "run_count": 101,
+  "last_task": "Task 5 (MS1-MS7 MultiStepReachability) + Task 9 (CI threshold update)"
 }
