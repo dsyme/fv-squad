@@ -1,11 +1,11 @@
 {
-  "last_run": 94,
+  "last_run": 95,
   "lean_files": 59,
-  "theorem_count": 546,
+  "theorem_count": 548,
   "sorry_count": 0,
-  "correspondence_targets": 20,
-  "guard_tests": 427,
-  "notes": "Run 94: LogUnstable WF5+WF6 (Task 5, 2 new theorems completing wf-preservation for all 3 truncateAndAppend branches). JointVoteCorrespondence.lean (Task 8, 15 #guard, exact, all 9 incoming×outgoing combinations). Rust test in joint.rs passes.",
+  "correspondence_targets": 21,
+  "guard_tests": 383,
+  "notes": "Run 95: LogUnstable WF7 (truncateAndAppend_wf, combined WF4+5+6) + WF8 (truncateAndAppend_gt_wf, corollary for after>offset). REPORT.md updated to 548T/59F/383G/21corr. PR: lean-squad/run-95-task5-task10-24875317456.",
   "targets": {
     "unstable_persist_bridge": {
       "phase": 5,
@@ -25,11 +25,11 @@
       "sorry_count": 0,
       "notes": "Run 94: 15 #guard tests, exact correspondence. All 9 incoming×outgoing VoteResult combinations covered. Rust test in quorum/joint.rs."
     },
-    "log_unstable_wf5_wf6": {
+    "log_unstable_wf7_wf8": {
       "phase": 5,
       "file": "formal-verification/lean/FVSquad/LogUnstable.lean",
       "sorry_count": 0,
-      "notes": "Run 94: WF5 (truncateAndAppend case 2 wf, with snapshot precondition) + WF6 (case 3 wf, unconditional). All 3 truncateAndAppend branches now have wf-preservation theorems."
+      "notes": "Run 95: WF7 (truncateAndAppend_wf, unified WF4+5+6) + WF8 (truncateAndAppend_gt_wf, corollary for after>offset). LogUnstable.lean: 39→41 theorems."
     }
   }
 }
