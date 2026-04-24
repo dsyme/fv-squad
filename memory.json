@@ -1,8 +1,8 @@
 {
   "lean_version": "4.28.0",
-  "theorem_count": 563,
+  "theorem_count": 578,
   "sorry_count": 0,
-  "last_run": "Run 97 (2026-04-24): Task 2 (election_model informal spec) + Task 8 (ProgressTrackerCorrespondence.lean: 33 #guard + Rust test). PR: lean-squad/run-97-task2-task8-24883585261.",
+  "last_run": "Run 98 (2026-04-24): Task 4+5 (RaftElection.lean: becomeFollower/Candidate/Leader + RT1-RT15). 563->578T, 61F, 0 sorry.",
   "hqc_preserved_gap": "CLOSED via AEBroadcastInvariant+ElectionBroadcastChain. Remaining: connect broadcast to full election lifecycle.",
   "aeneas_status": "permanently_blocked_no_new_privileges",
   "toolchain_notes": "no Mathlib, stdlib only. WF7/WF8 use Nat.not_le.mpr. LogUnstable/IsUpToDate have NO namespace.",
@@ -11,7 +11,8 @@
     "Run 52: Task 8 Route B: MaybeAppendCorrespondence.lean (32 #guard, 8 cases), makeLog_none proved in FindConflictCorrespondence. 35 lean files, sorry 2\u21921.",
     "Run 53: Task 8 Route B: IsUpToDateCorrespondence.lean (12 #guard, exact correspondence), CommittedIndexCorrespondence.lean (8 #guard, abstraction level). 37 lean files, sorry stays 1. 4 correspondence test targets total.",
     "Run 96: Task 4+5: ProgressTracker.lean (15T, PT1-PT15). all_wf preserved by removePeer/insertPeer/updatePeer/applyChanges/initTracker and all 6 Progress state transitions. 548->563T, 59->60F, 0 sorry.",
-    "Run 97: Task 2: election_model_informal.md (I1-I5, vote-granting rules, A1 gap target). Task 8: ProgressTrackerCorrespondence.lean (33 #guard, 15 Rust assertions, abstraction level). 60->61F, 0 sorry."
+    "Run 97: Task 2: election_model_informal.md (I1-I5, vote-granting rules, A1 gap target). Task 8: ProgressTrackerCorrespondence.lean (33 #guard, 15 Rust assertions, abstraction level). 60->61F, 0 sorry.",
+    "Run 98: Task 4+5: RaftElection.lean extended with becomeFollower/becomeCandidate/becomeLeader + 15 theorems RT1-RT15. Term monotonicity, vote-reset rules, I4 (leader voted for self). 563->578T, 0 sorry."
   ],
   "run_history": [
     {
@@ -101,6 +102,22 @@
       "sorry_count_after": 0,
       "lean_file_count_after": 61,
       "pr_branch": "lean-squad/run-97-task2-task8-24883585261"
+    },
+    {
+      "run": 98,
+      "date": "2026-04-24",
+      "tasks": [
+        "Task 4 (Implementation Extraction)",
+        "Task 5 (Proof Assistance)"
+      ],
+      "changes": [
+        "Extended RaftElection.lean with becomeFollower, becomeCandidate, becomeLeader",
+        "RT1-RT15: 15 theorems about election state transitions. lake build passed, 0 sorry.",
+        "563->578T, 61F"
+      ],
+      "sorry_count_after": 0,
+      "lean_file_count_after": 61,
+      "pr_branch": "lean-squad/run-98-task4-task5-24887975706"
     }
   ],
   "next_steps": [
@@ -173,7 +190,7 @@
     }
   ],
   "lean_files": 61,
-  "last_run_date": "2026-04-21",
+  "last_run_date": "2026-04-24",
   "targets": [
     {
       "name": "hae_broadcast_invariant",
@@ -213,9 +230,9 @@
     },
     {
       "name": "election_model",
-      "file": "formal-verification/specs/election_model_informal.md",
-      "phase": 2,
-      "notes": "Run 97: informal spec written (I1-I5, vote-granting, NodeState). Next: Lean spec (Task 3)."
+      "file": "formal-verification/lean/FVSquad/RaftElection.lean",
+      "phase": 4,
+      "notes": "Run 98: transition functions + RT1-RT15 proved. Next: inductive invariants."
     }
   ],
   "ci_status": "lean-ci.yml has build job (lake build) + correspondence-tests job (cargo test correspondence). Triggers: formal-verification/lean/**, formal-verification/tests/**, src/**"
