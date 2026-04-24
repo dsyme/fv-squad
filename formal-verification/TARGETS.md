@@ -38,8 +38,8 @@ See `CRITIQUE.md §Critical Gap Analysis` for the full analysis.
 
 | Priority | ID | Proposed file | Goal | Phase | Difficulty | Gap addressed |
 |----------|----|--------------|------|-------|-----------|---------------|
-| **A1** | `election_model` | `FVSquad/RaftElection.lean` | Model `NodeState` (currentTerm, votedFor, role), vote-granting rules, term monotonicity | 1 | Medium | All 5 step hypotheses (foundation) |
-| **A2** | `election_safety` | `FVSquad/RaftElection.lean` | Prove at most one leader per term (ElectionSafety); uses HQ20 + TallyVotes | 1 | Medium-high | `hqc_preserved` (partial) |
+| **A1** | `election_model` | `FVSquad/RaftElection.lean` | Model `NodeState` (currentTerm, votedFor, role), vote-granting rules, term monotonicity | 5 ✅ | Medium | Completed: RT1-RT15, RI1-RI15, `processVoteRequest`, `electionSafety`. All proved (0 sorry). |
+| **A2** | `election_safety` | `FVSquad/RaftElection.lean` | Prove at most one leader per term (ElectionSafety); uses HQ20 + TallyVotes | 5 ✅ | Medium-high | `electionSafety` proved. RI11-RI15 cluster-level invariants. |
 | **A3** | `leader_completeness` | `FVSquad/LeaderCompleteness.lean` | Compose HQ20 + IU16 + RSS5: elected leader has all quorum-certified entries | 1 | **High** | `hqc_preserved` (full discharge) |
 | **A4** | `concrete_transitions` | `FVSquad/ConcreteRaft.lean` | AppendEntries + RequestVote with terms; discharge `hlogs'`, `hno_overwrite`, `hcommitted_mono` | 1 | Medium | 3 of 5 step hypotheses |
 | **A5** | `commit_rule` | `FVSquad/ConcreteRaft.lean` | Discharge `hnew_cert` — commit only after quorum ACK; builds on CMC3 | 1 | Medium-high | `hnew_cert` |
