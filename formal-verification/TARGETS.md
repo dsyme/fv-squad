@@ -52,7 +52,7 @@ See `CRITIQUE.md §Critical Gap Analysis` for the full analysis.
 | 21 | `read_only` | `src/read_only.rs` | `ReadOnly` struct + 5 methods | 4 🔄 | ReadIndex linearisability bookkeeping (Raft §6.4). Informal spec: `specs/read_only_informal.md`. Lean model: `FVSquad/ReadOnly.lean` (12 theorems: RO1–RO12, 11 proved, 1 sorry: RO8 needs NoDuplicates invariant for queue). Next step: formalise NoDuplicates and prove RO8. |
 | 22 | `raft_log_append` | `src/raft_log.rs` | `RaftLog::append` | 5 ✅ | Lean spec + impl (Run 45+46) + P6/P7 proved (Run 50). `FVSquad/RaftLogAppend.lean` (14+ theorems). Correspondence test: `FVSquad/RaftLogAppendCorrespondence.lean` (Run 82, 21 `#guard`, all 3 truncate_and_append branches covered). |
 
-## Correspondence Test Coverage (Run 84) — 18 targets, 362+ `#guard`
+## Correspondence Test Coverage (Run 92) — 19 targets, 412 `#guard`
 
 All major proof targets now have correspondence-validated Lean models. Every target below
 has a `*Correspondence.lean` file with `#guard` tests and a matching Rust `test_*_correspondence`.
@@ -77,7 +77,14 @@ has a `*Correspondence.lean` file with `#guard` tests and a matching Rust `test_
 | `maybe_commit` | `MaybeCommitCorrespondence.lean` | 19 | ✅ | exact |
 | `raft_log_append` | `RaftLogAppendCorrespondence.lean` | 21 | ✅ | abstraction |
 | `maybe_persist_fui` | `MaybePersistFUICorrespondence.lean` | 20 | ✅ | abstraction |
-| **Total** | **18 files** | **~362** | **18 Rust tests** | — |
+| `quorum_recently_active` | `QuorumRecentlyActiveCorrespondence.lean` | 14 | ✅ | abstraction |
+| **Total** | **19 files** | **~412** | **19 Rust tests** | — |
+
+## Proof Bridges (Run 92)
+
+| ID | File | Theorems | Status | Key contribution |
+|----|------|---------|--------|-----------------|
+| UPB1–UPB8 | `FVSquad/UnstablePersistBridge.lean` | 8 | ✅ proved, 0 sorry | Bridges `LogUnstable.wf` invariant → `MaybePersistFUI` safety (UPB8: if `wf u` and advance succeeds, `newPersisted < u.offset`) |
 
 ## Next Steps
 

@@ -7,8 +7,8 @@ correspondence level, known divergences, and the impact on any proofs that rely 
 definition.
 
 ## Last Updated
-- **Date**: 2026-04-23 10:00 UTC
-- **Commit**: `819f143` — Run 88: Task 6 — Fixed duplicate Last Updated sections; corrected IsUpToDate 12→14 and ConfigValidate/Inflights/LogUnstable "Test cases" sub-headers 12→14; updated project totals (575T, 398 `#guard`, 55F, 0 sorry)
+- **Date**: 2026-04-24 04:11 UTC
+- **Commit**: `7f4845a` — Run 92: Task 8 — Added QuorumRecentlyActiveCorrespondence (14 `#guard` + 14 Rust assertions); added validation evidence section. Task 5 — UnstablePersistBridge (8 theorems, closes firstUpdateIndex gap). Totals: 544T, 412 `#guard`, 58F, 0 sorry, 19 correspondence targets.
 
 ---
 
@@ -1280,7 +1280,19 @@ QRA15 (monotonicity) ensures more active entries never decreases the quorum chec
 **Assessment**: Abstraction is sound. The write-side-effect omission does not affect
 the correctness of the proven properties.
 
----
+### Validation evidence
+
+- **Lean side**: 14 `#guard` assertions in `FVSquad/QuorumRecentlyActiveCorrespondence.lean`
+  (lake build ✅, 0 sorry, Lean 4.28.0). Cases cover: empty voters (vacuous quorum),
+  single voter present/absent, three-voter boundary tests, five-voter majority tests,
+  and non-default `perspectiveOf`.
+- **Rust side**: `test_quorum_recently_active_correspondence` in `src/tracker.rs` (14 assertion
+  cases, all pass).
+- **Fixtures**: `formal-verification/tests/quorum_recently_active/README.md` and `cases.json`.
+- **Commands**:
+  - Lean: `cd formal-verification/lean && lake build FVSquad.QuorumRecentlyActiveCorrespondence`
+  - Rust: `cargo test test_quorum_recently_active_correspondence`
+- **Correspondence test status**: ✅ Complete — 14 `#guard` + 14 Rust assertions all pass.
 
 ## `FVSquad/CommitRule.lean` — Raft Commit Rule
 
@@ -2361,4 +2373,4 @@ Relevant theorems in `RaftLogAppend.lean` (all proved, 0 sorry):
 
 ---
 
-> 🔬 Updated by [Lean Squad](https://github.com/dsyme/raft-lean-squad/actions/runs/24828993663) automated formal verification. Run 88: Task 6 — Correspondence Review. Fixed duplicate Last Updated headers; corrected IsUpToDate 12→14 `#guard`; corrected ConfigValidate/Inflights/LogUnstable "Test cases" sub-headers 12→14. Totals: 575 theorems, 398 `#guard`, 55 Lean files, 0 sorry.
+> 🔬 Updated by [Lean Squad](https://github.com/dsyme/raft-lean-squad/actions/runs/24871315223) automated formal verification. Run 92: Task 8 — Added QuorumRecentlyActiveCorrespondence validation evidence (14 `#guard`, 14 Rust cases, Route B fixtures). Task 5 — UnstablePersistBridge (8 theorems, closes firstUpdateIndex gap). Totals: 544 theorems, 412 `#guard`, 58 Lean files, 0 sorry, 19 correspondence targets.

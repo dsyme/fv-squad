@@ -443,4 +443,78 @@ mod tests {
             assert_eq!(result, exp_result, "case {}: result", i + 1);
         }
     }
+
+    // Task 8 Route B — quorum_recently_active correspondence test.
+    // Mirrors formal-verification/tests/quorum_recently_active/cases.json
+    // and FVSquad/QuorumRecentlyActiveCorrespondence.lean exactly.
+    fn make_qra_tracker(voter_ids: &[u64], entries: &[(u64, bool)]) -> ProgressTracker {
+        let mut t = ProgressTracker::new(10);
+        t.conf = Configuration::new(voter_ids.iter().copied(), std::iter::empty());
+        for &(id, ra) in entries {
+            let mut pr = Progress::new(1, 10);
+            pr.recent_active = ra;
+            t.progress.insert(id, pr);
+        }
+        t
+    }
+
+    #[test]
+    fn test_quorum_recently_active_correspondence() {
+        // (voters, entries=(id, recent_active), perspective_of, expected)
+        let cases: &[(&[u64], &[(u64, bool)], u64, bool)] = &[
+            // Case 1: empty voters → true (vacuous quorum)
+            (&[], &[], 1, true),
+            // Case 2: voters=[1], leader in entries → true
+            (&[1], &[(1, false)], 1, true),
+            // Case 3: voters=[1], leader not in entries → false
+            (&[1], &[], 1, false),
+            // Case 4: voters=[1,2,3], leader+one active = 2 ≥ 2 → true
+            (&[1, 2, 3], &[(1, false), (2, true), (3, false)], 1, true),
+            // Case 5: voters=[1,2,3], only leader active → false (1 < 2)
+            (&[1, 2, 3], &[(1, false), (2, false), (3, false)], 1, false),
+            // Case 6: voters=[1,2,3], leader not in entries, {2,3} active = 2 ≥ 2 → true
+            (&[1, 2, 3], &[(2, true), (3, true)], 1, true),
+            // Case 7: voters=[1,2,3], all three active → true
+            (&[1, 2, 3], &[(1, true), (2, true), (3, true)], 1, true),
+            // Case 8: voters=[1,2,3], no entries → false (0 < 2)
+            (&[1, 2, 3], &[], 1, false),
+            // Case 9: voters=[1..5], leader+2 active = 3 = majority(5) → true
+            (
+                &[1, 2, 3, 4, 5],
+                &[(1, false), (2, true), (3, true), (4, false), (5, false)],
+                1,
+                true,
+            ),
+            // Case 10: voters=[1..5], leader+1 active = 2 < 3 → false
+            (
+                &[1, 2, 3, 4, 5],
+                &[(1, false), (2, true), (3, false), (4, false), (5, false)],
+                1,
+                false,
+            ),
+            // Case 11: voters=[1..5], only leader active = 1 < 3 → false
+            (&[1, 2, 3, 4, 5], &[(1, false)], 1, false),
+            // Case 12: perspectiveOf=2; {2(leader), 3} active = 2 ≥ 2 → true
+            (&[1, 2, 3], &[(1, false), (2, false), (3, true)], 2, true),
+            // Case 13: perspectiveOf=2; {1, 2(leader)} active = 2 ≥ 2 → true
+            (&[1, 2, 3], &[(1, true), (2, false), (3, false)], 2, true),
+            // Case 14: perspectiveOf=2; only leader active = 1 < 2 → false
+            (&[1, 2, 3], &[(1, false), (2, false), (3, false)], 2, false),
+        ];
+
+        for (i, &(voters, entries, perspective_of, expected)) in cases.iter().enumerate() {
+            let mut t = make_qra_tracker(voters, entries);
+            let result = t.quorum_recently_active(perspective_of);
+            assert_eq!(
+                result, expected,
+                "case {}: quorum_recently_active({:?}, {:?}, {}) = {}; expected {}",
+                i + 1,
+                voters,
+                entries,
+                perspective_of,
+                result,
+                expected,
+            );
+        }
+    }
 }

@@ -1862,11 +1862,16 @@ monotonicity), MP6 (below firstUpdateIndex), and MP7 (term guard) directly forma
 three correctness obligations that prevent data loss or illegal advancement of the persisted
 pointer under concurrent leadership changes.
 
-**Known gap**: The Lean model abstracts `firstUpdateIndex` as a bare `Nat` parameter.  In the
-Rust implementation, `firstUpdateIndex` is derived from `unstable.snapshot?.index` or
-`unstable.offset` — a more complex derivation. If the derivation has bugs (returning a value
-that is too large), MP6 would not catch them.  Future work could add a model of `Unstable`
-to close this gap.
+**Known gap (CLOSED — Run 92)**: ~~The Lean model abstracts `firstUpdateIndex` as a bare `Nat` parameter.~~
+`UnstablePersistBridge.lean` (Run 92) closes this gap: it models the full derivation of
+`firstUpdateIndex` from `Unstable.wf` and proves (UPB8) that when `wf u` holds, any successful
+advance by `maybePersistFui` produces `newPersisted < u.offset`. The end-to-end safety chain
+from `LogUnstable.wf` through `MaybePersistFUI` is now formally verified (0 sorry).
+
+**Remaining concern**: The `Unstable.wf` invariant itself (`snap.idx < offset`) must be
+maintained by all callers of `restore` and `stableEntries`. This is not yet proved inductively
+for the full Raft state machine — but UPB8 makes the safety of `maybe_persist` conditional on
+`wf`, which is a well-defined and checkable precondition.
 
 ### Task 7 (continued): ProgressCorrespondence — 55 Runtime Tests
 
@@ -1886,34 +1891,34 @@ All 55 `#guard` tests pass at compile time via `lake build`.
 
 **Correspondence level**: *abstraction* — `Inflights` ring buffer replaced by `ins_full : Bool`.
 
-### Project-Wide Statistics (Run 76)
+### Project-Wide Statistics (Run 92)
 
-| Metric | Value |
-|--------|-------|
-| Total theorem declarations | **569** |
-| Lean 4 files | **50** (36 proof + 14 correspondence) |
-| `sorry` remaining | **0** |
-| `#guard` tests | **304** (279 in correspondence files + 25 in proof files) |
-| Rust correspondence tests | **13** |
-| Lean 4 version | 4.28.0 |
+| Metric | Run 76 | Run 92 |
+|--------|--------|--------|
+| Total theorem declarations | 569 | **544**† |
+| Lean 4 files | 50 | **58** (39 proof + 19 correspondence) |
+| `sorry` remaining | 0 | **0** ✅ |
+| `#guard` tests | 304 | **412** |
+| Rust correspondence tests | 13 | **19** |
+| Lean 4 version | 4.28.0 | 4.28.0 |
+
+†Theorem count corrected from 575 (stale inflated count) to 544 via Python scan of actual `^theorem` declarations (536 pre-Run 92 + 8 UPB theorems).
 
 **Recommendations for future runs**:
 
-1. **MaybePersist correspondence tests (Task 8 Route B)**: Write `MaybePersistCorrespondence.lean`
-   with `#guard` tests and a Rust `test_maybe_persist_correspondence` function. The three-guard
-   logic is straightforward to test with fixtures covering all 8 guard combinations.
-
-2. **firstUpdateIndex modelling**: Formalise the derivation of `firstUpdateIndex` from `Unstable`
-   to close the known gap in `MaybePersist.lean` — this would raise MP6 from "parameter is
-   correct" to "derivation is correct".
-
-3. **Progress ↔ ProgressTracker integration**: Prove that the per-peer `Progress` invariant
+1. **Progress ↔ ProgressTracker integration**: Prove that the per-peer `Progress` invariant
    is preserved by the enclosing `ProgressTracker` update loop. This would leverage PR1–PR35
    and lift correctness to the multi-peer level.
 
-4. **Update REPORT.md**: The project report has not been updated since Run 70. REPORT.md needs
-   to reflect Runs 71–76 (MaybePersist, ProgressCorrespondence, ReadOnly Phase 5 completion,
-   FindConflictByTerm, etc.).
+2. **`Unstable.wf` inductive preservation**: Prove that all callers of `restore` and
+   `stableEntries` preserve `Unstable.wf`. This would make the UPB8 safety result unconditional
+   across the full Raft state machine.
 
-5. **Recompile paper.pdf**: The conference paper needs a fresh `latexmk` run after the
-   numerical updates in Run 76 (569T/50F/279 #guard/75 runs).
+3. **Election model gap (A1–A5)**: See Active/Future Targets section in TARGETS.md — the
+   `RaftReachable.step` hypotheses remain abstract axioms. Closing this gap requires
+   `RaftElection.lean` and `ConcreteRaft.lean`.
+
+4. **Recompile paper.pdf**: The conference paper needs a fresh `latexmk` run with updated
+   statistics (544T/58F/412 `#guard`/19 correspondence targets).
+
+> 🔬 Run 92 statistics update (2026-04-24 04:11 UTC). [Lean Squad](https://github.com/dsyme/raft-lean-squad/actions/runs/24871315223)

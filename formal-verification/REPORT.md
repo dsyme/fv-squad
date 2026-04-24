@@ -1020,20 +1020,51 @@ and corrected seven stale entries from prior runs:
 | `RaftLogAppendCorrespondence.lean` | 21 | 24 |
 | `MaybePersistFUICorrespondence.lean` | 20 | 28 |
 
-### Layer 8 Complete (18 targets)
+### Run 92: UnstablePersistBridge (Task 5) + QuorumRecentlyActive Correspondence (Task 8)
 
-Layer 8 (correspondence validation) now covers **18 targets** with **18 Lean files**,
-**373 `#guard` assertions**, and **18 Rust test functions**:
+**Task 5 — `UnstablePersistBridge.lean`** (8 new theorems, UPB1–UPB8, 0 sorry):
 
-| Metric | Run 78 | Run 87 |
+Closes the "firstUpdateIndex modelling gap" identified in CRITIQUE.md (Run 76).
+The bridge formalises the full safety chain from the `LogUnstable.wf` invariant to the
+`MaybePersistFUI` async-persist safety property:
+
+| ID | Lean name | Description |
+|----|-----------|-------------|
+| UPB1 | `UPB1_wf_definition` | Unpacks `wf u`: `some ⟨sidx,_⟩ → sidx < u.offset` |
+| UPB2 | `UPB2_wf_snapshot_idx_lt_offset` | If `wf u` and snapshot set, `snap.idx < u.offset` |
+| UPB3 | `UPB3_wf_fui_le_offset` | `wf u → firstUpdateIndex(snap.map(·.1), u.offset) ≤ u.offset` |
+| UPB4 | `UPB4_fui_le_offset_advance_safe` | If FUI ≤ offset, advance with `index < FUI` → `newPersisted < offset` |
+| UPB5 | `UPB5_wf_maybePersistFui_bounded` | End-to-end: `wf u ∧ maybePersistFui = (true, np)` → `np ≤ u.offset` |
+| UPB6 | `UPB6_wf_maybePersistFui_lt_offset` | Strict version: `np < u.offset` when `index < FUI` holds |
+| UPB7 | `UPB7_wf_preserves_under_persist` | Persisting an index below offset preserves `wf` |
+| UPB8 | `UPB8_wf_advances_below_offset` | **Key**: if `wf u` and advance succeeds, `newPersisted < u.offset` |
+
+UPB8 is the critical property: it proves the end-to-end safety chain that the Lean model
+of `maybe_persist` can never advance the persisted pointer past the stable-storage boundary
+when the `Unstable` well-formedness invariant holds.
+
+**Task 8 — `QuorumRecentlyActiveCorrespondence.lean`** (14 `#guard` tests, Route B):
+
+Adds the 19th correspondence target. Validates `quorumRecentlyActive` against Rust
+`ProgressTracker::quorum_recently_active`. Cases cover: empty voters (vacuous quorum),
+single-voter present/absent, three-voter and five-voter boundary tests, and non-default
+`perspectiveOf`. All 14 `#guard` tests pass at `lake build`; a matching Rust test
+`test_quorum_recently_active_correspondence` (14 cases) added to `src/tracker.rs`.
+
+### Project-Wide Statistics (Run 92)
+
+| Metric | Run 87 | Run 92 |
 |--------|--------|--------|
-| Lean files | 51 | **55** |
-| Theorems | 522 | **575** |
+| Lean files | 55 | **58** |
+| Theorems | 575 | **544**† |
 | sorry | 0 | **0** ✅ |
-| Correspondence files | 15 | **18** |
-| #guard assertions (corr. files) | 288 | **373** |
-| #guard assertions (all files) | ~300 | **398** |
-| Rust tests | 14 | **18** |
+| Correspondence files | 18 | **19** |
+| `#guard` assertions (all files) | 398 | **412** |
+| Rust correspondence tests | 18 | **19** |
+| Lean 4 version | 4.28.0 | 4.28.0 |
 
-> ✅ `lake build` passed with Lean 4.28.0. **0 sorry**. 575 theorems machine-checked.
-> 🔬 *Runs 79–87 update (2026-04-23 09:30 UTC). [Lean Squad](https://github.com/dsyme/raft-lean-squad/actions/runs/24827684064)*
+†Theorem count was overcounted in prior runs; Python scan of `^theorem` declarations
+gives 536 before Run 92 + 8 (UPB) = 544 actual declarations.
+
+> ✅ `lake build` passed with Lean 4.28.0. **0 sorry**. 544 theorems machine-checked.
+> 🔬 *Run 92 update (2026-04-24 04:11 UTC). [Lean Squad](https://github.com/dsyme/raft-lean-squad/actions/runs/24871315223)*

@@ -1,0 +1,16 @@
+[
+  {"case": 1, "voters": [],      "entries": [],                                                          "perspective_of": 1, "expected": true,  "note": "empty voters → vacuous quorum"},
+  {"case": 2, "voters": [1],     "entries": [{"id": 1, "recent_active": false}],                        "perspective_of": 1, "expected": true,  "note": "leader present → active"},
+  {"case": 3, "voters": [1],     "entries": [],                                                          "perspective_of": 1, "expected": false, "note": "leader not in entries → not active"},
+  {"case": 4, "voters": [1,2,3], "entries": [{"id":1,"recent_active":false},{"id":2,"recent_active":true},{"id":3,"recent_active":false}],  "perspective_of": 1, "expected": true,  "note": "leader+one active = 2 ≥ 2"},
+  {"case": 5, "voters": [1,2,3], "entries": [{"id":1,"recent_active":false},{"id":2,"recent_active":false},{"id":3,"recent_active":false}], "perspective_of": 1, "expected": false, "note": "only leader active = 1 < 2"},
+  {"case": 6, "voters": [1,2,3], "entries": [{"id":2,"recent_active":true},{"id":3,"recent_active":true}],                                  "perspective_of": 1, "expected": true,  "note": "leader absent, {2,3} active = 2 ≥ 2"},
+  {"case": 7, "voters": [1,2,3], "entries": [{"id":1,"recent_active":true},{"id":2,"recent_active":true},{"id":3,"recent_active":true}],   "perspective_of": 1, "expected": true,  "note": "all three active"},
+  {"case": 8, "voters": [1,2,3], "entries": [],                                                          "perspective_of": 1, "expected": false, "note": "no entries → 0 < 2"},
+  {"case": 9, "voters": [1,2,3,4,5], "entries": [{"id":1,"recent_active":false},{"id":2,"recent_active":true},{"id":3,"recent_active":true},{"id":4,"recent_active":false},{"id":5,"recent_active":false}], "perspective_of": 1, "expected": true,  "note": "leader+2 active = 3 = majority(5)"},
+  {"case":10, "voters": [1,2,3,4,5], "entries": [{"id":1,"recent_active":false},{"id":2,"recent_active":true},{"id":3,"recent_active":false},{"id":4,"recent_active":false},{"id":5,"recent_active":false}],"perspective_of": 1, "expected": false, "note": "leader+1 active = 2 < 3"},
+  {"case":11, "voters": [1,2,3,4,5], "entries": [{"id":1,"recent_active":false}],                       "perspective_of": 1, "expected": false, "note": "only leader active = 1 < 3"},
+  {"case":12, "voters": [1,2,3], "entries": [{"id":1,"recent_active":false},{"id":2,"recent_active":false},{"id":3,"recent_active":true}],  "perspective_of": 2, "expected": true,  "note": "perspectiveOf=2; {2(leader),3} active = 2 ≥ 2"},
+  {"case":13, "voters": [1,2,3], "entries": [{"id":1,"recent_active":true},{"id":2,"recent_active":false},{"id":3,"recent_active":false}],  "perspective_of": 2, "expected": true,  "note": "perspectiveOf=2; {1,2(leader)} active = 2 ≥ 2"},
+  {"case":14, "voters": [1,2,3], "entries": [{"id":1,"recent_active":false},{"id":2,"recent_active":false},{"id":3,"recent_active":false}], "perspective_of": 2, "expected": false, "note": "perspectiveOf=2; only leader active = 1 < 2"}
+]
