@@ -2,30 +2,30 @@
 
 > 🔬 *Lean Squad — automated formal verification for `dsyme/raft-lean-squad`.*
 
-**Status**: 🔄 **ADVANCED** — 575 theorems, 55 Lean files, **0 `sorry`**, machine-checked
+**Status**: 🔄 **ADVANCED** — 581 theorems, 56 Lean files, **0 `sorry`**, machine-checked
 by Lean 4.28.0 (stdlib only). Top-level safety theorem proved **conditionally**. Ten-layer
-proof architecture. Layer 8 (correspondence validation): **18 files, 373 `#guard`
-assertions, 18 Rust tests**. Layer 9 (ReadOnly): 15 theorems, **0 sorry**, fully proved.
-Layer 10 (FindConflictByTerm): 10 theorems, 0 sorry. MaybePersist: 13 theorems, 0 sorry.
-MaybePersistFUI: 8 theorems, 0 sorry.
+proof architecture. Layer 7 extended: **ElectionBroadcastChain (EBC1–EBC6)** fully closes
+the B3 gap (broadcast chain → `hqc_preserved`). Layer 8 (correspondence validation):
+**18 files, 373 `#guard` assertions, 17 Rust tests**. Layer 9 (ReadOnly): 15 theorems,
+**0 sorry**, fully proved. Layer 10 (FindConflictByTerm): 10 theorems, 0 sorry.
 
 ---
 
 ## Last Updated
-- **Date**: 2026-04-23 09:30 UTC
-- **Commit**: `afd6f17` — Run 86: Correspondence counts + CI improvements
+- **Date**: 2026-04-24 01:35 UTC
+- **Commit**: `7f4845a` — Run 90: ElectionBroadcastChain (EBC1–EBC6) closes B3 broadcast-chain gap
 
 ---
 
 ## Executive Summary
 
 The FVSquad project applied Lean 4 formal verification to the Raft consensus implementation
-in `dsyme/fv-squad` over 62+ automated runs. Starting from zero, the project:
+in `dsyme/fv-squad` over 90+ automated runs. Starting from zero, the project:
 
 1. Identified 26 FV-amenable targets across the codebase
 2. Extracted informal specifications for each target
 3. Wrote Lean 4 specifications, implementation models, and proofs
-4. Proved **575 theorems** across **55 Lean files** with **0 `sorry`**
+4. Proved **581 theorems** across **56 Lean files** with **0 `sorry`**
 5. Proved **conditional end-to-end Raft cluster safety**: any cluster state reachable
    via transitions satisfying 5 stated invariants is safe (no two nodes ever apply
    different entries at the same log index)
@@ -43,9 +43,12 @@ in `dsyme/fv-squad` over 62+ automated runs. Starting from zero, the project:
     sequence — ABI5 (haeCovered_induction) proves that after sequentially applying `ValidAEStep`
     to every voter with `prevLogIndex=0`, the log-agreement hypothesis holds for all voters
 12. Achieved **0 sorry** milestone (Run 55) before adding Layer 9 ReadOnly work
-13. Added **Layer 8: 18 correspondence validation files** (373 `#guard` + 18 Rust tests)
+13. Added **Layer 8: 18 correspondence validation files** (373 `#guard` + 17 Rust tests)
 14. Added **Layer 9: ReadOnly.lean** (15 theorems, fully proved, 0 sorry)
 15. Added **MaybePersistFUI.lean**: firstUpdateIndex derivation (FU1–FU8, 8 theorems, 0 sorry)
+16. Proved **EBC1–EBC6** (ElectionBroadcastChain): `BroadcastSeq` inductive type threads
+    intermediate cluster states through a voter broadcast sequence, and `EBC6` delivers
+    `hqc_preserved` from a concrete election + full AE broadcast — **B3 gap fully closed**
 
 All five `RaftReachable.step` hypotheses are now addressed: `hnew_cert` closed by CR8,
 `hno_overwrite` by CPS1, `hcommitted_mono` by CPS11, `hqc_preserved` closed by ECM6
@@ -99,7 +102,7 @@ graph TD
     D["🔗 Layer 4: Cross-Module Composition<br/>SafetyComposition · JointSafetyComposition<br/>CrossModuleComposition"]
     E["🛡️ Layer 5: Raft Safety<br/>RaftSafety (RSS1–RSS8)<br/>RaftProtocol (RP6, RP8)"]
     F["⚠️ Layer 6: Reachability (conditional)<br/>RaftTrace (RT1, RT2)<br/>raftReachable_safe"]
-    G["🔬 Layer 7: Concrete Election Model<br/>RaftElection · LeaderCompleteness<br/>ConcreteTransitions · CommitRule · MaybeCommit<br/>ConcreteProtocolStep (CPS2/CPS13)<br/>ElectionReachability (ER1–ER12)<br/>ElectionConcreteModel (ECM1–ECM7)<br/>RaftLogAppend (RA1–RA9+3)<br/>MaybePersistFUI (FU1–FU8)"]
+    G["🔬 Layer 7: Concrete Election Model<br/>RaftElection · LeaderCompleteness<br/>ConcreteTransitions · CommitRule · MaybeCommit<br/>ConcreteProtocolStep (CPS2/CPS13)<br/>ElectionReachability (ER1–ER12)<br/>ElectionConcreteModel (ECM1–ECM7)<br/>AEBroadcastInvariant (ABI1–ABI10)<br/>ElectionBroadcastChain (EBC1–EBC6)<br/>RaftLogAppend (RA1–RA9+3)<br/>MaybePersistFUI (FU1–FU8)"]
 
     A --> B
     B --> C
@@ -240,12 +243,14 @@ graph TD
     RSS8_2["RSS8 (RaftSafety)"] --> RT2
 ```
 
-### Layer 7 — Concrete Election Model (12 files, ~125 theorems)
+### Layer 7 — Concrete Election Model (13 files, ~131 theorems)
 
 Bridges the abstract `RaftReachable.step` hypotheses to concrete Raft protocol operations.
-The newest additions are `AEBroadcastInvariant.lean` (inductive `hae` over a broadcast
-sequence) and `FindConflictCorrespondence.lean` (executable correspondence tests for
-`find_conflict`).
+The newest addition is `ElectionBroadcastChain.lean` (EBC1–EBC6), which fully closes the
+**B3 gap**: a `BroadcastSeq` inductive type threads intermediate cluster states through a
+voter broadcast sequence, and `EBC6` (`broadcastSeq_hqc_preserved`) delivers `hqc_preserved`
+from a concrete election together with a full AE broadcast — the last structural gap in the
+concrete↔abstract bridge.
 
 ```mermaid
 graph TD
@@ -259,6 +264,7 @@ graph TD
     ECM["ElectionConcreteModel.lean<br/>8 theorems<br/>ECM6: hqc_preserved from hae<br/>ECM5: single AE step → partial hae"]
     RLA["RaftLogAppend.lean<br/>19 theorems<br/>RA1–RA9: append spec<br/>P4/P5/P6/P7: prefix+batch"]
     ABI["AEBroadcastInvariant.lean<br/>10 theorems<br/>ABI5: haeCovered_induction<br/>ABI7: hqc_preserved_of_broadcast"]
+    EBC["ElectionBroadcastChain.lean<br/>6 theorems<br/>EBC4: BroadcastSeq → HaeCovered<br/>EBC6: full chain → hqc_preserved"]
     FCC["FindConflictCorrespondence.lean<br/>4 theorems + 27 #guard<br/>Correspondence tests"]
     MPFUI["MaybePersistFUI.lean<br/>8 theorems<br/>FU1–FU8: firstUpdateIndex<br/>derivation correctness"]
 
@@ -270,6 +276,7 @@ graph TD
     CR --> CPS
     MC --> CPS
     ECM --> ABI
+    ABI --> EBC
 ```
 
 **Key results**:
@@ -319,10 +326,11 @@ graph TD
 | `ElectionConcreteModel.lean` | 8 | 5 ✅ | ECM1–ECM7: hqc_preserved from hae (log agreement); closes gap via ECM6 |
 | `RaftLogAppend.lean` | 19 | 5 ✅ | RA1–RA9+P4/P5/P6/P7: RaftLog::append spec + prefix+batch preservation |
 | `AEBroadcastInvariant.lean` | 10 | 5 ✅ | ABI1–ABI10: inductive hae over broadcast sequence; ABI7 closes hqc_preserved |
+| `ElectionBroadcastChain.lean` | 6 | 5 ✅ | EBC1–EBC6: BroadcastSeq induction; EBC6 closes B3 (broadcast → hqc_preserved) |
 | `MaybePersistFUI.lean` | 8 | 5 ✅ | FU1–FU8: firstUpdateIndex derivation; snap blocks advance; fui > persisted safety |
 | `FindConflictCorrespondence.lean` | 4+27 | 5 ✅ | 27 #guard correspondence tests; 0 sorry |
 | `Basic.lean` | helpers | — | Shared definitions |
-| **Total** | **575** | **5 ✅** | **0 sorry** |
+| **Total** | **581** | **5 ✅** | **0 sorry** |
 
 ---
 
@@ -417,6 +425,8 @@ entered the proof base. Both theorems were corrected with proper hypotheses
 - `validAEStep_hqc_preserved_from_lc` (CPS13): given CandidateLogCovers, hqc_preserved holds automatically
 - `maybeCommit_term` (MC4): A6 term safety — committed only advances when entry term = leader current term
 - `candidateLogCovers_of_sharedSource` (ER10): shared-source reference log proves CandidateLogCovers
+- `broadcastSeq_haeCovered` (EBC4): structural induction over `BroadcastSeq` proves `HaeCovered voters` after the full broadcast
+- `broadcastSeq_hqc_preserved` (EBC6): combining EBC4 with `haeCovered_to_hae_all` delivers `hqc_preserved` — closes B3 fully
 - `hqc_preserved_of_validAEStep` (ECM6): closes hqc_preserved given only log-agreement hypothesis `hae`
 - `ra_committed_prefix_preserved` (P4): RaftLog::append never overwrites committed entries
 
@@ -456,9 +466,10 @@ timeline
         ElectionReachability ER1–ER12 : 12 theorems, shared-source → CandidateLogCovers
         RaftLogAppend RA1–RA9+3 : 14 theorems, prefix preservation (P4+P5)
         ElectionConcreteModel ECM1–ECM7 : 8 theorems, hqc_preserved from hae (ECM6)
-    section Remaining gap (open)
-        hae inductive derivation : from ValidAEStep history across all voters
-        Term integration : Raft terms in concrete election model
+    section Broadcast chain + B3 closure (Run 90)
+        AEBroadcastInvariant ABI1–ABI10 : 10 theorems, haeCovered_induction
+        ElectionBroadcastChain EBC1–EBC6 : 6 theorems, BroadcastSeq → hqc_preserved
+        B3 gap closed : hqc_preserved now derivable from broadcast sequence
 ```
 
 ---
@@ -1068,3 +1079,54 @@ gives 536 before Run 92 + 8 (UPB) = 544 actual declarations.
 
 > ✅ `lake build` passed with Lean 4.28.0. **0 sorry**. 544 theorems machine-checked.
 > 🔬 *Run 92 update (2026-04-24 04:11 UTC). [Lean Squad](https://github.com/dsyme/raft-lean-squad/actions/runs/24871315223)*
+Layer 8 (correspondence validation) now covers **18 targets** with **18 Lean files**,
+**373 `#guard` assertions**, and **17 Rust test functions** (ProgressCorrespondence.lean
+uses only compile-time `#guard` assertions; no separate Rust runtime test is needed):
+
+| Metric | Run 78 | Run 87 | Run 91 |
+|--------|--------|--------|--------|
+| Lean files | 51 | 55 | **56** |
+| Theorems | 522 | 575 | **581** |
+| sorry | 0 | 0 | **0** ✅ |
+| Correspondence files | 15 | 18 | **18** |
+| #guard assertions (corr. files) | 288 | 373 | **373** |
+| #guard assertions (all files) | ~300 | 398 | **398** |
+| Rust tests | 14 | 17 | **17** |
+
+> ✅ `lake build` passed with Lean 4.28.0. **0 sorry**. 581 theorems machine-checked.
+> 🔬 *Runs 88–91 update (2026-04-24 01:35 UTC). [Lean Squad](https://github.com/dsyme/raft-lean-squad/actions/runs/24867666559)*
+
+## Runs 88–91 Update: ElectionBroadcastChain + CI Audit
+
+### Run 90: ElectionBroadcastChain.lean (EBC1–EBC6, 6 theorems, 0 sorry)
+
+`ElectionBroadcastChain.lean` fully closes the **B3 gap** — the last structural gap in the
+concrete-to-abstract bridge for `hqc_preserved`.
+
+The key insight is a new `BroadcastSeq` inductive type that threads intermediate cluster
+states through a sequence of one-voter AE steps (one step per voter). This allows structural
+induction over the broadcast:
+
+- **EBC1** (`broadcastSeq_log_other`): a non-broadcast voter's log is unchanged through the sequence
+- **EBC2** (`broadcastSeq_lead_log`): the leader's log is unchanged through the sequence
+- **EBC3** (`broadcastSeq_haeCovered_voter`): after processing a voter, that voter's `haeCovered` entry is preserved by the tail
+- **EBC4** (`broadcastSeq_haeCovered`): structural induction over the full `BroadcastSeq` establishes `HaeCovered voters` — all voters covered after a complete broadcast
+- **EBC5** (`haeCovered_to_hae_all`): extends `HaeCovered` to the universal `hae` hypothesis by handling non-voters
+- **EBC6** (`broadcastSeq_hqc_preserved`): the full chain — `BroadcastSeq` + election gives `hqc_preserved`
+
+Previously, `ABI5` (`haeCovered_induction`) was a structural placeholder. `EBC4` is the
+proper inductive replacement that threads concrete state.
+
+### Run 88: CI + Correspondence Audit
+
+CORRESPONDENCE.md: consolidated duplicate `## Last Updated` headers; corrected
+`IsUpToDateCorrespondence` guard counts. Paper: updated run count 87→88, cost section.
+
+### CI Audit (Run 91)
+
+**Finding**: the `correspondence-tests` CI job expected ≥18 Rust test functions but
+`ProgressCorrespondence.lean` uses only compile-time `#guard` assertions (55 of them) — no
+separate Rust runtime test. The threshold has been corrected to **17** in `lean-ci.yml`.
+
+All 17 Rust correspondence test functions pass. ProgressCorrespondence.lean's 55 `#guard`
+assertions are validated at `lake build` time.
