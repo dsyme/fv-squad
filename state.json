@@ -1,53 +1,41 @@
 {
-  "last_run": 99,
+  "last_run": 100,
   "lean_files": 62,
-  "theorem_count": 593,
+  "theorem_count": 601,
   "sorry_count": 0,
-  "correspondence_targets": 22,
-  "guard_tests": 416,
-  "notes": "Run 98: election transitions + RT1-RT15 (Task 4+5). 563->578T, 61F, 0 sorry. Run99: RI1-RI15, processVoteRequest, electionSafety cluster invariants. 578->593 theorems.",
+  "correspondence_targets": 23,
+  "guard_tests": 439,
+  "notes": "Run 99: RI1-RI15 election invariants + processVoteRequest. 578->593T. Run 100: RV1-RV8 voteGranted biconditionals + ElectionCorrespondence.lean (23 #guard, 15 voteGranted + 8 processVoteRequest). 593->601T, 62F, 0 sorry.",
   "targets": {
+    "election_model": {
+      "phase": 5,
+      "file": "formal-verification/lean/FVSquad/RaftElection.lean",
+      "sorry_count": 0,
+      "notes": "Run 100: RV1-RV8 added (biconditionals + max-term + role-unchanged). 56->64 theorems. ElectionCorrespondence.lean: 23 #guard tests (Route B)."
+    },
     "unstable_persist_bridge": {
       "phase": 5,
       "file": "formal-verification/lean/FVSquad/UnstablePersistBridge.lean",
       "sorry_count": 0,
-      "notes": "UPB1-UPB8 all proved. Closes firstUpdateIndex gap."
-    },
-    "quorum_recently_active_correspondence": {
-      "phase": 5,
-      "file": "formal-verification/lean/FVSquad/QuorumRecentlyActiveCorrespondence.lean",
-      "sorry_count": 0,
-      "notes": "14 #guard tests, Route B."
-    },
-    "joint_vote_correspondence": {
-      "phase": 5,
-      "file": "formal-verification/lean/FVSquad/JointVoteCorrespondence.lean",
-      "sorry_count": 0,
-      "notes": "Run 94: 15 #guard tests, exact correspondence. All 9 incoming\u00d7outgoing VoteResult combinations covered. Rust test in quorum/joint.rs."
-    },
-    "log_unstable_wf7_wf8": {
-      "phase": 5,
-      "file": "formal-verification/lean/FVSquad/LogUnstable.lean",
-      "sorry_count": 0,
-      "notes": "Run 95: WF7 (truncateAndAppend_wf, unified WF4+5+6) + WF8 (truncateAndAppend_gt_wf, corollary for after>offset). LogUnstable.lean: 39\u219241 theorems."
+      "notes": "UPB1-UPB8 all proved."
     },
     "progress_tracker": {
       "phase": 5,
       "file": "formal-verification/lean/FVSquad/ProgressTracker.lean",
       "sorry_count": 0,
-      "notes": "Run 96: 15 theorems PT1-PT15. all_wf preserved by removePeer/insertPeer/updatePeer/applyChanges/initTracker + all 6 Progress transitions. 0 sorry."
+      "notes": "PT1-PT15 proved. all_wf preserved by all ops."
     },
     "progress_tracker_correspondence": {
       "phase": 5,
       "file": "formal-verification/lean/FVSquad/ProgressTrackerCorrespondence.lean",
       "sorry_count": 0,
-      "notes": "Run 97: 33 #guard tests, abstraction level. Rust test: 15 assertions. Route B."
+      "notes": "33 #guard tests, Route B. Run 97."
     },
-    "election_model": {
-      "phase": 2,
-      "file": "formal-verification/specs/election_model_informal.md",
+    "election_correspondence": {
+      "phase": 5,
+      "file": "formal-verification/lean/FVSquad/ElectionCorrespondence.lean",
       "sorry_count": 0,
-      "notes": "Run 97: informal spec complete. Next: Task 3 Lean spec."
+      "notes": "Run 100: 23 #guard tests (15 voteGranted + 8 processVoteRequest). Rust test passes. Route B."
     }
   }
 }

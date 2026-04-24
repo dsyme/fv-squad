@@ -1,55 +1,18 @@
 {
   "lean_version": "4.28.0",
-  "theorem_count": 593,
+  "theorem_count": 601,
   "sorry_count": 0,
-  "last_run": 99,
+  "last_run": 100,
   "hqc_preserved_gap": "CLOSED via AEBroadcastInvariant+ElectionBroadcastChain. Remaining: connect broadcast to full election lifecycle.",
   "aeneas_status": "permanently_blocked_no_new_privileges",
   "toolchain_notes": "no Mathlib, stdlib only. WF7/WF8 use Nat.not_le.mpr. LogUnstable/IsUpToDate have NO namespace.",
   "notes": [
-    "Run 51: Task 10 (REPORT.md: 505->522, Layer 7 11 files, Runs 49-50 section) + Task 7 (CRITIQUE.md: ABI section 10T, FCC section 2T+17guards, RaftLogAppend P6/P7, Gaps updated, Trajectory step 14 resolved).",
     "Run 52: Task 8 Route B: MaybeAppendCorrespondence.lean (32 #guard, 8 cases), makeLog_none proved in FindConflictCorrespondence. 35 lean files, sorry 2\u21921.",
     "Run 53: Task 8 Route B: IsUpToDateCorrespondence.lean (12 #guard, exact correspondence), CommittedIndexCorrespondence.lean (8 #guard, abstraction level). 37 lean files, sorry stays 1. 4 correspondence test targets total.",
     "Run 96: Task 4+5: ProgressTracker.lean (15T, PT1-PT15). all_wf preserved by removePeer/insertPeer/updatePeer/applyChanges/initTracker and all 6 Progress state transitions. 548->563T, 59->60F, 0 sorry.",
-    "Run 97: Task 2: election_model_informal.md (I1-I5, vote-granting rules, A1 gap target). Task 8: ProgressTrackerCorrespondence.lean (33 #guard, 15 Rust assertions, abstraction level). 60->61F, 0 sorry.",
-    "Run 98: Task 4+5: RaftElection.lean extended with becomeFollower/becomeCandidate/becomeLeader + 15 theorems RT1-RT15. Term monotonicity, vote-reset rules, I4 (leader voted for self). 563->578T, 0 sorry."
+    "Run 100: Task 5 (RV1-RV8): biconditionals for voteGranted, max-term theorem, role-unchanged, all-voters-voted. Task 8: ElectionCorrespondence.lean (23 #guard, 15 voteGranted + 8 processVoteRequest, Rust test passes). 593->601T, 62F, 0 sorry."
   ],
   "run_history": [
-    {
-      "run": 52,
-      "date": "2026-04-23",
-      "tasks": [
-        "Task 8 Route B (catch-up)"
-      ],
-      "changes": [
-        "Added MaybeAppendCorrespondence.lean: 32 #guard tests for maybeAppend (8 cases)",
-        "Proved makeLog_none theorem in FindConflictCorrespondence.lean (sorry 2\u21921)",
-        "Added test_maybe_append_correspondence to src/raft_log.rs (8 cases, all pass)",
-        "Added formal-verification/tests/maybe_append/ (cases.json + README.md)",
-        "Updated CORRESPONDENCE.md with new section for MaybeAppendCorrespondence"
-      ],
-      "sorry_count_after": 1,
-      "lean_file_count_after": 35,
-      "pr_branch": "lean-squad/run-52-task8-correspondence-24700764734"
-    },
-    {
-      "run": 53,
-      "date": "2026-04-21",
-      "tasks": [
-        "Task 8 Route B (catch-up)"
-      ],
-      "changes": [
-        "Added IsUpToDateCorrespondence.lean: 12 #guard tests (exact correspondence)",
-        "Added CommittedIndexCorrespondence.lean: 8 #guard tests (abstraction level)",
-        "Added test_is_up_to_date_correspondence to src/raft_log.rs (12 cases, all pass)",
-        "Added test_committed_index_correspondence to src/quorum/majority.rs (8 cases, all pass)",
-        "Added formal-verification/tests/is_up_to_date/ + committed_index/ fixtures",
-        "Updated CORRESPONDENCE.md with two new sections"
-      ],
-      "sorry_count_after": 1,
-      "lean_file_count_after": 37,
-      "pr_branch": "lean-squad/run-53-task8-correspondence-24701759513"
-    },
     {
       "run": 95,
       "date": "2026-04-24",
@@ -118,14 +81,31 @@
       "sorry_count_after": 0,
       "lean_file_count_after": 61,
       "pr_branch": "lean-squad/run-98-task4-task5-24887975706"
+    },
+    {
+      "run": 100,
+      "date": "2026-04-24",
+      "tasks": [
+        "Task 5 (Proof Assistance)",
+        "Task 8 Route B (Correspondence)"
+      ],
+      "changes": [
+        "Added RV1-RV8 theorems to RaftElection.lean (biconditionals, max-term, role-unchanged, all-voters-voted)",
+        "Added ElectionCorrespondence.lean: 23 #guard tests (15 voteGranted + 8 processVoteRequest)",
+        "Added test_election_vote_granted_correspondence to src/raft.rs (23 assertions, all pass)",
+        "Added formal-verification/tests/election_vote_granted/README.md"
+      ],
+      "sorry_count_after": 0,
+      "lean_file_count_after": 62,
+      "pr_branch": "lean-squad/run-100-task5-task8-24902351030"
     }
   ],
   "next_steps": [
-    "election_model: write Lean 4 spec (Task 3) \u2014 NodeState, transitions, vote-granting, election safety",
-    "ReadOnly: prove RO8 via NoDuplicates invariant (1 sorry remaining)",
-    "Progress Tracker correspondence done: PT ops validated (Run 97)",
-    "Update paper (formal-verification/paper/) with Runs 93-97 results",
-    "A2-A5: election_safety, leader_completeness, concrete_transitions, commit_rule"
+    "Update REPORT.md and paper.tex with Runs 98-100 (RT1-RT15, RI1-RI15, RV1-RV8)",
+    "Task 7 (Critique): update CRITIQUE.md with election model progress",
+    "A3 leader_completeness: strengthen HLogConsistency derivation",
+    "progress_set: Lean spec for ProgressSet::quorum_active",
+    "Task 11 (Conference Paper): update paper.tex with election model results"
   ],
   "correspondence_test_targets": [
     {
@@ -187,9 +167,15 @@
       "file": "FVSquad/ProgressTrackerCorrespondence.lean",
       "guard_count": 33,
       "status": "complete"
+    },
+    {
+      "name": "election_vote_granted",
+      "file": "FVSquad/ElectionCorrespondence.lean",
+      "guard_count": 23,
+      "status": "complete"
     }
   ],
-  "lean_files": 61,
+  "lean_files": 62,
   "last_run_date": "2026-04-24",
   "targets": [
     {
@@ -231,12 +217,12 @@
     {
       "name": "election_model",
       "file": "formal-verification/lean/FVSquad/RaftElection.lean",
-      "phase": 4,
-      "notes": "Run 98: transition functions + RT1-RT15 proved. Next: inductive invariants."
+      "phase": 5,
+      "notes": "Run 100: RV1-RV8 added. 56->64 theorems. ElectionCorrespondence.lean: 23 #guard "
     }
   ],
   "ci_status": "lean-ci.yml has build job (lake build) + correspondence-tests job (cargo test correspondence). Triggers: formal-verification/lean/**, formal-verification/tests/**, src/**",
-  "run_count": 99,
-  "last_task": "Task 5 (RI1-RI15 election invariants) + Task 1 (Research/TARGETS update)",
+  "run_count": 100,
+  "last_task": "Task 5 (RV1-RV8 election theorems) + Task 8 Route B (ElectionCorrespondence)",
   "election_model_phase": 5
 }
