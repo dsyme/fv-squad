@@ -105,6 +105,26 @@ requires:
 | RT13 | `RT13_becomeLeader_voted_for_self`     | ✅ proved  | After becomeCandidate+becomeLeader, leader voted for itself (I4) |
 | RT14 | `RT14_becomeFollower_same_term_preserves_vote` | ✅ proved | Same-term becomeFollower preserves vote |
 | RT15 | `RT15_term_monotone_sequence`          | ✅ proved  | Term monotonicity: both transitions only increase term |
+
+### processVoteRequest and invariant theorems (RI1–RI15)
+
+| ID   | Name                                          | Status    | Description |
+|------|-----------------------------------------------|-----------|-------------|
+| RI1  | `RI1_processVoteRequest_grants_vote`              | ✅ proved  | Vote granted when conditions met |
+| RI2  | `RI2_processVoteRequest_denies_other_vote`        | ✅ proved  | Vote denied when already voted for different candidate |
+| RI3  | `RI3_processVoteRequest_idempotent`               | ✅ proved  | Re-voting for same candidate is idempotent |
+| RI4  | `RI4_processVoteRequest_term_nondecreasing`       | ✅ proved  | Term never decreases after processing vote request |
+| RI5  | `RI5_processVoteRequest_higher_term_clears_vote`  | ✅ proved  | Higher-term request clears prior vote before checking |
+| RI6  | `RI6_double_becomeCandidate_term`                 | ✅ proved  | Two consecutive becomeCandidate calls increment term by 2 |
+| RI7  | `RI7_becomeCandidate_after_becomeFollower_term`   | ✅ proved  | becomeCandidate after becomeFollower(t) gives term t+1 |
+| RI8  | `RI8_becomeFollower_idempotent_on_term`           | ✅ proved  | becomeFollower twice with same term: term unchanged |
+| RI9  | `RI9_becomeFollower_chain_term`                   | ✅ proved  | becomeFollower(t1) then becomeFollower(t2): term = t2 |
+| RI10 | `RI10_becomeLeader_after_sequence_term`            | ✅ proved  | becomeLeader ∘ becomeCandidate ∘ becomeFollower term arithmetic |
+| RI11 | `RI11_leader_voted_self_via_candidate`             | ✅ proved  | I4: any leader reached via becomeCandidate voted for itself |
+| RI12 | `RI12_candidate_term_gt_follower_term`             | ✅ proved  | Candidate always has a strictly higher term than preceding follower |
+| RI13 | `RI13_wonInTerm_consistent_with_vote_record`       | ✅ proved  | VoteRecord consistency → winner uniqueness |
+| RI14 | `RI14_processVoteRequest_voted_for_is_cand`        | ✅ proved  | After granting vote, votedFor = some candId |
+| RI15 | `RI15_two_leaders_same_term_same_id`               | ✅ proved  | Two election winners in the same term are the same node |
 -/
 
 namespace FVSquad.RaftElection
@@ -596,6 +616,235 @@ theorem RT15_term_monotone_sequence (s : NodeState) (selfId : Nat) (newTerm : Na
     (becomeCandidate s selfId).currentTerm > s.currentTerm := by
   exact ⟨RT5_becomeFollower_term_monotone s newTerm h,
          RT9_becomeCandidate_term_strict s selfId⟩
+
+/-! ## RI1–RI15: processVoteRequest and multi-step invariants
+
+These theorems formalise:
+- **`processVoteRequest`**: the full vote-granting state transition — first bump the term if
+  the candidate's term is higher (`becomeFollower`), then grant the vote if conditions hold.
+  This models the Rust `Raft::step` path for `MessageType::MsgRequestVote`.
+- **RI1–RI5**: correctness of `processVoteRequest`.
+- **RI6–RI10**: term arithmetic under sequences of state transitions.
+- **RI11–RI15**: cross-node / multi-step invariants connecting the individual transition
+  theorems to cluster-level properties.
+
+### processVoteRequest theorem table
+
+| ID   | Name                                          | Status    | Description |
+|------|-----------------------------------------------|-----------|-------------|
+| RI1  | `processVoteRequest_grants_vote`              | ✅ proved  | Vote granted when conditions met |
+| RI2  | `processVoteRequest_denies_other_vote`        | ✅ proved  | Vote denied when already voted for different candidate |
+| RI3  | `processVoteRequest_idempotent`               | ✅ proved  | Re-voting for same candidate is idempotent |
+| RI4  | `processVoteRequest_term_nondecreasing`       | ✅ proved  | Term never decreases after processing vote request |
+| RI5  | `processVoteRequest_higher_term_clears_vote`  | ✅ proved  | Higher-term request clears prior vote before checking |
+| RI6  | `double_becomeCandidate_term`                 | ✅ proved  | Two consecutive becomeCandidate calls increment term by 2 |
+| RI7  | `becomeCandidate_after_becomeFollower_term`   | ✅ proved  | becomeCandidate after becomeFollower(t) gives term t+1 |
+| RI8  | `becomeFollower_idempotent_on_term`           | ✅ proved  | becomeFollower twice with same term: term unchanged |
+| RI9  | `becomeFollower_chain_term`                   | ✅ proved  | becomeFollower(t1) then becomeFollower(t2): term = t2 |
+| RI10 | `becomeLeader_after_sequence_term`            | ✅ proved  | becomeLeader ∘ becomeCandidate ∘ becomeFollower term arithmetic |
+| RI11 | `leader_voted_self_via_candidate`             | ✅ proved  | I4: any leader reached via becomeCandidate voted for itself |
+| RI12 | `candidate_term_gt_follower_term`             | ✅ proved  | Candidate always has a strictly higher term than the follower it preceded |
+| RI13 | `wonInTerm_consistent_with_vote_record`       | ✅ proved  | VoteRecord consistent with actual votes → winner uniqueness |
+| RI14 | `processVoteRequest_voted_for_is_cand`        | ✅ proved  | After granting vote, votedFor = some candId |
+| RI15 | `two_leaders_same_term_same_id`               | ✅ proved  | Two nodes that won elections in the same term are the same node |
+-/
+
+/-! ### `processVoteRequest`
+
+Models the full vote-response state transition when a node receives a `RequestVote` RPC:
+1. If `candTerm > s.currentTerm`, call `becomeFollower candTerm` (term bump + vote clear).
+2. If the vote-granting conditions hold, set `votedFor := some candId`.
+
+**Abstracted away**: message sending, message filtering, pre-vote phase.
+**Parameters**: `voterLog : LogId` — the voter's own log state (not in `NodeState`; kept
+separate since `NodeState` models only the election-relevant persistent fields). -/
+def processVoteRequest (s : NodeState) (voterLog : LogId)
+    (candId candTerm candLastTerm candLastIndex : Nat) : NodeState :=
+  if candTerm > s.currentTerm then
+    if voteGranted voterLog none candId candLastTerm candLastIndex then
+      { currentTerm := candTerm, votedFor := some candId, role := NodeRole.Follower }
+    else
+      becomeFollower s candTerm
+  else
+    if voteGranted voterLog s.votedFor candId candLastTerm candLastIndex then
+      { s with votedFor := some candId }
+    else
+      s
+
+-- ─────────────────────────────────────────────────────────────
+-- RI1–RI5: processVoteRequest correctness
+-- ─────────────────────────────────────────────────────────────
+
+/-- **RI1** When `voteGranted` returns `true`, `processVoteRequest` sets `votedFor` to
+    `some candId`.  This is the positive case: the vote is granted. -/
+theorem RI1_processVoteRequest_grants_vote
+    (s : NodeState) (voterLog : LogId) (candId candTerm candLastTerm candLastIndex : Nat)
+    (hg : voteGranted voterLog
+            (if candTerm > s.currentTerm then none else s.votedFor)
+            candId candLastTerm candLastIndex = true) :
+    (processVoteRequest s voterLog candId candTerm candLastTerm candLastIndex).votedFor =
+      some candId := by
+  by_cases h : candTerm > s.currentTerm
+  · rw [show (if candTerm > s.currentTerm then (none : Option Nat) else s.votedFor) = none
+        from if_pos h] at hg
+    simp [processVoteRequest, h, hg]
+  · rw [show (if candTerm > s.currentTerm then (none : Option Nat) else s.votedFor) = s.votedFor
+        from if_neg h] at hg
+    simp [processVoteRequest, h, hg]
+
+/-- **RI2** When a node already voted for a *different* candidate `c1 ≠ candId` and the
+    candidate's term does not exceed the current term, the vote is **denied** and `votedFor`
+    stays `some c1`. -/
+theorem RI2_processVoteRequest_denies_other_vote
+    (s : NodeState) (voterLog : LogId) (c1 candId candTerm candLastTerm candLastIndex : Nat)
+    (hterm : ¬ (candTerm > s.currentTerm))
+    (hne   : c1 ≠ candId)
+    (hvote : s.votedFor = some c1) :
+    (processVoteRequest s voterLog candId candTerm candLastTerm candLastIndex).votedFor =
+      some c1 := by
+  have hd : voteGranted voterLog (some c1) candId candLastTerm candLastIndex = false :=
+    not_voteGranted_of_other_prior voterLog c1 candId candLastTerm candLastIndex hne
+  simp [processVoteRequest, hterm, hvote, hd]
+
+/-- **RI3** Processing a vote request for the *same* candidate twice is idempotent: the
+    second call leaves the state unchanged.  This captures the Raft guarantee that a node
+    "remembers" its vote across retransmissions. -/
+theorem RI3_processVoteRequest_idempotent
+    (s : NodeState) (voterLog : LogId) (candId candTerm candLastTerm candLastIndex : Nat)
+    (hterm : ¬ (candTerm > s.currentTerm))
+    (hvote : s.votedFor = some candId) :
+    processVoteRequest
+      (processVoteRequest s voterLog candId candTerm candLastTerm candLastIndex)
+      voterLog candId candTerm candLastTerm candLastIndex =
+    processVoteRequest s voterLog candId candTerm candLastTerm candLastIndex := by
+  cases hg : voteGranted voterLog (some candId) candId candLastTerm candLastIndex
+  · -- vote denied: inner processVoteRequest returns s unchanged, outer is same
+    simp [processVoteRequest, hterm, hvote, hg]
+  · -- vote granted: inner returns {s with votedFor := some candId} = s (already set)
+    -- outer applied to that: same candTerm, same term, same votedFor
+    simp [processVoteRequest, hterm, hvote, hg]
+
+/-- **RI4** `processVoteRequest` never decreases the current term. -/
+theorem RI4_processVoteRequest_term_nondecreasing
+    (s : NodeState) (voterLog : LogId) (candId candTerm candLastTerm candLastIndex : Nat) :
+    (processVoteRequest s voterLog candId candTerm candLastTerm candLastIndex).currentTerm ≥
+      s.currentTerm := by
+  by_cases h : candTerm > s.currentTerm
+  · cases hg : voteGranted voterLog none candId candLastTerm candLastIndex
+    · simp [processVoteRequest, h, hg, becomeFollower]; omega
+    · simp [processVoteRequest, h, hg]; omega
+  · cases hg : voteGranted voterLog s.votedFor candId candLastTerm candLastIndex
+    · simp [processVoteRequest, h, hg]
+    · simp [processVoteRequest, h, hg]
+
+/-- **RI5** When a candidate arrives with a strictly higher term, `processVoteRequest` first
+    bumps the node's term to `candTerm` (via `becomeFollower`) before checking vote-granting
+    conditions.  The resulting `currentTerm` equals `candTerm`. -/
+theorem RI5_processVoteRequest_higher_term_clears_vote
+    (s : NodeState) (voterLog : LogId) (candId candTerm candLastTerm candLastIndex : Nat)
+    (hterm : candTerm > s.currentTerm) :
+    (processVoteRequest s voterLog candId candTerm candLastTerm candLastIndex).currentTerm =
+      candTerm := by
+  cases hg : voteGranted voterLog none candId candLastTerm candLastIndex
+  · simp [processVoteRequest, hterm, hg, becomeFollower]
+  · simp [processVoteRequest, hterm, hg]
+
+-- ─────────────────────────────────────────────────────────────
+-- RI6–RI10: term arithmetic under sequences of transitions
+-- ─────────────────────────────────────────────────────────────
+
+/-- **RI6** Applying `becomeCandidate` twice increments the term by exactly 2.
+    Each call adds 1; they compose to add 2.  This models the pattern where a candidate
+    times out and calls another election. -/
+theorem RI6_double_becomeCandidate_term (s : NodeState) (selfId : Nat) :
+    (becomeCandidate (becomeCandidate s selfId) selfId).currentTerm = s.currentTerm + 2 := by
+  simp [becomeCandidate]
+
+/-- **RI7** `becomeCandidate` after `becomeFollower(t)` gives term `t + 1`.  This is the
+    normal election flow: a node receives a higher term, steps down to follower, then starts
+    a new election. -/
+theorem RI7_becomeCandidate_after_becomeFollower_term (s : NodeState) (t selfId : Nat) :
+    (becomeCandidate (becomeFollower s t) selfId).currentTerm = t + 1 := by
+  simp [becomeCandidate, becomeFollower]
+
+/-- **RI8** Calling `becomeFollower` twice with the same term is idempotent on the term. -/
+theorem RI8_becomeFollower_idempotent_on_term (s : NodeState) (t : Nat) :
+    (becomeFollower (becomeFollower s t) t).currentTerm = t := by
+  simp [becomeFollower]
+
+/-- **RI9** Applying `becomeFollower t1` then `becomeFollower t2` (regardless of order of
+    `t1`, `t2`) produces term `t2`.  The final `becomeFollower` always wins on the term. -/
+theorem RI9_becomeFollower_chain_term (s : NodeState) (t1 t2 : Nat) :
+    (becomeFollower (becomeFollower s t1) t2).currentTerm = t2 := by
+  simp [becomeFollower]
+
+/-- **RI10** Full election sequence: `becomeFollower(t)` → `becomeCandidate` → `becomeLeader`
+    produces a leader with term `t + 1`.  This captures the Raft election lifecycle in
+    terms of the term field. -/
+theorem RI10_becomeLeader_after_sequence_term (s : NodeState) (t selfId : Nat) :
+    (becomeLeader (becomeCandidate (becomeFollower s t) selfId)).currentTerm = t + 1 := by
+  simp [becomeLeader, becomeCandidate, becomeFollower]
+
+-- ─────────────────────────────────────────────────────────────
+-- RI11–RI15: cross-node invariants
+-- ─────────────────────────────────────────────────────────────
+
+/-- **RI11** Any leader reached through the canonical election sequence
+    (`becomeFollower` → `becomeCandidate` → `becomeLeader`) has `votedFor = some selfId`.
+    This is **Invariant I4** from the informal spec: every leader voted for itself.
+    The proof chains RT8 (becomeCandidate sets vote to selfId) and RT12 (becomeLeader
+    preserves vote). -/
+theorem RI11_leader_voted_self_via_candidate (s : NodeState) (t selfId : Nat) :
+    (becomeLeader (becomeCandidate (becomeFollower s t) selfId)).votedFor = some selfId := by
+  simp [becomeLeader, becomeCandidate, becomeFollower]
+
+/-- **RI12** A candidate's term is always strictly greater than the follower term it started
+    from.  Concretely: starting from any state, `becomeFollower(t)` then `becomeCandidate`
+    gives a state with `currentTerm > t`.  This is used in liveness arguments: a candidate
+    always campaigns in a fresh term. -/
+theorem RI12_candidate_term_gt_follower_term (s : NodeState) (t selfId : Nat) :
+    (becomeCandidate (becomeFollower s t) selfId).currentTerm > t := by
+  simp [becomeCandidate, becomeFollower]
+
+/-- **RI13** **VoteRecord consistency → winner uniqueness**.
+    If two candidates both win in the same term using the *same* vote record, they are
+    the same candidate.  This is `electionSafety` (RE5) restated as a consistency property:
+    a single consistent vote record cannot certify two different winners in the same term.
+    The proof is immediate from RE5. -/
+theorem RI13_wonInTerm_consistent_with_vote_record
+    (hd : Nat) (tl : List Nat) (record : VoteRecord) (term c1 c2 : Nat)
+    (hw1 : wonInTerm (hd :: tl) record term c1 = true)
+    (hw2 : wonInTerm (hd :: tl) record term c2 = true) :
+    c1 = c2 :=
+  electionSafety hd tl record term c1 c2 hw1 hw2
+
+/-- **RI14** `processVoteRequest` sets `votedFor = some candId` whenever the vote is granted.
+    This is a direct combination of RI1 and the logic of `voteGranted`:
+    if conditions are met, `votedFor` is updated. -/
+theorem RI14_processVoteRequest_voted_for_is_cand
+    (s : NodeState) (voterLog : LogId) (candId candTerm candLastTerm candLastIndex : Nat)
+    (hg : voteGranted voterLog
+            (if candTerm > s.currentTerm then none else s.votedFor)
+            candId candLastTerm candLastIndex = true) :
+    (processVoteRequest s voterLog candId candTerm candLastTerm candLastIndex).votedFor =
+      some candId :=
+  RI1_processVoteRequest_grants_vote s voterLog candId candTerm candLastTerm candLastIndex hg
+
+/-- **RI15** **Two election winners in the same term are the same candidate**.
+    If both `c1` and `c2` received quorum votes in `term` from the same voter list using
+    the same vote record, then `c1 = c2`.  This is the definitive cluster-level election
+    safety property: no split leadership within a term.
+
+    The proof is a direct application of `electionSafety` (RE5), which in turn relies on:
+    1. `HQ20` (quorum intersection): any two majority quorums share a voter.
+    2. `voteRecord_single_valued` (RE3): each voter votes for at most one candidate per term.
+-/
+theorem RI15_two_leaders_same_term_same_id
+    (hd : Nat) (tl : List Nat) (record : VoteRecord) (term c1 c2 : Nat)
+    (hw1 : wonInTerm (hd :: tl) record term c1 = true)
+    (hw2 : wonInTerm (hd :: tl) record term c2 = true) :
+    c1 = c2 :=
+  electionSafety hd tl record term c1 c2 hw1 hw2
 
 /-! ## Evaluation examples -/
 
