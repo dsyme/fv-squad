@@ -1,12 +1,24 @@
 {
-  "last_run": 90,
-  "lean_files": 56,
-  "theorem_count": 581,
+  "last_run": 92,
+  "lean_files": 58,
+  "theorem_count": 544,
   "sorry_count": 0,
-  "correspondence_targets": 18,
-  "guard_tests": 373,
-  "notes": "Run 90: ElectionBroadcastChain.lean (EBC1-EBC6) — ALL 6 theorems proved, 0 sorry. Closes B3 gap fully. BroadcastSeq inductive type introduced. EBC4 is the key structural-induction theorem. EBC6 delivers hqc_preserved from broadcast sequence. Paper updated to 581 theorems, 56 files, Run 90.",
+  "correspondence_targets": 19,
+  "guard_tests": 412,
+  "notes": "Run 92: UnstablePersistBridge.lean (UPB1-UPB8, 8T, 0 sorry) closes firstUpdateIndex gap from CRITIQUE.md. QuorumRecentlyActiveCorrespondence.lean (14 #guard, Route B) is 19th correspondence target. Rust test added. Theorem count corrected from 581 to 544 (Python scan of ^theorem declarations).",
   "targets": {
+    "unstable_persist_bridge": {
+      "phase": 5,
+      "file": "formal-verification/lean/FVSquad/UnstablePersistBridge.lean",
+      "sorry_count": 0,
+      "notes": "UPB1-UPB8 all proved. UPB8 key: wf u + advance succeeds -> newPersisted < u.offset. Closes firstUpdateIndex gap."
+    },
+    "quorum_recently_active_correspondence": {
+      "phase": 5,
+      "file": "formal-verification/lean/FVSquad/QuorumRecentlyActiveCorrespondence.lean",
+      "sorry_count": 0,
+      "notes": "14 #guard tests, Route B. Rust test test_quorum_recently_active_correspondence (14 cases). Fixtures in formal-verification/tests/quorum_recently_active/."
+    },
     "B3_election_broadcast": {
       "phase": 5,
       "file": "formal-verification/lean/FVSquad/ElectionBroadcastChain.lean",
