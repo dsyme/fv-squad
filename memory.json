@@ -11,7 +11,8 @@
     "Run 96: Task 4+5: ProgressTracker.lean (15T, PT1-PT15). all_wf preserved by removePeer/insertPeer/updatePeer/applyChanges/initTracker and all 6 Progress state transitions. 548->563T, 59->60F, 0 sorry.",
     "Run 100: Task 5 (RV1-RV8): biconditionals for voteGranted, max-term theorem, role-unchanged, all-voters-voted. Task 8: ElectionCorrespondence.lean (23 #guard, 15 voteGranted + 8 processVoteRequest, Rust test passes). 593->601T, 62F, 0 sorry.",
     "Run 103: Task 8 Route B: ConfigurationInvariantsCorrespondence.lean (15 #guard, 12 cases). votersLearnersDjB predicate. Rust test_configuration_invariants_correspondence (12 cases, all pass). Task 1: TARGETS.md (22 corr targets, 3 new completed), RESEARCH.md (Run 103 update). Finding: Lean VotersLearnersDisjoint stricter than Rust demotion state (outgoing \u2229 learners_next != empty is allowed in Rust). 624T, 65F, 0 sorry.",
-    "Run 108: Task 5+11: US16/US17/US18 (UncommittedState false-iff, true-iff, ge_sub). Paper updated to 647T, 66F, 524g, 12-layer. PR #108."
+    "Run 108: Task 5+11: US16/US17/US18 (UncommittedState false-iff, true-iff, ge_sub). Paper updated to 647T, 66F, 524g, 12-layer. PR #108.",
+    "Run 109: Task 7+10: CRITIQUE.md (Run 109 section: US16-US18 assessment + RO14 + gap#5 MaybeCommit) + REPORT.md (647T/66F/0 sorry, Runs 96-109 section). 647T, 66F, 0 sorry."
   ],
   "run_history": [
     {
@@ -87,15 +88,29 @@
       "sorry_count_after": 0,
       "lean_file_count_after": 66,
       "pr_branch": "lean-squad/run-108-task5-task11-24924282308"
+    },
+    {
+      "run": 109,
+      "date": "2026-04-25",
+      "tasks": [
+        "Task 7 (Critique)",
+        "Task 10 (Report)"
+      ],
+      "changes": [
+        "CRITIQUE.md: Run 109 section \u2014 US16-US18 biconditional assessment, RO14 advance_preserves_nodup assessment, gap#5 MaybeCommit correspondence",
+        "REPORT.md: Updated status 548T->647T, 59F->66F. New Runs 96-109 section: RV1-RV8 biconditionals, MS1-MS7 N-step safety, CI9-CI12 finding (strict predicate), PT22-PT24, RO14, US16-US18",
+        "Both files updated to 2026-04-25 08:10 UTC / commit 66da52b"
+      ],
+      "sorry_count_after": 0,
+      "lean_file_count_after": 66,
+      "pr_branch": "lean-squad/run-109-task7-task10-24926413764"
     }
   ],
   "next_steps": [
-    "Task 7 (Critique): update CRITIQUE.md with Runs 98-103 (election+multistep+configinv+PT16-21)",
-    "Task 10 (Report): update REPORT.md with Runs 98-103 findings (624T, 65F, 22 corr targets)",
-    "Task 11 (Paper): update paper.tex with election model and N-step safety",
-    "read_only RO8: formalise NoDuplicates and prove RO8 (1 sorry remains)",
-    "A3 leader_completeness: strengthen HLogConsistency via ER2 chain",
-    "ConfigurationInvariants: consider revising VotersLearnersDisjoint to not include outgoing x learners_next clause (demotion case finding)"
+    "Task 5: MaybeCommit formal spec + proofs (informal spec exists from Run 107)",
+    "Task 5: Connect ElectionBroadcastChain to RaftReachable to discharge HLogConsistency unconditionally",
+    "Task 8: MaybeCommit correspondence tests",
+    "Task 6: Update CORRESPONDENCE.md \u2014 note VotersLearnersDisjointRelaxed dependency; validate which proofs depend on strict form"
   ],
   "correspondence_test_targets": [
     {
