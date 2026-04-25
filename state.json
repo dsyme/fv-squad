@@ -1,8 +1,8 @@
 {
   "lean_version": "4.30.0-rc2",
-  "theorem_count": 671,
+  "theorem_count": 673,
   "sorry_count": 0,
-  "last_run": 115,
+  "last_run": 116,
   "hqc_preserved_gap": "CLOSED via AEBroadcastInvariant+ElectionBroadcastChain. BroadcastLifecycle.lean (BL1-BL3) connects BroadcastSeq\u2192RaftReachable lifecycle.",
   "aeneas_status": "permanently_blocked_no_new_privileges",
   "toolchain_notes": "no Mathlib, stdlib only. WF7/WF8 use Nat.not_le.mpr. LogUnstable/IsUpToDate have NO namespace.",
@@ -10,23 +10,22 @@
     "Run 112: Task 5: BroadcastLifecycle.lean (3T: BL1-BL3, 0 sorry). Task 2: next_entries_informal.md (next_entries_since/next_entries informal spec). 661->664T, 68->69F, 0 sorry.",
     "Run 113: Task 3: NextEntries.lean (7T: NE1-NE7, 0 sorry). Task 5/8: NextEntriesCorrespondence.lean (20 #guard, fi=4, 20 Lean+Rust cases all pass). test_next_entries_correspondence Rust test added. 664->671T, 69->71F, 0 sorry.",
     "Run 114: Task 4/8: HasNextEntriesCorrespondence.lean (33 #guard, sections: appliedIndexUpperBound/hasNextEntriesSince/hasNextEntries). Rust test_has_next_entries_since_correspondence (34 assertions, all pass). Task 6: CORRESPONDENCE.md updated to include 7 missing correspondence sections from Runs 93-114. 25 corr targets, ~513 #guard total.",
-    "Run 115: Task 10: REPORT.md updated (Runs 110-114, 671T, 72F, 25 corr, 513+ #guard). Task 9: CI audit - lean-ci.yml healthy (Verify Lean Proofs + Rust Correspondence Tests jobs, both present)."
+    "Run 115: Task 10: REPORT.md updated (Runs 110-114, 671T, 72F, 25 corr, 513+ #guard). Task 9: CI audit - lean-ci.yml healthy (Verify Lean Proofs + Rust Correspondence Tests jobs, both present).",
+    "Run 116: Task 5: PT25/PT26 (initTracker+applyChanges membership integration, 26T in ProgressTracker.lean, 0 sorry). Task 8 Route B: ProgressTrackerCorrespondence #guard 34-43 (10 new PT25/PT26 scenarios + make_init_tracker Rust helper, 43 total cases). 671->673T, 72F, 0 sorry."
   ],
   "run_history": [
     {
-      "run": 113,
-      "date": "2026-04-25",
-      "tasks": ["Task 3 (NextEntries formal spec NE1-NE7)", "Task 5/8 (NextEntries correspondence 20 guards)"],
-      "changes": ["NextEntries.lean: 7T (NE1-NE7)", "NextEntriesCorrespondence.lean: 20 #guard", "test_next_entries_correspondence (Rust)"],
-      "sorry_count_after": 0,
-      "lean_file_count_after": 71,
-      "pr_branch": "lean-squad/run-113-task3-task5-24929866457"
-    },
-    {
       "run": 114,
       "date": "2026-04-25",
-      "tasks": ["Task 4/8 Route B (HasNextEntries correspondence)", "Task 6 (Correspondence Review update)"],
-      "changes": ["HasNextEntriesCorrespondence.lean: 33 #guard", "test_has_next_entries_since_correspondence (Rust)", "CORRESPONDENCE.md: 25 targets, ~513 #guard"],
+      "tasks": [
+        "Task 4/8 Route B (HasNextEntries correspondence)",
+        "Task 6 (Correspondence Review update)"
+      ],
+      "changes": [
+        "HasNextEntriesCorrespondence.lean: 33 #guard",
+        "test_has_next_entries_since_correspondence (Rust)",
+        "CORRESPONDENCE.md: 25 targets, ~513 #guard"
+      ],
       "sorry_count_after": 0,
       "lean_file_count_after": 72,
       "pr_branch": "lean-squad/run-114-task4-task6-24930229979"
@@ -34,50 +33,187 @@
     {
       "run": 115,
       "date": "2026-04-25",
-      "tasks": ["Task 10 (REPORT.md update Runs 110-114)", "Task 9 (CI audit)"],
-      "changes": ["REPORT.md: 671T/72F/25corr/513+#guard, Runs 110-114 section added"],
+      "tasks": [
+        "Task 10 (REPORT.md update Runs 110-114)",
+        "Task 9 (CI audit)"
+      ],
+      "changes": [
+        "REPORT.md: 671T/72F/25corr/513+#guard, Runs 110-114 section added"
+      ],
       "sorry_count_after": 0,
       "lean_file_count_after": 72,
       "pr_branch": "lean-squad/run-115-task10-task9-24930815701"
+    },
+    {
+      "run": 116,
+      "date": "2026-04-25",
+      "tasks": [
+        "Task 5 (PT25/PT26 integration theorems)",
+        "Task 8 Route B (10 new #guard + Rust tests)"
+      ],
+      "changes": [
+        "ProgressTracker.lean: PT25 (initTracker+applyChanges preserves member)",
+        "ProgressTracker.lean: PT26 (applyChanges retains last add)",
+        "ProgressTrackerCorrespondence.lean: #guard 34-43 (PT25/PT26 scenarios)",
+        "src/tracker.rs: make_init_tracker + 10 new Rust test assertions"
+      ],
+      "sorry_count_after": 0,
+      "lean_file_count_after": 72,
+      "pr_branch": "lean-squad/run-116-task5-task8-24936022221"
     }
   ],
   "next_steps": [
-    "Task 5: ProgressTracker integration theorem (connect PT22-PT24 to leader init)",
-    "Task 5: Prove anti-monotonicity lemma bridging NextEntries HNE-NE combination",
-    "Task 8 Route B: Progress/ProgressTracker correspondence for applyChanges variants",
-    "Task 7: Update CRITIQUE.md with Runs 110-115",
-    "Task 11: Update paper.pdf with Runs 110-115 (671T, 72F, 25 corr)"
+    "Task 5: ProgressTracker integration: PT27 \u2014 after applyChanges, the complete peer set is exactly the initial peers union added peers minus removed peers (full set characterization)",
+    "Task 7: Update CRITIQUE.md with Runs 113-116",
+    "Task 11: Update paper.pdf with Runs 113-116 (673T, 72F, 25 corr)",
+    "Task 2/3: Formal spec for another raft_log function (e.g. slice, entries_since)",
+    "Task 8 Route B: Has_quorum correspondence tests for joint configs"
   ],
   "correspondence_test_targets": [
-    {"name": "find_conflict", "file": "FindConflictCorrespondence.lean", "guard_count": 17, "status": "complete"},
-    {"name": "maybe_append", "file": "MaybeAppendCorrespondence.lean", "guard_count": 32, "status": "complete"},
-    {"name": "is_up_to_date", "file": "IsUpToDateCorrespondence.lean", "guard_count": 12, "status": "complete"},
-    {"name": "committed_index", "file": "CommittedIndexCorrespondence.lean", "guard_count": 8, "status": "complete"},
-    {"name": "limit_size", "file": "FVSquad/LimitSizeCorrespondence.lean", "guard_count": 10, "status": "complete"},
-    {"name": "config_validate", "file": "FVSquad/ConfigValidateCorrespondence.lean", "guard_count": 12, "status": "complete"},
-    {"name": "inflights", "file": "FVSquad/InflightsCorrespondence.lean", "guard_count": 12, "status": "complete"},
-    {"name": "log_unstable", "file": "FVSquad/LogUnstableCorrespondence.lean", "guard_count": 12, "status": "complete"},
-    {"name": "tally_votes", "file": "FVSquad/TallyVotesCorrespondence.lean", "guard_count": 10, "status": "complete"},
-    {"name": "progress_tracker", "file": "FVSquad/ProgressTrackerCorrespondence.lean", "guard_count": 33, "status": "complete"},
-    {"name": "election_vote_granted", "file": "FVSquad/ElectionCorrespondence.lean", "guard_count": 23, "status": "complete"},
-    {"name": "configuration_invariants", "file": "FVSquad/ConfigurationInvariantsCorrespondence.lean", "guard_count": 15, "status": "complete"},
-    {"name": "maybe_commit", "file": "FVSquad/MaybeCommitCorrespondence.lean", "guard_count": 14, "status": "complete"},
-    {"name": "uncommitted_state", "file": "FVSquad/UncommittedStateCorrespondence.lean", "guard_count": 13, "status": "complete"},
-    {"name": "next_entries", "file": "FVSquad/NextEntriesCorrespondence.lean", "guard_count": 20, "status": "complete"},
-    {"name": "has_next_entries", "file": "FVSquad/HasNextEntriesCorrespondence.lean", "guard_count": 33, "status": "complete"}
+    {
+      "name": "find_conflict",
+      "file": "FindConflictCorrespondence.lean",
+      "guard_count": 17,
+      "status": "complete"
+    },
+    {
+      "name": "maybe_append",
+      "file": "MaybeAppendCorrespondence.lean",
+      "guard_count": 32,
+      "status": "complete"
+    },
+    {
+      "name": "is_up_to_date",
+      "file": "IsUpToDateCorrespondence.lean",
+      "guard_count": 12,
+      "status": "complete"
+    },
+    {
+      "name": "committed_index",
+      "file": "CommittedIndexCorrespondence.lean",
+      "guard_count": 8,
+      "status": "complete"
+    },
+    {
+      "name": "limit_size",
+      "file": "FVSquad/LimitSizeCorrespondence.lean",
+      "guard_count": 10,
+      "status": "complete"
+    },
+    {
+      "name": "config_validate",
+      "file": "FVSquad/ConfigValidateCorrespondence.lean",
+      "guard_count": 12,
+      "status": "complete"
+    },
+    {
+      "name": "inflights",
+      "file": "FVSquad/InflightsCorrespondence.lean",
+      "guard_count": 12,
+      "status": "complete"
+    },
+    {
+      "name": "log_unstable",
+      "file": "FVSquad/LogUnstableCorrespondence.lean",
+      "guard_count": 12,
+      "status": "complete"
+    },
+    {
+      "name": "tally_votes",
+      "file": "FVSquad/TallyVotesCorrespondence.lean",
+      "guard_count": 10,
+      "status": "complete"
+    },
+    {
+      "name": "progress_tracker",
+      "file": "FVSquad/ProgressTrackerCorrespondence.lean",
+      "guard_count": 33,
+      "status": "complete"
+    },
+    {
+      "name": "election_vote_granted",
+      "file": "FVSquad/ElectionCorrespondence.lean",
+      "guard_count": 23,
+      "status": "complete"
+    },
+    {
+      "name": "configuration_invariants",
+      "file": "FVSquad/ConfigurationInvariantsCorrespondence.lean",
+      "guard_count": 15,
+      "status": "complete"
+    },
+    {
+      "name": "maybe_commit",
+      "file": "FVSquad/MaybeCommitCorrespondence.lean",
+      "guard_count": 14,
+      "status": "complete"
+    },
+    {
+      "name": "uncommitted_state",
+      "file": "FVSquad/UncommittedStateCorrespondence.lean",
+      "guard_count": 13,
+      "status": "complete"
+    },
+    {
+      "name": "next_entries",
+      "file": "FVSquad/NextEntriesCorrespondence.lean",
+      "guard_count": 20,
+      "status": "complete"
+    },
+    {
+      "name": "has_next_entries",
+      "file": "FVSquad/HasNextEntriesCorrespondence.lean",
+      "guard_count": 33,
+      "status": "complete"
+    }
   ],
   "lean_files": 72,
   "last_run_date": "2026-04-25",
-  "last_task": "Task 10 (REPORT.md Runs 110-114) + Task 9 (CI audit)",
+  "last_task": "Task 5 (PT25/PT26 integration theorems) + Task 8 Route B (10 new #guard 34-43)",
   "targets": [
-    {"name": "hae_broadcast_invariant", "file": "formal-verification/lean/FVSquad/AEBroadcastInvariant.lean", "phase": 5, "notes": "ABI1-ABI10 proved. BroadcastLifecycle (BL1-BL3) connects to RaftReachable."},
-    {"name": "election_model", "file": "formal-verification/lean/FVSquad/RaftElection.lean", "phase": 5, "notes": "RV1-RV8 added. ElectionCorrespondence.lean: 23 #guard."},
-    {"name": "multistep_reachability", "file": "formal-verification/lean/FVSquad/MultiStepReachability.lean", "phase": 5, "notes": "MS1-MS7. ValidAEList + N-step safety."},
-    {"name": "broadcast_lifecycle", "file": "formal-verification/lean/FVSquad/BroadcastLifecycle.lean", "phase": 5, "notes": "BL1-BL3. BroadcastSeq->RaftReachable lifecycle closed."},
-    {"name": "uncommitted_state", "file": "formal-verification/lean/FVSquad/UncommittedState.lean", "phase": 5, "notes": "US1-US18, 0 sorry. Run 110: correspondence tests (13 #guard)."},
-    {"name": "has_next_entries", "file": "formal-verification/lean/FVSquad/HasNextEntries.lean", "phase": 5, "notes": "HNE1-HNE14, 0 sorry. Run 114: HasNextEntriesCorrespondence (33 #guard, 34 Rust cases)."},
-    {"name": "next_entries", "file": "formal-verification/lean/FVSquad/NextEntries.lean", "phase": 5, "notes": "NE1-NE7, 0 sorry. Run 113: NextEntriesCorrespondence (20 #guard, 20 Rust cases)."}
+    {
+      "name": "hae_broadcast_invariant",
+      "file": "formal-verification/lean/FVSquad/AEBroadcastInvariant.lean",
+      "phase": 5,
+      "notes": "ABI1-ABI10 proved. BroadcastLifecycle (BL1-BL3) connects to RaftReachable."
+    },
+    {
+      "name": "election_model",
+      "file": "formal-verification/lean/FVSquad/RaftElection.lean",
+      "phase": 5,
+      "notes": "RV1-RV8 added. ElectionCorrespondence.lean: 23 #guard."
+    },
+    {
+      "name": "multistep_reachability",
+      "file": "formal-verification/lean/FVSquad/MultiStepReachability.lean",
+      "phase": 5,
+      "notes": "MS1-MS7. ValidAEList + N-step safety."
+    },
+    {
+      "name": "broadcast_lifecycle",
+      "file": "formal-verification/lean/FVSquad/BroadcastLifecycle.lean",
+      "phase": 5,
+      "notes": "BL1-BL3. BroadcastSeq->RaftReachable lifecycle closed."
+    },
+    {
+      "name": "uncommitted_state",
+      "file": "formal-verification/lean/FVSquad/UncommittedState.lean",
+      "phase": 5,
+      "notes": "US1-US18, 0 sorry. Run 110: correspondence tests (13 #guard)."
+    },
+    {
+      "name": "has_next_entries",
+      "file": "formal-verification/lean/FVSquad/HasNextEntries.lean",
+      "phase": 5,
+      "notes": "HNE1-HNE14, 0 sorry. Run 114: HasNextEntriesCorrespondence (33 #guard, 34 Rust cases)."
+    },
+    {
+      "name": "next_entries",
+      "file": "formal-verification/lean/FVSquad/NextEntries.lean",
+      "phase": 5,
+      "notes": "NE1-NE7, 0 sorry. Run 113: NextEntriesCorrespondence (20 #guard, 20 Rust cases)."
+    }
   ],
   "ci_status": "lean-ci.yml healthy: 'Verify Lean Proofs' job (lake build) + 'Rust Correspondence Tests' job. Triggers: formal-verification/lean/**, formal-verification/tests/**, src/**",
-  "run_count": 115
+  "run_count": 116
 }
