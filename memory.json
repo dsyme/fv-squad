@@ -1,8 +1,8 @@
 {
   "lean_version": "4.28.0",
-  "theorem_count": 624,
+  "theorem_count": 647,
   "sorry_count": 0,
-  "last_run": 103,
+  "last_run": 108,
   "hqc_preserved_gap": "CLOSED via AEBroadcastInvariant+ElectionBroadcastChain. Remaining: connect broadcast to full election lifecycle.",
   "aeneas_status": "permanently_blocked_no_new_privileges",
   "toolchain_notes": "no Mathlib, stdlib only. WF7/WF8 use Nat.not_le.mpr. LogUnstable/IsUpToDate have NO namespace.",
@@ -10,7 +10,8 @@
     "Run 52: Task 8 Route B: MaybeAppendCorrespondence.lean (32 #guard, 8 cases), makeLog_none proved in FindConflictCorrespondence. 35 lean files, sorry 2\u21921.",
     "Run 96: Task 4+5: ProgressTracker.lean (15T, PT1-PT15). all_wf preserved by removePeer/insertPeer/updatePeer/applyChanges/initTracker and all 6 Progress state transitions. 548->563T, 59->60F, 0 sorry.",
     "Run 100: Task 5 (RV1-RV8): biconditionals for voteGranted, max-term theorem, role-unchanged, all-voters-voted. Task 8: ElectionCorrespondence.lean (23 #guard, 15 voteGranted + 8 processVoteRequest, Rust test passes). 593->601T, 62F, 0 sorry.",
-    "Run 103: Task 8 Route B: ConfigurationInvariantsCorrespondence.lean (15 #guard, 12 cases). votersLearnersDjB predicate. Rust test_configuration_invariants_correspondence (12 cases, all pass). Task 1: TARGETS.md (22 corr targets, 3 new completed), RESEARCH.md (Run 103 update). Finding: Lean VotersLearnersDisjoint stricter than Rust demotion state (outgoing \u2229 learners_next != empty is allowed in Rust). 624T, 65F, 0 sorry."
+    "Run 103: Task 8 Route B: ConfigurationInvariantsCorrespondence.lean (15 #guard, 12 cases). votersLearnersDjB predicate. Rust test_configuration_invariants_correspondence (12 cases, all pass). Task 1: TARGETS.md (22 corr targets, 3 new completed), RESEARCH.md (Run 103 update). Finding: Lean VotersLearnersDisjoint stricter than Rust demotion state (outgoing \u2229 learners_next != empty is allowed in Rust). 624T, 65F, 0 sorry.",
+    "Run 108: Task 5+11: US16/US17/US18 (UncommittedState false-iff, true-iff, ge_sub). Paper updated to 647T, 66F, 524g, 12-layer. PR #108."
   ],
   "run_history": [
     {
@@ -68,6 +69,24 @@
       "sorry_count_after": 0,
       "lean_file_count_after": 65,
       "pr_branch": "lean-squad/run-103-task1-task8-24918637464"
+    },
+    {
+      "run": 108,
+      "date": "2026-04-25",
+      "tasks": [
+        "Task 5 (Proof Assistance)",
+        "Task 11 (Paper)"
+      ],
+      "changes": [
+        "US16: maybeIncrease_false_iff (complete rejection characterisation)",
+        "US17: maybeIncrease_true_iff (dual acceptance iff)",
+        "US18: maybeReduce_ge_sub (saturation lower bound)",
+        "Paper: 575->647T, 55->66F, 373->524g, ten->twelve layers, 90->108 runs",
+        "Layer table expanded with Layers 11+12 (Flow Control, Config Invariants)"
+      ],
+      "sorry_count_after": 0,
+      "lean_file_count_after": 66,
+      "pr_branch": "lean-squad/run-108-task5-task11-24924282308"
     }
   ],
   "next_steps": [

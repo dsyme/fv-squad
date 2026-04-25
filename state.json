@@ -1,41 +1,135 @@
 {
-  "run_number": 107,
+  "run_number": 108,
   "last_updated": "2026-04-25T04:35:00Z",
   "lean_version": "4.30.0-rc2",
   "lean_stats": {
-    "theorems": 644,
+    "theorems": 647,
     "files": 66,
     "sorry": 0
   },
   "targets": [
-    {"name": "EntryVec", "phase": 5, "file": "FVSquad/EntryVec.lean", "status": "proved"},
-    {"name": "LogEntry", "phase": 5, "file": "FVSquad/LogEntry.lean", "status": "proved"},
-    {"name": "RaftLog", "phase": 5, "file": "FVSquad/RaftLog.lean", "status": "proved"},
-    {"name": "Progress", "phase": 5, "file": "FVSquad/Progress.lean", "status": "proved"},
-    {"name": "ReadOnly", "phase": 5, "file": "FVSquad/ReadOnly.lean", "status": "proved", "notes": "Run 107: RO14 advance_preserves_nodup added. RO13+RO14 complete the Nodup invariant."},
-    {"name": "UncommittedState", "phase": 5, "file": "FVSquad/UncommittedState.lean", "status": "proved", "notes": "Run 106: US1-US15, 0 sorry."},
-    {"name": "MaybeCommit", "phase": 5, "file": "FVSquad/MaybeCommit.lean", "status": "proved", "notes": "Run 107: informal spec written (maybe_commit_informal.md). MC1-MC12 all proved."}
+    {
+      "name": "EntryVec",
+      "phase": 5,
+      "file": "FVSquad/EntryVec.lean",
+      "status": "proved"
+    },
+    {
+      "name": "LogEntry",
+      "phase": 5,
+      "file": "FVSquad/LogEntry.lean",
+      "status": "proved"
+    },
+    {
+      "name": "RaftLog",
+      "phase": 5,
+      "file": "FVSquad/RaftLog.lean",
+      "status": "proved"
+    },
+    {
+      "name": "Progress",
+      "phase": 5,
+      "file": "FVSquad/Progress.lean",
+      "status": "proved"
+    },
+    {
+      "name": "ReadOnly",
+      "phase": 5,
+      "file": "FVSquad/ReadOnly.lean",
+      "status": "proved",
+      "notes": "Run 107: RO14 advance_preserves_nodup added. RO13+RO14 complete the Nodup invariant."
+    },
+    {
+      "name": "UncommittedState",
+      "phase": 5,
+      "file": "FVSquad/UncommittedState.lean",
+      "status": "proved",
+      "notes": "Run 108: US16-US18 added. US16 (false iff), US17 (true iff dual), US18 (ge_sub). 18T total, 0 sorry."
+    },
+    {
+      "name": "MaybeCommit",
+      "phase": 5,
+      "file": "FVSquad/MaybeCommit.lean",
+      "status": "proved",
+      "notes": "Run 107: informal spec written (maybe_commit_informal.md). MC1-MC12 all proved."
+    }
   ],
-  "notes": "Run 107: Task 5+2. RO14 advance_preserves_nodup proves queue Nodup preserved by advance (via drop_sublist). MaybeCommit informal spec documents Raft §5.4.2 term safety, all guards, edge cases. 643->644T, 66F, 0 sorry.",
+  "notes": "Run 108: Task 5+11. US16 (false iff), US17 (true iff), US18 (ge_sub bound). Paper updated 575\u2192647T, 55\u219266F, 373\u2192524g, ten\u2192twelve layers, 18\u219224 corr files. 647T, 66F, 0 sorry.",
   "next_steps": [
-    "Task 10 (Report update): update REPORT.md with Runs 104-107",
-    "Task 11 (Paper): update paper.tex with new theorem counts and findings",
-    "Task 5: Prove ProgressTracker all_wf integration theorem (connects PT1-PT24 to RaftReachable)",
-    "Task 7 (Critique): update with Run 107 changes"
+    "Task 10 (Report update): update REPORT.md with Runs 104-108",
+    "Task 7 (Critique): update with Runs 104-108 changes",
+    "Task 5: Add ProgressTracker integration theorem (connect PT1-PT24 to leader init)",
+    "Task 11 (Paper PDF): compile paper.pdf when LaTeX available"
   ],
   "correspondence_test_targets": [
-    {"name": "find_conflict", "file": "FindConflictCorrespondence.lean", "guard_count": 17},
-    {"name": "maybe_append", "file": "MaybeAppendCorrespondence.lean", "guard_count": 32},
-    {"name": "is_up_to_date", "file": "IsUpToDateCorrespondence.lean", "guard_count": 12},
-    {"name": "committed_index", "file": "CommittedIndexCorrespondence.lean", "guard_count": 8},
-    {"name": "limit_size", "file": "FVSquad/LimitSizeCorrespondence.lean", "guard_count": 10, "status": "complete"},
-    {"name": "config_validate", "file": "FVSquad/ConfigValidateCorrespondence.lean", "guard_count": 12, "status": "complete"},
-    {"name": "inflights", "file": "FVSquad/InflightsCorrespondence.lean", "guard_count": 12, "status": "complete"},
-    {"name": "log_unstable", "file": "FVSquad/LogUnstableCorrespondence.lean", "guard_count": 12, "status": "complete"},
-    {"name": "tally_votes", "file": "FVSquad/TallyVotesCorrespondence.lean", "guard_count": 10, "status": "complete"},
-    {"name": "progress_tracker", "file": "FVSquad/ProgressTrackerCorrespondence.lean", "guard_count": 33, "status": "complete"},
-    {"name": "election_vote_granted", "file": "FVSquad/ElectionCorrespondence.lean", "guard_count": 23, "status": "complete"},
-    {"name": "configuration_invariants", "file": "FVSquad/ConfigurationInvariantsCorrespondence.lean", "guard_count": 15, "status": "complete"}
+    {
+      "name": "find_conflict",
+      "file": "FindConflictCorrespondence.lean",
+      "guard_count": 17
+    },
+    {
+      "name": "maybe_append",
+      "file": "MaybeAppendCorrespondence.lean",
+      "guard_count": 32
+    },
+    {
+      "name": "is_up_to_date",
+      "file": "IsUpToDateCorrespondence.lean",
+      "guard_count": 12
+    },
+    {
+      "name": "committed_index",
+      "file": "CommittedIndexCorrespondence.lean",
+      "guard_count": 8
+    },
+    {
+      "name": "limit_size",
+      "file": "FVSquad/LimitSizeCorrespondence.lean",
+      "guard_count": 10,
+      "status": "complete"
+    },
+    {
+      "name": "config_validate",
+      "file": "FVSquad/ConfigValidateCorrespondence.lean",
+      "guard_count": 12,
+      "status": "complete"
+    },
+    {
+      "name": "inflights",
+      "file": "FVSquad/InflightsCorrespondence.lean",
+      "guard_count": 12,
+      "status": "complete"
+    },
+    {
+      "name": "log_unstable",
+      "file": "FVSquad/LogUnstableCorrespondence.lean",
+      "guard_count": 12,
+      "status": "complete"
+    },
+    {
+      "name": "tally_votes",
+      "file": "FVSquad/TallyVotesCorrespondence.lean",
+      "guard_count": 10,
+      "status": "complete"
+    },
+    {
+      "name": "progress_tracker",
+      "file": "FVSquad/ProgressTrackerCorrespondence.lean",
+      "guard_count": 33,
+      "status": "complete"
+    },
+    {
+      "name": "election_vote_granted",
+      "file": "FVSquad/ElectionCorrespondence.lean",
+      "guard_count": 23,
+      "status": "complete"
+    },
+    {
+      "name": "configuration_invariants",
+      "file": "FVSquad/ConfigurationInvariantsCorrespondence.lean",
+      "guard_count": 15,
+      "status": "complete"
+    }
   ],
   "lean_files": 66,
   "last_run_date": "2026-04-25",
