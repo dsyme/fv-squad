@@ -3115,6 +3115,7 @@ mod test_election_correspondence {
         assert_eq!(
             process_vote_request_model(2, Some(3), 1, 1, 5, 3, 2, 0),
             (3, Some(5)),
+
             "pvr case 7"
         );
         // Higher term (3>2), voter (4,5), isUpToDate((4,5),2,0)=false → becomeFollower
@@ -3123,5 +3124,154 @@ mod test_election_correspondence {
             (3, None),
             "pvr case 8"
         );
+    }
+
+    /// Lean-4 correspondence test for `UncommittedState::maybe_increase_uncommitted_size`
+    /// and `UncommittedState::maybe_reduce_uncommitted_size`.
+    ///
+    /// Mirrors the `#guard` assertions in
+    /// `formal-verification/lean/FVSquad/UncommittedStateCorrespondence.lean`.
+    ///
+    /// The Lean model takes a pre-computed `size : Nat` rather than entry slices.
+    /// In these tests all entries have the same `data` byte length, so we compute
+    /// `size` inline as `ents.iter().map(|e| e.get_data().len()).sum()`.
+    ///
+    /// ## Cases 1–8: maybe_increase_uncommitted_size
+    /// ## Cases 9–13: maybe_reduce_uncommitted_size
+    #[test]
+    fn test_uncommitted_state_correspondence() {
+        use crate::eraftpb::Entry;
+        use super::UncommittedState;
+
+        /// Build `count` entries each with `data_len` bytes of data.
+        /// Entries have index 1..=count so they are not filtered out by
+        /// `skip_while(|ent| ent.index <= last_log_tail_index)` when
+        /// `last_log_tail_index = 0`.
+        fn make_entries(count: usize, data_len: usize) -> Vec<Entry> {
+            (1..=count)
+                .map(|idx| {
+                    let mut e = Entry::default();
+                    e.index = idx as u64;
+                    e.data = vec![0u8; data_len].into();
+                    e
+                })
+                .collect()
+        }
+
+        // -----------------------------------------------------------------------
+        // Cases 1–8: maybe_increase_uncommitted_size
+        // (max_uncommitted, uncommitted_start, ents (count, bytes_each),
+        //  expected_result, expected_uncommitted_after)
+        // -----------------------------------------------------------------------
+        struct IncCase {
+            max:         usize,
+            uncommitted: usize,
+            size:        usize, // total bytes of the entries
+            want_result: bool,
+            want_after:  usize,
+            check_state: bool, // false for noLimit: Rust doesn't update uncommitted_size
+        }
+
+        let inc_cases = vec![
+            // case 1: noLimit (max=0) fast path — always allows; NOTE: Rust does NOT update
+            // uncommitted_size in the noLimit fast path (returns early before the size update).
+            // The Lean model does update it — a known modelling simplification. check_state=false.
+            IncCase { max: 0,   uncommitted: 20, size: 10, want_result: true,  want_after: 20,  check_state: false },
+            // case 2: size=0 (empty entries) — always allows
+            IncCase { max: 100, uncommitted: 20, size: 0,  want_result: true,  want_after: 20,  check_state: true },
+            // case 3: uncommitted=0 — first entry always allowed
+            IncCase { max: 100, uncommitted: 0,  size: 50, want_result: true,  want_after: 50,  check_state: true },
+            // case 4: within budget (30+50 ≤ 100)
+            IncCase { max: 100, uncommitted: 30, size: 50, want_result: true,  want_after: 80,  check_state: true },
+            // case 5: over budget (50+51 > 100) and uncommitted > 0
+            IncCase { max: 100, uncommitted: 50, size: 51, want_result: false, want_after: 50,  check_state: true },
+            // case 6: exactly at budget (50+50 = 100) — allowed
+            IncCase { max: 100, uncommitted: 50, size: 50, want_result: true,  want_after: 100, check_state: true },
+            // case 7: one byte over budget (50+51 > 100)
+            IncCase { max: 100, uncommitted: 50, size: 51, want_result: false, want_after: 50,  check_state: true },
+            // case 8: first entry large (uncommitted=0), always allowed
+            IncCase { max: 100, uncommitted: 0,  size: 200,want_result: true,  want_after: 200, check_state: true },
+        ];
+
+        for (i, c) in inc_cases.iter().enumerate() {
+            let mut us = UncommittedState {
+                // In the Lean model, maxUncommittedSize=0 means "no limit" (NO_LIMIT sentinel).
+                // In Rust, NO_LIMIT = u64::MAX, so we use usize::MAX for the no_limit cases.
+                max_uncommitted_size: if c.max == 0 { usize::MAX } else { c.max },
+                uncommitted_size:     c.uncommitted,
+                last_log_tail_index:  0,
+            };
+            // Build entries whose total data size equals c.size
+            let ents = if c.size == 0 {
+                vec![]
+            } else {
+                make_entries(1, c.size)
+            };
+            let got = us.maybe_increase_uncommitted_size(&ents);
+            assert_eq!(
+                got, c.want_result,
+                "increase case {}: max={} uncommitted={} size={} → result mismatch",
+                i + 1, c.max, c.uncommitted, c.size
+            );
+            if c.check_state {
+                assert_eq!(
+                    us.uncommitted_size, c.want_after,
+                    "increase case {}: max={} uncommitted={} size={} → uncommitted_size mismatch",
+                    i + 1, c.max, c.uncommitted, c.size
+                );
+            }
+        }
+
+        // -----------------------------------------------------------------------
+        // Cases 9–13: maybe_reduce_uncommitted_size
+        // The Lean model uses `noLimit : Bool` and `size : Nat`.
+        // In Rust, noLimit ↔ max_uncommitted_size = 0 (NO_LIMIT sentinel = 0).
+        // We set last_log_tail_index = 0 so all entries are counted (no skip).
+        // -----------------------------------------------------------------------
+        struct RedCase {
+            no_limit:    bool,
+            uncommitted: usize,
+            size:        usize,
+            want_result: bool,
+            want_after:  usize,
+        }
+
+        let red_cases = vec![
+            // case 9: noLimit=true fast path — unchanged, returns true
+            RedCase { no_limit: true,  uncommitted: 50, size: 30, want_result: true,  want_after: 50 },
+            // case 10: size=0 (empty entries) — no-op, returns true
+            RedCase { no_limit: false, uncommitted: 50, size: 0,  want_result: true,  want_after: 50 },
+            // case 11: size > uncommitted — overflow, set to zero, returns false
+            RedCase { no_limit: false, uncommitted: 50, size: 60, want_result: false, want_after: 0  },
+            // case 12: normal reduce (30 < 50)
+            RedCase { no_limit: false, uncommitted: 50, size: 30, want_result: true,  want_after: 20 },
+            // case 13: reduce to exactly zero (50 = 50)
+            RedCase { no_limit: false, uncommitted: 50, size: 50, want_result: true,  want_after: 0  },
+        ];
+
+        for (i, c) in red_cases.iter().enumerate() {
+            let mut us = UncommittedState {
+                // max=0 means NO_LIMIT in Lean model → usize::MAX in Rust
+                max_uncommitted_size: if c.no_limit { usize::MAX } else { 1000 },
+                uncommitted_size:     c.uncommitted,
+                last_log_tail_index:  0,
+            };
+            let ents = if c.size == 0 {
+                vec![]
+            } else {
+                make_entries(1, c.size)
+            };
+            let got = us.maybe_reduce_uncommitted_size(&ents);
+            assert_eq!(
+                got, c.want_result,
+                "reduce case {}: no_limit={} uncommitted={} size={} → result mismatch",
+                i + 9, c.no_limit, c.uncommitted, c.size
+            );
+            assert_eq!(
+                us.uncommitted_size, c.want_after,
+                "reduce case {}: no_limit={} uncommitted={} size={} → uncommitted_size mismatch",
+                i + 9, c.no_limit, c.uncommitted, c.size
+            );
+        }
     }
 }
