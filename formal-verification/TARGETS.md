@@ -86,7 +86,9 @@ has a `*Correspondence.lean` file with `#guard` tests and a matching Rust `test_
 | `election_vote_granted` | `ElectionCorrespondence.lean` | 23 | ✅ | exact |
 | `configuration_invariants` | `ConfigurationInvariantsCorrespondence.lean` | 15 | ✅ (Run 103) | exact |
 | `uncommitted_state` | `UncommittedStateCorrespondence.lean` | 13 | ✅ (Run 110) | abstraction |
-| **Total** | **23 files** | **~455** | **23 Rust tests** | — |
+| `next_entries` | `NextEntriesCorrespondence.lean` | 28 | ✅ (Run 113) | abstraction |
+| `has_next_entries` | `HasNextEntriesCorrespondence.lean` | 33 | ✅ (Run 114) | exact |
+| **Total** | **25 files** | **~513** | **25 Rust tests** | — |
 
 ### Note (Run 110): `uncommitted_state` correspondence finding
 

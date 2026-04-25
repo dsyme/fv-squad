@@ -1403,6 +1403,136 @@ mod test {
         }
     }
 
+    /// Lean Squad correspondence test for `applied_index_upper_bound` /
+    /// `has_next_entries_since` / `has_next_entries` with varying `sinceIdx`.
+    ///
+    /// 🔬 Mirrors `FVSquad/HasNextEntriesCorrespondence.lean` (Run 114).
+    /// Fixture: snapshot at index 3, entries 4–10, firstIndex = 4, UNLT = 10000.
+    #[test]
+    fn test_has_next_entries_since_correspondence() {
+        let l = default_logger();
+        let ents = [
+            new_entry(4, 1),
+            new_entry(5, 1),
+            new_entry(6, 1),
+            new_entry(7, 1),
+            new_entry(8, 1),
+            new_entry(9, 1),
+            new_entry(10, 1),
+        ];
+        const UNLT: u64 = 10000;
+
+        // --- Section 1: applied_index_upper_bound ---
+        // (committed, persisted, limit, expected_ub)
+        let ub_cases: &[(u64, u64, u64, u64)] = &[
+            (5, 3, 0, 3),
+            (5, 3, 2, 5),
+            (5, 3, UNLT, 5),
+            (3, 5, 0, 3),
+            (10, 6, 0, 6),
+            (10, 6, 2, 8),
+            (3, 3, 0, 3),
+            (7, 7, 0, 7),
+            (7, 7, 3, 7),
+        ];
+        for (i, &(committed, persisted, limit, expected_ub)) in ub_cases.iter().enumerate() {
+            let store = MemStorage::new();
+            store.wl().apply_snapshot(new_snapshot(3, 1)).expect("");
+            let mut raft_log = RaftLog::new(store, l.clone(), &Config::default());
+            raft_log.max_apply_unpersisted_log_limit = limit;
+            raft_log.append(&ents);
+            let unstable = raft_log.unstable_entries().to_vec();
+            if let Some(e) = unstable.last() {
+                raft_log.stable_entries(e.get_index(), e.get_term());
+                raft_log.mut_store().wl().append(&unstable).expect("");
+            }
+            raft_log.maybe_persist(persisted, 1);
+            raft_log.maybe_commit(committed, 1);
+            let actual_ub = raft_log.applied_index_upper_bound();
+            assert_eq!(
+                actual_ub, expected_ub,
+                "ub_case#{i}: applied_index_upper_bound(committed={committed}, persisted={persisted}, limit={limit}) = {actual_ub}; want {expected_ub}"
+            );
+        }
+
+        // --- Section 2: has_next_entries_since(sinceIdx) ---
+        // (committed, persisted, limit, since_idx, expected)
+        let hnes_cases: &[(u64, u64, u64, u64, bool)] = &[
+            (3, 3, 0, 0, false),
+            (5, 5, 0, 0, true),
+            (5, 5, 0, 3, true),
+            (5, 5, 0, 4, true),
+            (5, 5, 0, 5, false),
+            (5, 5, 0, 6, false),
+            (5, 3, 0, 0, false),
+            (5, 3, 2, 0, true),
+            (5, 3, 2, 4, true),
+            (5, 3, 2, 5, false),
+            (10, 5, 0, 2, true),
+            (10, 5, 3, 2, true),
+            (10, 5, 3, 7, true),
+            (10, 5, 3, 8, false),
+            (7, 10, 0, 3, true),
+            (7, 10, 0, 6, true),
+            (7, 10, 0, 7, false),
+        ];
+        for (i, &(committed, persisted, limit, since_idx, expected)) in
+            hnes_cases.iter().enumerate()
+        {
+            let store = MemStorage::new();
+            store.wl().apply_snapshot(new_snapshot(3, 1)).expect("");
+            let mut raft_log = RaftLog::new(store, l.clone(), &Config::default());
+            raft_log.max_apply_unpersisted_log_limit = limit;
+            raft_log.append(&ents);
+            let unstable = raft_log.unstable_entries().to_vec();
+            if let Some(e) = unstable.last() {
+                raft_log.stable_entries(e.get_index(), e.get_term());
+                raft_log.mut_store().wl().append(&unstable).expect("");
+            }
+            raft_log.maybe_persist(persisted, 1);
+            raft_log.maybe_commit(committed, 1);
+            let actual = raft_log.has_next_entries_since(since_idx);
+            assert_eq!(
+                actual, expected,
+                "hnes_case#{i}: has_next_entries_since({since_idx}) with committed={committed}, persisted={persisted}, limit={limit} = {actual}; want {expected}"
+            );
+        }
+
+        // --- Section 3: has_next_entries (sinceIdx = applied) ---
+        // (applied, committed, persisted, limit, expected)
+        let hne_cases: &[(u64, u64, u64, u64, bool)] = &[
+            (0, 5, 5, 0, true),
+            (4, 5, 5, 0, true),
+            (5, 5, 5, 0, false),
+            (0, 3, 3, 0, false),
+            (3, 5, 5, UNLT, true),
+            (5, 5, 5, UNLT, false),
+            (3, 5, 3, 0, false),
+        ];
+        for (i, &(applied, committed, persisted, limit, expected)) in hne_cases.iter().enumerate()
+        {
+            let store = MemStorage::new();
+            store.wl().apply_snapshot(new_snapshot(3, 1)).expect("");
+            let mut raft_log = RaftLog::new(store, l.clone(), &Config::default());
+            raft_log.max_apply_unpersisted_log_limit = limit;
+            raft_log.append(&ents);
+            let unstable = raft_log.unstable_entries().to_vec();
+            if let Some(e) = unstable.last() {
+                raft_log.stable_entries(e.get_index(), e.get_term());
+                raft_log.mut_store().wl().append(&unstable).expect("");
+            }
+            raft_log.maybe_persist(persisted, 1);
+            raft_log.maybe_commit(committed, 1);
+            #[allow(deprecated)]
+            raft_log.applied_to(applied);
+            let actual = raft_log.has_next_entries();
+            assert_eq!(
+                actual, expected,
+                "hne_case#{i}: has_next_entries() with applied={applied}, committed={committed}, persisted={persisted}, limit={limit} = {actual}; want {expected}"
+            );
+        }
+    }
+
     #[test]
     fn test_slice() {
         let (offset, num) = (100u64, 100u64);

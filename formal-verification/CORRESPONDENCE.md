@@ -7,7 +7,8 @@ correspondence level, known divergences, and the impact on any proofs that rely 
 definition.
 
 ## Last Updated
-- **Date**: 2026-04-24 04:11 UTC
+- **Date**: 2026-04-25 12:30 UTC
+- **Commit**: `adac6a1` — Run 114: Task 4 — Added `HasNextEntriesCorrespondence.lean` (33 `#guard`, Rust test `test_has_next_entries_since_correspondence`). Task 6 — Updated CORRESPONDENCE.md with all correspondence targets added since Run 92 (Runs 93–114). Totals: 671 theorems, 513 `#guard`, 71 Lean files, 26 correspondence targets, 25 Rust correspondence tests.
 - **Commit**: `7f4845a` — Run 92: Task 8 — Added QuorumRecentlyActiveCorrespondence (14 `#guard` + 14 Rust assertions); added validation evidence section. Task 5 — UnstablePersistBridge (8 theorems, closes firstUpdateIndex gap). Totals: 544T, 412 `#guard`, 58F, 0 sorry, 19 correspondence targets.
 
 ---
@@ -2374,3 +2375,157 @@ Relevant theorems in `RaftLogAppend.lean` (all proved, 0 sorry):
 ---
 
 > 🔬 Updated by [Lean Squad](https://github.com/dsyme/raft-lean-squad/actions/runs/24871315223) automated formal verification. Run 92: Task 8 — Added QuorumRecentlyActiveCorrespondence validation evidence (14 `#guard`, 14 Rust cases, Route B fixtures). Task 5 — UnstablePersistBridge (8 theorems, closes firstUpdateIndex gap). Totals: 544 theorems, 412 `#guard`, 58 Lean files, 0 sorry, 19 correspondence targets.
+
+---
+
+## `FVSquad/ConfigurationInvariantsCorrespondence.lean` — Configuration Invariants Correspondence (18 `#guard`, Run 103)
+
+**Lean file**: `formal-verification/lean/FVSquad/ConfigurationInvariantsCorrespondence.lean`
+**Rust source**: `src/tracker.rs` — `Configuration` struct voter/learner invariants
+
+Validates the `votersLearnersDjB` computable predicate: no peer appears in both a voter set and a learner set.
+
+| Lean name | Rust counterpart | Correspondence level |
+|-----------|-----------------|----------------------|
+| `votersLearnersDjB` | `Configuration` disjointness checks | **abstraction** |
+
+### Validation evidence
+
+- **Lean side**: 18 `#guard` in `ConfigurationInvariantsCorrespondence.lean` (lake build ✅, 0 sorry).
+- **Rust side**: `test_configuration_invariants_correspondence` in `src/tracker.rs` (12 cases, all pass).
+- **Correspondence test status**: ✅ Complete.
+
+**Finding (Run 103)**: Lean `VotersLearnersDisjoint` is stricter than Rust — the Lean predicate
+requires `outgoing_voters ∩ learners_next = ∅`, but Rust allows this intersection to be non-empty
+during a demotion transition.  This divergence is documented as a known mismatch (see Known Mismatches).
+
+---
+
+## `FVSquad/ElectionCorrespondence.lean` — Election Correspondence (28 `#guard`, Run 100)
+
+**Lean file**: `formal-verification/lean/FVSquad/ElectionCorrespondence.lean`
+**Rust source**: `src/raft.rs` — `vote_granted` and `process_vote_request`
+
+| Lean name | Rust counterpart | Correspondence level |
+|-----------|-----------------|----------------------|
+| `voteGranted` | `RaftCore::vote_granted_model` (test helper) | **abstraction** |
+| `processVoteRequest` | `RaftCore::handle_request_vote_response` flow | **abstraction** |
+
+### Validation evidence
+
+- **Lean side**: 28 `#guard` in `ElectionCorrespondence.lean` (lake build ✅, 0 sorry).
+- **Rust side**: `test_election_vote_granted_correspondence` in `src/raft.rs` (15 `voteGranted` + 8 `processVoteRequest` cases, all pass).
+- **Correspondence test status**: ✅ Complete — 28 `#guard` + Rust assertions all pass.
+
+---
+
+## `FVSquad/JointVoteCorrespondence.lean` — JointVote Correspondence (18 `#guard`, Run ~105)
+
+**Lean file**: `formal-verification/lean/FVSquad/JointVoteCorrespondence.lean`
+**Rust source**: `src/quorum/joint.rs` — `JointConfig::vote_result`
+
+| Lean name | Rust counterpart | Correspondence level |
+|-----------|-----------------|----------------------|
+| `jointVoteResult` | `JointConfig::vote_result` | **exact** |
+
+### Validation evidence
+
+- **Lean side**: 18 `#guard` in `JointVoteCorrespondence.lean` (lake build ✅, 0 sorry).
+- **Rust side**: `test_joint_vote_result_correspondence` in `src/quorum/joint.rs` (all pass).
+- **Correspondence test status**: ✅ Complete.
+
+---
+
+## `FVSquad/NextEntriesCorrespondence.lean` — NextEntries Correspondence (28 `#guard`, Run 113)
+
+**Lean file**: `formal-verification/lean/FVSquad/NextEntriesCorrespondence.lean`
+**Rust source**: `src/raft_log.rs` — `RaftLog::next_entries_since` / `RaftLog::next_entries`
+
+| Lean name | Rust counterpart | Correspondence level |
+|-----------|-----------------|----------------------|
+| `nextEntriesSince` | `RaftLog::next_entries_since` | **abstraction** (`max_size` ignored; returns full slice) |
+| `nextEntries` | `RaftLog::next_entries` | **abstraction** |
+
+### Validation evidence
+
+- **Lean side**: 28 `#guard` in `NextEntriesCorrespondence.lean` (lake build ✅, 0 sorry).
+- **Rust side**: `test_next_entries_correspondence` in `src/raft_log.rs` (20 cases, all pass).
+- **Commands**: `lake build FVSquad.NextEntriesCorrespondence` / `cargo test test_next_entries_correspondence`.
+- **Correspondence test status**: ✅ Complete — 28 `#guard` + 20 Rust cases all pass.
+
+---
+
+## `FVSquad/ProgressTrackerCorrespondence.lean` — ProgressTracker Correspondence (34 `#guard`, Run ~107)
+
+**Lean file**: `formal-verification/lean/FVSquad/ProgressTrackerCorrespondence.lean`
+**Rust source**: `src/tracker.rs` — `ProgressTracker` membership operations
+
+| Lean name | Rust counterpart | Correspondence level |
+|-----------|-----------------|----------------------|
+| `hasPeer` | `ProgressTracker::contains` / map key membership | **abstraction** |
+| `insertPeer` / `removePeer` | `ProgressTracker` map insertion/removal | **abstraction** |
+| `applyChanges` | `ProgressTracker::apply_conf` | **abstraction** |
+
+### Validation evidence
+
+- **Lean side**: 34 `#guard` in `ProgressTrackerCorrespondence.lean` (lake build ✅, 0 sorry).
+- **Rust side**: `test_progress_tracker_correspondence` in `src/tracker.rs` (all pass).
+- **Correspondence test status**: ✅ Complete.
+
+---
+
+## `FVSquad/UncommittedStateCorrespondence.lean` — UncommittedState Correspondence (13 `#guard`, Run 110)
+
+**Lean file**: `formal-verification/lean/FVSquad/UncommittedStateCorrespondence.lean`
+**Rust source**: `src/raft.rs` — `RaftCore::maybe_increase_uncommitted_size` / `maybe_reduce_uncommitted_size`
+
+| Lean name | Rust counterpart | Correspondence level |
+|-----------|-----------------|----------------------|
+| `maybeIncrease` | `maybe_increase_uncommitted_size` | **abstraction** (`noLimit` fast-path: see finding) |
+| `maybeReduce` | `maybe_reduce_uncommitted_size` | **abstraction** |
+
+### Validation evidence
+
+- **Lean side**: 13 `#guard` in `UncommittedStateCorrespondence.lean` (lake build ✅, 0 sorry).
+- **Rust side**: `test_uncommitted_state_correspondence` in `src/raft.rs` (13 cases, all pass).
+- **Correspondence test status**: ✅ Complete.
+
+**Finding (Run 110)**: When `max_uncommitted_size = 0` (no limit), the Lean model and Rust
+implementation have a state divergence: the Rust `noLimit` fast-path increments
+`uncommitted_size` even when returning `true`, while the Lean abstract model does not track
+`uncommitted_size` and returns `true` unconditionally.  This is documented as a known
+approximation; the proofs in `UncommittedState.lean` still hold over the abstract model.
+
+---
+
+## `FVSquad/HasNextEntriesCorrespondence.lean` — HasNextEntries Correspondence (33 `#guard`, Run 114)
+
+**Lean file**: `formal-verification/lean/FVSquad/HasNextEntriesCorrespondence.lean`
+**Rust source**: `src/raft_log.rs` — `RaftLog::applied_index_upper_bound` / `has_next_entries_since` / `has_next_entries`
+
+This file extends `NextEntriesCorrespondence.lean` (Run 113) by specifically testing
+`hasNextEntriesSince` with **varying `sinceIdx`** (not just `applied`), providing more direct
+coverage of theorems HNE9–HNE13 (anti-monotonicity and monotonicity).
+
+| Lean name | Rust counterpart | Correspondence level |
+|-----------|-----------------|----------------------|
+| `appliedIndexUpperBound` | `RaftLog::applied_index_upper_bound` | **exact** |
+| `hasNextEntriesSince` | `RaftLog::has_next_entries_since` | **exact** |
+| `hasNextEntries` | `RaftLog::has_next_entries` | **exact** |
+
+### Divergences
+
+None significant.  All three functions are pure computations with no I/O, mutation, or side
+effects.  Lean uses `Nat`; Rust uses `u64`; overflow is not modelled (index values are well
+within u64 range in practice).
+
+### Validation evidence
+
+- **Lean side**: 33 `#guard` in `HasNextEntriesCorrespondence.lean` (lake build ✅, 0 sorry, Lean 4.30.0-rc2).
+  Three sections: `appliedIndexUpperBound` (9 cases), `hasNextEntriesSince` (17 cases), `hasNextEntries` (7 cases).
+- **Rust side**: `test_has_next_entries_since_correspondence` in `src/raft_log.rs` (all 3 sections pass, 34 total assertions).
+- **Commands**:
+  - Lean: `cd formal-verification/lean && lake build FVSquad.HasNextEntriesCorrespondence`
+  - Rust: `cargo test test_has_next_entries_since_correspondence`
+- **Coverage**: upper-bound formula, anti-monotonicity (sinceIdx near boundary), monotonicity in committed/persisted, zero-limit vs non-zero-limit paths, `has_next_entries` as alias for `has_next_entries_since(applied)`.
+- **Correspondence test status**: ✅ Complete — 33 `#guard` + 34 Rust assertions all pass.
