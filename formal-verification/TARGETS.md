@@ -29,6 +29,9 @@ Prioritised target list. Phases: 1=Research, 2=Informal Spec, 3=Lean Spec, 4=Lea
 | 19 | `joint_safety_composition` | cross-module | `jointCommittedIndex` × `hasQuorum` × `SafetyComposition` | 5 ✅ | 10 theorems proved (0 sorry). `FVSquad/JointSafetyComposition.lean`. |
 | 20 | `raft_protocol` | `src/raft_log.rs` + `proto/` | AppendEntries / RequestVote transitions | 5 ✅ | 10 theorems proved (0 sorry). RP6 and RP8 proved. `FVSquad/RaftProtocol.lean`. |
 | 23 | `raft_trace` | `RaftSafety.lean` + `RaftProtocol.lean` | Protocol-level reachability model | 5 ✅⚠️ | RT0+RT1+RT2 proved (0 sorry), but `step` hypotheses are abstract axioms — not yet discharged from a concrete election model. `FVSquad/RaftTrace.lean`. |
+| 24 | `progress_tracker` | `src/tracker.rs` | `ProgressTracker` membership ops | 5 ✅ | PT1-PT21 proved (Run 96+102): all_wf preservation, peer membership, `hasPeer`/`removePeer`/`insertPeer`. `FVSquad/ProgressTracker.lean`. |
+| 25 | `configuration_invariants` | `src/tracker.rs` | `Configuration` `VotersLearnersDisjoint` invariant | 5 ✅ | CI1-CI8 proved (Run 102): structural invariant, disjointness under ops. Correspondence: `ConfigurationInvariantsCorrespondence.lean` (15 `#guard`, Run 103). `FVSquad/ConfigurationInvariants.lean`. |
+| 26 | `multistep_reachability` | cross-module | N-step `RaftReachable` + cluster safety | 5 ✅ | MS1-MS7 proved (Run 101): `ValidAEList`, N-step safety certificate, `committed_mono` across sequences. `FVSquad/MultiStepReachability.lean`. |
 
 ## Active / Future Targets — Closing the Election Model Gap
 
@@ -52,7 +55,7 @@ See `CRITIQUE.md §Critical Gap Analysis` for the full analysis.
 | 21 | `read_only` | `src/read_only.rs` | `ReadOnly` struct + 5 methods | 4 🔄 | ReadIndex linearisability bookkeeping (Raft §6.4). Informal spec: `specs/read_only_informal.md`. Lean model: `FVSquad/ReadOnly.lean` (12 theorems: RO1–RO12, 11 proved, 1 sorry: RO8 needs NoDuplicates invariant for queue). Next step: formalise NoDuplicates and prove RO8. |
 | 22 | `raft_log_append` | `src/raft_log.rs` | `RaftLog::append` | 5 ✅ | Lean spec + impl (Run 45+46) + P6/P7 proved (Run 50). `FVSquad/RaftLogAppend.lean` (14+ theorems). Correspondence test: `FVSquad/RaftLogAppendCorrespondence.lean` (Run 82, 21 `#guard`, all 3 truncate_and_append branches covered). |
 
-## Correspondence Test Coverage (Run 92) — 19 targets, 412 `#guard`
+## Correspondence Test Coverage (Run 103) — 21 targets, ~442 `#guard`
 
 All major proof targets now have correspondence-validated Lean models. Every target below
 has a `*Correspondence.lean` file with `#guard` tests and a matching Rust `test_*_correspondence`.
@@ -79,7 +82,9 @@ has a `*Correspondence.lean` file with `#guard` tests and a matching Rust `test_
 | `maybe_persist_fui` | `MaybePersistFUICorrespondence.lean` | 20 | ✅ | abstraction |
 | `quorum_recently_active` | `QuorumRecentlyActiveCorrespondence.lean` | 14 | ✅ | abstraction |
 | `joint_vote_result` | `JointVoteCorrespondence.lean` | 15 | ✅ | exact |
-| **Total** | **20 files** | **~427** | **20 Rust tests** | — |
+| `election_vote_granted` | `ElectionCorrespondence.lean` | 23 | ✅ | exact |
+| `configuration_invariants` | `ConfigurationInvariantsCorrespondence.lean` | 15 | ✅ (Run 103) | exact |
+| **Total** | **22 files** | **~442** | **22 Rust tests** | — |
 
 ## Proof Bridges (Run 92)
 
@@ -89,20 +94,23 @@ has a `*Correspondence.lean` file with `#guard` tests and a matching Rust `test_
 
 ## Next Steps
 
-The priority order for future runs, given the current state (Run 84):
+The priority order for future runs, given the current state (Run 103):
 
-1. **`progress_set`** (B2): Informal spec + Lean spec for `ProgressSet::quorum_active`
-   (multi-peer quorum detection). Bridges per-peer `Progress` invariants to cluster level.
-2. **Election-broadcast chain** (B3): Compose `RaftElection.lean` → `ElectionConcreteModel.lean`
-   → `AEBroadcastInvariant.lean` to close the last gap in the Raft safety proof chain.
-3. **Update REPORT.md and paper.tex**: Both need updating for Runs 78–84 (MaybePersistFUI,
-   RaftLogAppendCorrespondence, MaybeCommitCorrespondence, 18 correspondence test targets).
-4. **Task 7 (Critique)**: Update `CRITIQUE.md` with Run 84 changes (MaybePersistFUI.lean,
-   18 correspondence files, 362+ #guard, FU7 safety property).
+1. **Task 7 (Critique)**: Update `CRITIQUE.md` with Runs 98–103 (election transitions RT1-RT15,
+   election correspondence, MultiStepReachability MS1-MS7, ConfigurationInvariants CI1-CI8,
+   ProgressTracker PT16-PT21, ConfigurationInvariantsCorrespondence).
+2. **Task 10 (Report)**: Update `REPORT.md` with Runs 98–103 findings — 624+ theorems across
+   65 Lean files, election model + N-step safety certificate.
+3. **Task 11 (Conference Paper)**: Update `paper.tex` with election model and N-step safety results.
+4. **`read_only` RO8**: Formalise `NoDuplicates` invariant for the ReadOnly queue and prove RO8.
+5. **A3 (`leader_completeness`)**: Strengthen `HLogConsistency` derivation via the ER2 election
+   reachability chain — connects the election model to the log-matching invariant.
+6. **A4/A5 (`concrete_transitions`)**: Discharge `hlogs'`, `hno_overwrite`, `hcommitted_mono`
+   and `hnew_cert` to close the remaining abstract axioms in `RaftReachable.step`.
 
-*(B1 — `firstUpdateIndex` modelling — is now complete as of Run 84: `MaybePersistFUI.lean`
-formalises the FUI derivation from `Unstable` (FU1–FU8, 8 theorems, 0 sorry) and
-`MaybePersistFUICorrespondence.lean` provides 20 `#guard` correspondence tests.)*
+*(Run 103: Added `ConfigurationInvariantsCorrespondence.lean` (15 `#guard`) and
+`test_configuration_invariants_correspondence` in `src/tracker.rs`. TARGETS.md updated to
+reflect 626+ theorems, 65 Lean files, 22 correspondence test targets, ~442 `#guard` total.)*
 
 ---
 

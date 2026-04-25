@@ -642,4 +642,83 @@ mod tests {
             }
         }
     }
+
+    // Task 8 Route B — ConfigurationInvariants correspondence test.
+    // Mirrors FVSquad/ConfigurationInvariantsCorrespondence.lean exactly.
+    //
+    // Each case checks whether the `VotersLearnersDisjoint` invariant holds on a
+    // concrete `Configuration` (incoming, outgoing, learners, learners_next).
+    //
+    // The invariant: no peer appears in both a voter set and a learner set.
+    // Formally, all four intersections must be empty:
+    //   incoming_voters ∩ learners        = ∅
+    //   outgoing_voters ∩ learners        = ∅
+    //   incoming_voters ∩ learners_next   = ∅
+    //   outgoing_voters ∩ learners_next   = ∅
+    #[test]
+    fn test_configuration_invariants_correspondence() {
+        // Helper: check the four-clause VotersLearnersDisjoint invariant.
+        fn voters_learners_disjoint(
+            incoming: &[u64],
+            outgoing: &[u64],
+            learners: &[u64],
+            learners_next: &[u64],
+        ) -> bool {
+            let lset: HashSet<u64> = learners.iter().copied().collect();
+            let lnset: HashSet<u64> = learners_next.iter().copied().collect();
+            // Clause 1: incoming_voters ∩ learners = ∅
+            let c1 = incoming.iter().all(|id| !lset.contains(id));
+            // Clause 2: outgoing_voters ∩ learners = ∅
+            let c2 = outgoing.iter().all(|id| !lset.contains(id));
+            // Clause 3: incoming_voters ∩ learners_next = ∅
+            let c3 = incoming.iter().all(|id| !lnset.contains(id));
+            // Clause 4: outgoing_voters ∩ learners_next = ∅
+            let c4 = outgoing.iter().all(|id| !lnset.contains(id));
+            c1 && c2 && c3 && c4
+        }
+
+        // (incoming, outgoing, learners, learners_next, expected)
+        let cases: &[(&[u64], &[u64], &[u64], &[u64], bool)] = &[
+            // Case 1: empty configuration
+            (&[], &[], &[], &[], true),
+            // Case 2: simple disjoint — incoming=[1,2,3], learners=[4,5]
+            (&[1, 2, 3], &[], &[4, 5], &[], true),
+            // Case 3: no learners — incoming=[1,2,3]
+            (&[1, 2, 3], &[], &[], &[], true),
+            // Case 4: joint config, disjoint — incoming=[1,2], outgoing=[2,3], learners=[4]
+            (&[1, 2], &[2, 3], &[4], &[], true),
+            // Case 5: demotion — outgoing=[1,2,3], learners_next=[3]:
+            //   3 ∈ outgoing ∩ learners_next → invariant violated
+            (&[1, 2], &[1, 2, 3], &[], &[3], false),
+            // Case 6: violation — incoming=[1,2], learners=[2,3]: 2 in both
+            (&[1, 2], &[], &[2, 3], &[], false),
+            // Case 7: violation — outgoing=[1,2,3], learners=[2]: 2 in both
+            (&[], &[1, 2, 3], &[2], &[], false),
+            // Case 8: violation — incoming=[1], learners_next=[1]: 1 in both
+            (&[1], &[], &[], &[1], false),
+            // Case 9: violation — outgoing=[5], learners_next=[5]: 5 in both
+            (&[], &[5], &[], &[5], false),
+            // Case 10: fully disjoint joint config
+            (&[1, 2, 3], &[4, 5, 6], &[7, 8], &[], true),
+            // Case 11: all different peers
+            (&[1], &[2], &[3], &[4], true),
+            // Case 12: peer 1 in incoming, outgoing, AND learners
+            (&[1, 2, 3], &[1, 2, 3], &[1], &[], false),
+        ];
+
+        for (i, &(incoming, outgoing, learners, learners_next, expected)) in
+            cases.iter().enumerate()
+        {
+            let result = voters_learners_disjoint(incoming, outgoing, learners, learners_next);
+            assert_eq!(
+                result, expected,
+                "case {}: VotersLearnersDisjoint(in={:?}, out={:?}, l={:?}, ln={:?})",
+                i + 1,
+                incoming,
+                outgoing,
+                learners,
+                learners_next
+            );
+        }
+    }
 }

@@ -429,3 +429,49 @@ Based on Run 76 `CRITIQUE.md` recommendations and subsequent work:
    ~530T/55F (some theorem renamings may account for the count difference). An updated
    critique reviewing the Run 77–84 additions would be valuable.
 
+
+## Run 103 Update (2026-04-25) — ConfigurationInvariants Correspondence + Research Refresh
+
+### Current Project State (Run 103)
+
+**65 Lean files, ~626 theorems, 0 sorry, 22 correspondence test targets, ~442 `#guard` tests.**
+
+Key additions since Run 85:
+- **Runs 96–102**: ProgressTracker.lean (PT1–PT21), election model extensions (RV1–RV8),
+  ElectionCorrespondence.lean (23 `#guard`), MultiStepReachability.lean (MS1–MS7),
+  ConfigurationInvariants.lean (CI1–CI8).
+- **Run 103**: ConfigurationInvariantsCorrespondence.lean (15 `#guard`) — validates the
+  `VotersLearnersDisjoint` invariant on 12 concrete configurations.
+
+### Updated Priority Table (Run 103)
+
+| Priority | Target | Goal | Difficulty | Files | Status |
+|----------|--------|------|-----------|-------|--------|
+| ~~**B1**~~ | ~~`firstUpdateIndex`~~ | ~~Formalise FUI derivation~~ | ~~Low~~ | `MaybePersistFUI.lean` | ✅ Done (Run 84) |
+| ~~**B2**~~ | ~~`progress_tracker`~~ | ~~ProgressTracker membership ops~~ | ~~Medium~~ | `ProgressTracker.lean` | ✅ Done (Run 96+102) |
+| ~~**B3a**~~ | ~~Election broadcast chain~~ | ~~Compose election → broadcast → ABI8~~ | ~~High~~ | `ElectionBroadcastChain.lean` | ✅ Done (Run 97) |
+| **C1** | `leader_completeness` | Strengthen HLogConsistency via ER2 chain | High | `LeaderCompleteness.lean` | 🔄 Partial (LC1–LC10+) |
+| **C2** | `concrete_transitions` | Discharge remaining step hypotheses (A4/A5) | Medium | `ConcreteProtocolStep.lean` | 🔄 Partial |
+| **C3** | CRITIQUE.md refresh | Update critique for Runs 98–103 | Low | `CRITIQUE.md` | ⬜ Needed |
+| **C4** | REPORT.md + paper.tex | Update for Runs 98–103 | Low | `REPORT.md`, `paper.tex` | ⬜ Needed |
+| **C5** | `read_only` RO8 | Prove RO8 with NoDuplicates invariant | Medium | `ReadOnly.lean` | ⬜ 1 sorry remains |
+
+### Research Insight (Run 103): Correspondence Coverage Analysis
+
+Run 103 completes correspondence tests for `ConfigurationInvariants`. One notable
+finding from the correspondence test design:
+
+**Case 5** (incoming=[1,2], outgoing=[1,2,3], learners=[], learners_next=[3]) shows that
+the Lean `VotersLearnersDisjoint` invariant is **stricter** than a casual reading of the
+Rust documentation might suggest. The Lean model includes
+`outgoing_voters ∩ learners_next = ∅` as a required clause, but the Rust demotion scenario
+explicitly creates a state where peer 3 appears in both `outgoing_voters` and `learners_next`.
+This means the Lean invariant cannot be stated as a simple data invariant over the
+intermediate joint-configuration state — it is a constraint on the _finalised_ configuration
+only, or on the incoming-voters half of the joint config.
+
+This gap (Lean model stricter than Rust semantics for the demotion case) should be noted
+in `CRITIQUE.md` and may warrant a revised formulation of `VotersLearnersDisjoint` to
+accurately capture the actual runtime invariant. It does not invalidate the existing CI
+theorems (which prove structural properties given the invariant), but it means the invariant
+as stated is not preserved through the joint-config transition for the demoted-voter case.
