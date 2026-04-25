@@ -52,10 +52,11 @@ See `CRITIQUE.md §Critical Gap Analysis` for the full analysis.
 | Priority | ID | File | Function | Phase | Notes |
 |----------|----|------|----------|-------|-------|
 | 11 | `progress_set` | `src/tracker/progress_set.rs` | quorum tracking over progress map | 1 | Formalise `ProgressSet::quorum_active` and quorum detection across the voter progress map. |
-| 21 | `read_only` | `src/read_only.rs` | `ReadOnly` struct + 5 methods | 4 🔄 | ReadIndex linearisability bookkeeping (Raft §6.4). Informal spec: `specs/read_only_informal.md`. Lean model: `FVSquad/ReadOnly.lean` (12 theorems: RO1–RO12, 11 proved, 1 sorry: RO8 needs NoDuplicates invariant for queue). Next step: formalise NoDuplicates and prove RO8. |
+| 21 | `read_only` | `src/read_only.rs` | `ReadOnly` struct + 5 methods | 5 ✅ | ReadIndex linearisability bookkeeping (Raft §6.4). `FVSquad/ReadOnly.lean` (15T: RO1–RO14, all proved, 0 sorry). |
 | 22 | `raft_log_append` | `src/raft_log.rs` | `RaftLog::append` | 5 ✅ | Lean spec + impl (Run 45+46) + P6/P7 proved (Run 50). `FVSquad/RaftLogAppend.lean` (14+ theorems). Correspondence test: `FVSquad/RaftLogAppendCorrespondence.lean` (Run 82, 21 `#guard`, all 3 truncate_and_append branches covered). |
+| 27 | `has_next_entries` | `src/raft_log.rs` | `applied_index_upper_bound` / `has_next_entries_since` | 5 ✅ | **New — Run 111.** Informal spec: `specs/has_next_entries_informal.md`. Lean spec: `FVSquad/HasNextEntries.lean` (14T: HNE1–HNE14, all proved, 0 sorry). Models the interaction between `committed`, `persisted`, and `max_apply_unpersisted_log_limit`. |
 
-## Correspondence Test Coverage (Run 103) — 21 targets, ~442 `#guard`
+## Correspondence Test Coverage (Run 111) — 23 targets, ~455 `#guard`
 
 All major proof targets now have correspondence-validated Lean models. Every target below
 has a `*Correspondence.lean` file with `#guard` tests and a matching Rust `test_*_correspondence`.
@@ -84,7 +85,16 @@ has a `*Correspondence.lean` file with `#guard` tests and a matching Rust `test_
 | `joint_vote_result` | `JointVoteCorrespondence.lean` | 15 | ✅ | exact |
 | `election_vote_granted` | `ElectionCorrespondence.lean` | 23 | ✅ | exact |
 | `configuration_invariants` | `ConfigurationInvariantsCorrespondence.lean` | 15 | ✅ (Run 103) | exact |
-| **Total** | **22 files** | **~442** | **22 Rust tests** | — |
+| `uncommitted_state` | `UncommittedStateCorrespondence.lean` | 13 | ✅ (Run 110) | abstraction |
+| **Total** | **23 files** | **~455** | **23 Rust tests** | — |
+
+### Note (Run 110): `uncommitted_state` correspondence finding
+
+`UncommittedStateCorrespondence.lean` (Run 110) documents a **noLimit fast-path state
+divergence**: when `max_uncommitted_size = 0` (no limit), the Lean model increments
+`uncommittedSize` but the Rust implementation returns early without updating it.  The
+boolean return value agrees on all 13 test cases; no proved theorem depends on the
+divergent state.  See `CRITIQUE.md §Run 110` for the full analysis.
 
 ## Proof Bridges (Run 92)
 
@@ -94,19 +104,15 @@ has a `*Correspondence.lean` file with `#guard` tests and a matching Rust `test_
 
 ## Next Steps
 
-The priority order for future runs, given the current state (Run 103):
+The priority order for future runs, given the current state (Run 111):
 
-1. **Task 7 (Critique)**: Update `CRITIQUE.md` with Runs 98–103 (election transitions RT1-RT15,
-   election correspondence, MultiStepReachability MS1-MS7, ConfigurationInvariants CI1-CI8,
-   ProgressTracker PT16-PT21, ConfigurationInvariantsCorrespondence).
-2. **Task 10 (Report)**: Update `REPORT.md` with Runs 98–103 findings — 624+ theorems across
-   65 Lean files, election model + N-step safety certificate.
-3. **Task 11 (Conference Paper)**: Update `paper.tex` with election model and N-step safety results.
-4. **`read_only` RO8**: Formalise `NoDuplicates` invariant for the ReadOnly queue and prove RO8.
-5. **A3 (`leader_completeness`)**: Strengthen `HLogConsistency` derivation via the ER2 election
-   reachability chain — connects the election model to the log-matching invariant.
-6. **A4/A5 (`concrete_transitions`)**: Discharge `hlogs'`, `hno_overwrite`, `hcommitted_mono`
-   and `hnew_cert` to close the remaining abstract axioms in `RaftReachable.step`.
+1. **Task 5 (Proof Assistance)**: Connect `ElectionBroadcastChain` to `RaftReachable` to discharge
+   `HLogConsistency` unconditionally — the last major abstract gap in the protocol-level safety proof.
+2. **Task 8 Route B**: Correspondence tests for `has_next_entries_since` (new target, Run 111).
+3. **Task 7 (Critique)**: Update `CRITIQUE.md` with Runs 109–111.
+4. **Task 10 (Report)**: Update `REPORT.md` with Runs 109–111 (647T→661T, 67→68 files).
+5. **Task 11 (Conference Paper)**: Update `paper.tex` with Run 110–111 results.
+6. **Task 5 (ProgressTracker integration)**: Connect PT1–PT24 to leader-init theorem.
 
 *(Run 103: Added `ConfigurationInvariantsCorrespondence.lean` (15 `#guard`) and
 `test_configuration_invariants_correspondence` in `src/tracker.rs`. TARGETS.md updated to

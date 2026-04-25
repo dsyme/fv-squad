@@ -475,3 +475,55 @@ in `CRITIQUE.md` and may warrant a revised formulation of `VotersLearnersDisjoin
 accurately capture the actual runtime invariant. It does not invalidate the existing CI
 theorems (which prove structural properties given the invariant), but it means the invariant
 as stated is not preserved through the joint-config transition for the demoted-voter case.
+
+---
+
+## Run 111 Update (2026-04-25)
+
+### New Target: `has_next_entries_since` / `applied_index_upper_bound`
+
+**File**: `src/raft_log.rs:465–491`
+
+**Motivation**: The `applied_index_upper_bound` function governs a configurable optimistic-apply
+window: entries may be applied up to `min(committed, persisted + max_apply_unpersisted_log_limit)`
+without waiting for full persistence.  This is a subtle performance/safety trade-off not covered
+by any prior FV target.
+
+**Approach**: Pure functional model. Both functions are total; all inputs are `Nat`.
+
+**Lean file**: `FVSquad/HasNextEntries.lean` — 14 theorems (HNE1–HNE14), 0 sorry.
+
+**Key properties proved**:
+- HNE1/HNE2: upper bound is bounded above by both `committed` and `persisted + limit`
+- HNE3/HNE4: exact-value conditions (which side of min wins)
+- HNE5–HNE7: monotonicity in all three parameters
+- HNE8: zero-limit collapse to `min(committed, persisted)`
+- HNE9: biconditional for `hasNextEntriesSince`
+- HNE10: false-when-past-bound
+- HNE11–HNE13: anti-monotone in `sinceIdx`, monotone in `committed`/`persisted`
+- HNE14: `hasNextEntries = hasNextEntriesSince applied`
+
+### Run 110 Finding: `UncommittedState` noLimit Divergence
+
+Run 110 confirmed that when `max_uncommitted_size = 0`, the Lean model increments
+`uncommittedSize` but the Rust returns early without updating state.  The boolean return
+value is preserved; no proved theorem depends on the divergent state.  Documented in
+`CRITIQUE.md §Run 110`.
+
+### Current State (Run 111)
+
+- **Lean files**: 68 (including new `HasNextEntries.lean`)
+- **Theorems**: ~661 (647 prior + 14 new HNE theorems)
+- **Sorry**: 0
+- **Correspondence tests**: 23 targets, ~455 `#guard`
+
+### Updated Priority Table (Run 111)
+
+| Priority | Target | Goal | Difficulty | Files | Status |
+|----------|--------|------|-----------|-------|--------|
+| **C1** | `leader_completeness` | Strengthen HLogConsistency via ER2 chain | High | `LeaderCompleteness.lean` | 🔄 Partial (LC1–LC10+) |
+| **C2** | `concrete_transitions` | Discharge remaining step hypotheses (A4/A5) | Medium | `ConcreteProtocolStep.lean` | 🔄 Partial |
+| **C3** | CRITIQUE.md refresh | Update critique for Runs 103–111 | Low | `CRITIQUE.md` | ⬜ Needed |
+| **C4** | REPORT.md + paper.tex | Update for Runs 103–111 | Low | `REPORT.md`, `paper.tex` | ⬜ Needed |
+| ~~**C5**~~ | ~~`read_only` RO8~~ | ~~Prove RO8 with NoDuplicates invariant~~ | ~~Medium~~ | `ReadOnly.lean` | ✅ Done (RO14, Run 107) |
+| **C6** | `has_next_entries` correspondence | Correspondence tests for HNE functions | Low | `HasNextEntriesCorrespondence.lean` | ⬜ New (Run 111) |
