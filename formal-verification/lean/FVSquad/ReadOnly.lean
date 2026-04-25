@@ -323,7 +323,8 @@ theorem RO12_pendingReadCount_zero_iff
   simp [pendingReadCount]
 
 /-- **RO13** `addRequest` preserves `Nodup` on the queue.
-    Combined with `RO8`, this ensures the NoDuplicates invariant holds inductively. -/
+    Combined with `RO14`, this ensures the NoDuplicates invariant holds inductively:
+    both operations that modify the queue preserve `Nodup`. -/
 theorem RO13_addRequest_preserves_nodup
     (ro : ReadOnly) (ctx : Ctx) (index : Nat) (selfId : Nat)
     (hinv : QueuePendingInv ro)
@@ -336,6 +337,24 @@ theorem RO13_addRequest_preserves_nodup
   rw [hc]
   intro heq
   exact absurd (hinv.1 ctx (heq ▸ ha)) (by simp [hfresh])
+
+/-- **RO14** `advance` preserves `Nodup` on the queue.
+
+    If `ro.queue` has no duplicates, then after advancing to any context, the
+    remaining queue (`(advance ro ctx).2.queue`) also has no duplicates.
+
+    **Proof**: `advance` returns either the original queue (if `ctx` is absent)
+    or `ro.queue.drop (i + 1)` for the found index `i`.  Both are sublists of
+    `ro.queue`, and `Nodup` is preserved by sublists. -/
+theorem RO14_advance_preserves_nodup
+    (ro : ReadOnly) (ctx : Ctx)
+    (hnd : ro.queue.Nodup) :
+    (advance ro ctx).2.queue.Nodup := by
+  simp only [advance]
+  split
+  · exact hnd
+  · rename_i i _
+    exact hnd.sublist (List.drop_sublist _ _)
 
 -- ═══════════════════════════════════════════════════════════
 -- #guard correspondence tests
