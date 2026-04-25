@@ -1,65 +1,57 @@
 # FV Proof Utility Critique
 
-> 🔬 *Lean Squad — automated formal verification for `dsyme/fv-squad`.*
+> 🔬 *Lean Squad — automated formal verification for `dsyme/raft-lean-squad`.*
 
 ## Last Updated
-- **Date**: 2026-04-22 04:36 UTC
-- **Commit**: `2aa568d` — Run 76: Task 7 (Critique update — MaybePersist 13T, ProgressCorrespondence 55 #guard); 50 files, 569 theorems, 0 sorry
+- **Date**: 2026-04-25 04:00 UTC
+- **Commit**: `09ddbe5` — Run 105: Task 7 (Critique update — 628T, 65 files, 0 sorry); PT22–PT24 membership theorems added
 
 ---
 
 ## Overall Assessment
 
-The FV project has produced **569 theorem declarations across 50 Lean files, machine-checked by
-Lean 4 (version 4.28.0, stdlib only — no Mathlib), with 0 `sorry`**.
+The FV project has produced **628 theorem declarations across 65 Lean files, machine-checked by
+Lean 4 (version 4.30.0-rc2, stdlib only — no Mathlib), with 0 `sorry`**.
 
-Since Run 55, the project has expanded significantly with **Layer 8: Correspondence Validation**
-(11 correspondence-test files covering 152+ `#guard` tests for 11 Rust functions) and
-**Layer 9: ReadOnly.lean** (ReadIndex protocol bookkeeping, 12 theorems).
+Since the last critique (Run 76, 50 files, 569T), the project has expanded significantly across
+**five new proof layers** and **a deeper correspondence test suite**:
 
-The `RaftReachable.step` constructor in `RaftTrace.lean` bundles **5 hypotheses** about
-each protocol transition.  These encode deep Raft correctness properties.  The key
-milestones since the original "COMPLETE" declaration:
+- **Layer 10: Election Model** — `RaftElection.lean` (53 theorems, RE1–RE53): complete election
+  safety (`electionSafety` RE5), full `voteGranted` biconditionals (RV1–RV8), and a model of the
+  concrete vote-granting logic from `src/raft.rs`.
 
-- **`RaftElection.lean`** (RE1–RE15, 15 theorems): `electionSafety` — at most one leader per term.
-- **`LeaderCompleteness.lean`** (LC1–LC10+): leader completeness framework; `HLogConsistency`
-  shown to follow from `CandLogMatching` + `CandLogCoversLastIndex`.
-- **`ConcreteTransitions.lean`** (CT1–CT6, 11 theorems, 0 sorry): AppendEntries model;
-  CT4 (LMI preserved by single AE step) and CT5 (broadcast → `CandLogMatching`) fully proved.
-- **`CommitRule.lean`** (CR1–CR9, 9 theorems): quorum-ACK commit rule formalised;
-  `CommitRuleValid` is definitionally equal to `hnew_cert` (CR8).
-- **`MaybeCommit.lean`** (MC1–MC12, 12 theorems): **A6 term safety** formalised — `maybe_commit`
-  and `commit_to` from `src/raft_log.rs`; MC4 proves that committed only advances to indices
-  whose log term equals the leader's current term.
-- **`ConcreteProtocolStep.lean`** (CPS1–CPS14, 14 theorems): **A5 bridge** — the
-  `ValidAEStep` structure enumerates the concrete protocol conditions for a single
-  AppendEntries step and CPS2 proves that any such step on a `RaftReachable` state
-  produces a new `RaftReachable` state.  CPS13 (`validAEStep_hqc_preserved_from_lc`)
-  discharges `hqc_preserved` from `CandidateLogCovers` via `hasQuorum_monotone` +
-  `LeaderCompleteness`.
+- **Layer 11: Joint Membership Change Safety** — `JointTally.lean` (14T, JT1–JT9) and
+  `JointSafetyComposition.lean` (10T, JSC1–JSC10) formalise the joint-quorum outcome and prove
+  the joint committed index satisfies both incoming and outgoing safety simultaneously.  Together
+  with `JointCommittedIndex.lean` (10T, JCI1–JCI10), this gives an end-to-end safety certificate
+  for Raft membership changes.
 
-**Remaining gap**: `CandidateLogCovers` (needed by CPS13 to discharge `hqc_preserved`)
-is currently taken as a hypothesis.  `ElectionReachability.lean` (Run 43) provides 12
-theorems (ER1–ER12) that reduce `CandidateLogCovers` to a high-water mark condition
-and to a shared-source log condition — the latter being provably satisfied after any
-AE round from a single leader.  **Run 49 now closes this gap** via `AEBroadcastInvariant.lean`
-(ABI5–ABI8): after broadcasting AE to all voters with `prevLogIndex=0`, `hqc_preserved`
-holds for the resulting cluster state.
+- **Layer 12: Multi-step Safety** — `MultiStepReachability.lean` (7T, MS1–MS7) closes the
+  N-step gap: `listStep_safe` (MS2) is a complete end-to-end safety certificate for an arbitrary
+  finite sequence of well-formed AppendEntries steps.
 
-The remaining obligation is connecting the broadcast model to the full Raft election
-protocol (showing that such a `ValidAEStep` sequence actually occurs after an election
-victory), and integrating term tracking so only current-term entries are committed.
+- **Layer 13: Progress Tracker** — `ProgressTracker.lean` (24T, PT1–PT24): the per-peer wf
+  invariant is preserved by all six operations (`removePeer`, `insertPeer`, `updatePeer`,
+  `applyChange`, `applyChanges`, `initTracker`), plus membership (key-presence) theorems
+  PT16–PT24 including the new `initTracker`-membership biconditional (PT22–PT23) and
+  `applyChanges` stability for unaffected peers (PT24).
 
-**Summary**: ~99.5% of a fully self-contained, unconditional Raft safety proof is
-machine-checked.  The top-level result `raftReachable_safe` (RT2) is proved: any cluster
-state reachable by valid Raft transitions is safe.  The broadcast induction gap is now
-closed by `AEBroadcastInvariant.lean` (ABI1–ABI10, 0 sorry): after a full AE broadcast
-round, `hqc_preserved` holds unconditionally.  The `RaftLogAppend.lean` now proves P4–P7
-(prefix, batch placement, and beyond-batch-none).  **Layer 8** adds 11 correspondence-test
-files with 152+ `#guard` tests validating that Lean implementation models agree with Rust
-source on concrete cases.  **Layer 9** adds `ReadOnly.lean` (12 theorems, 1 sorry) formalising
-the ReadIndex linearisability bookkeeping protocol.  No bugs were found in any modelled Rust function.
-**45 files, 493 theorem declarations, 1 sorry** (RO8 in ReadOnly.lean).
+- **Layer 14: Configuration Invariants** — `ConfigurationInvariants.lean` (11T, CI1–CI12):
+  `VotersLearnersDisjoint` formalised and proved for `mkConfiguration`; CI9–CI12 formalise a
+  **key finding**: the strict 4-clause disjointness predicate is *stricter* than the Rust
+  demotion state, which allows `outgoing ∩ learners_next ≠ ∅`.  A relaxed 3-clause predicate
+  (`VotersLearnersDisjointRelaxed`) is proved to match the actual Rust semantics.
+
+- **Layer 15: ReadOnly** — `ReadOnly.lean` (13T, RO1–RO13): ReadIndex linearisability
+  bookkeeping (`addRequest`, `recvAck`, `advance`) fully specified and proved; 0 sorry.
+
+- **Correspondence suite expanded to ~22 targets, 450+ `#guard` tests** across 19 correspondence
+  files, with RunSte Rust tests added to `src/raft.rs`, `src/tracker.rs`, and elsewhere.
+
+**No bugs found** in any modelled Rust function.  One **notable finding**: CI9–CI12 revealed
+that `VotersLearnersDisjoint` as initially stated is *stricter* than the actual Raft
+implementation — the demotion state allows a peer to be simultaneously in `outgoing` and
+`learners_next`, which the strict 4-clause predicate incorrectly forbids.
 
 ---
 
@@ -1922,3 +1914,111 @@ All 55 `#guard` tests pass at compile time via `lake build`.
    statistics (544T/58F/412 `#guard`/19 correspondence targets).
 
 > 🔬 Run 92 statistics update (2026-04-24 04:11 UTC). [Lean Squad](https://github.com/dsyme/raft-lean-squad/actions/runs/24871315223)
+
+---
+
+## Run 105 Critique Update (2026-04-25)
+
+### Project Statistics (Runs 93-105)
+
+| Metric | Run 92 | Run 105 |
+|--------|--------|---------|
+| Total theorem declarations | 544 | **628** (+84) |
+| Lean 4 files | 58 | **65** (+7 proof files) |
+| `sorry` remaining | 0 | **0** |
+| `#guard` tests (correspondence) | 412 | **450+** |
+| Lean 4 version | 4.28.0 | 4.30.0-rc2 |
+
+### New Layers Added Since Run 92
+
+#### Layer 10: `RaftElection.lean` — 53 theorems (RE1-RE53)
+
+The most substantial single-file addition since the last critique.  Formalises the full election
+model: `NodeRole`, `NodeState`, `VoteRecord`, `wonInTerm`, `voteGranted`.
+
+- **`electionSafety` (RE5)**: at most one leader per term — proved from quorum intersection (HQ20) plus the single-valued `VoteRecord` function.
+- **RV1-RV8**: complete biconditionals for `voteGranted` — the exact vote-granting condition from Raft §5.4.1 as implemented in `src/raft.rs`.
+- Max-term theorem: elected leaders have the highest observed term.
+- Role-unchanged: `processVoteRequest` preserves role unless a vote is granted.
+
+Verified against Rust source via `ElectionCorrespondence.lean` (23 `#guard` tests, all pass).
+
+**Assessment**: Very high value. RE5 is the fundamental Raft election safety property proved
+directly from quorum intersection. RV1-RV8 give a machine-checked, complete specification of
+the vote-granting predicate.
+
+#### Layer 11: `JointTally.lean` (14T) + `JointSafetyComposition.lean` (10T)
+
+Closes the joint-quorum safety proof. JSC1-JSC10 prove that `jointCommittedIndex` is:
+- bounded above by both sub-quorum committed indices (safety)
+- maximal (no larger index has majority support from both groups)
+- monotone (acks can only advance)
+
+Together with the existing `JointCommittedIndex.lean` (JCI1-JCI10), the full joint-config Raft
+safety guarantee is now formally established — this covers the Raft membership-change safety
+property, one of the two subtlest parts of the protocol.
+
+#### Layer 12: `MultiStepReachability.lean` — 7 theorems (MS1-MS7)
+
+`listStep_safe` (MS2) is the **complete N-step end-to-end safety certificate**: any cluster
+reachable by a finite sequence of well-formed AppendEntries steps is state-machine safe.
+
+```
+listStep_safe (MS2)
+  uses raftReachable_safe (RT2, RaftTrace)
+  uses listStep_raftReachable (MS1)
+    uses validAEStep_raftReachable (CPS2) at each step
+```
+
+Closes the multi-step generalisation gap noted in prior critiques.  **High value**: provides
+the final inductive certificate that safety is preserved over all reachable states, not just
+single-step transitions.
+
+#### Layer 13: `ProgressTracker.lean` — 24 theorems (PT1-PT24)
+
+PT16-PT24 added since Run 76.  Highlights:
+- **PT22**: `hasPeer (initTracker ids ni) id = true <-> id in ids` — exact membership of freshly initialised tracker
+- **PT23**: complement of PT22
+- **PT24**: `applyChanges` does not change membership for peers absent from the change list
+
+PT22 pins the semantics of `initTracker` (models `ProgressTracker::new`); PT24 is the key
+stability property: configuration changes only affect peers appearing in the change list.
+
+#### Layer 14: `ConfigurationInvariants.lean` — 11 theorems (CI1-CI12)
+
+Formalises `VotersLearnersDisjoint` and proves it for all key constructors.
+
+**Key finding (CI9-CI12)**: The initially stated 4-clause predicate is *stricter* than the Rust
+demotion state, which allows `outgoing n learners_next != empty`.  The strict predicate
+incorrectly rejects valid Raft cluster states during peer demotion.  CI11 exhibits this as a
+`#guard`-verified counterexample.  The relaxed 3-clause predicate (`VotersLearnersDisjointRelaxed`)
+matches the actual Rust semantics and is proved by CI12 to be satisfied by `mkConfiguration`.
+
+This is a **genuine finding**: proofs relying on the strict predicate are overly conservative.
+
+#### Layer 15: `ReadOnly.lean` — 13 theorems (RO1-RO13), 0 sorry
+
+Previously noted as 12T/1 sorry.  RO8 was proved in Run 64; RO13 (`addRequest_preserves_nodup`)
+added subsequently.  All 13 ReadOnly theorems proved, 0 sorry.
+
+### Gaps and Recommendations (Run 105)
+
+1. **LeaderCompleteness full chain**: `HLogConsistency` is still taken as a hypothesis via the
+   ER2 chain. Connecting `ElectionBroadcastChain.lean` to the concrete `RaftReachable` trace
+   to discharge `HLogConsistency` unconditionally is the **single highest-priority remaining gap**.
+
+2. **VotersLearnersDisjointRelaxed propagation**: Any proof using the strict predicate should
+   be reviewed. Update `CORRESPONDENCE.md` to note which proofs depend on the strict form.
+
+3. **Term-indexed safety**: The current `isClusterSafe` model is index-only. Connecting
+   `MaybeCommit.lean`'s MC4 (committed advances only to current-term entries) to the top-level
+   safety proof would formalise Raft §5.4.2 more closely.
+
+4. **ProgressTracker integration**: Prove that a reachable Raft state's progress map always
+   satisfies `all_wf`. PT1-PT24 prove per-operation invariants but there is no integration
+   theorem connecting to `RaftReachable`.
+
+5. **Paper update**: `paper.tex` needs updated statistics (628T, 65F, 0 sorry, 450+ `#guard`,
+   22 correspondence targets, 1 finding: CI9-CI12 demotion finding).
+
+> 🔬 Run 105 critique update (2026-04-25 04:00 UTC). [Lean Squad](https://github.com/dsyme/raft-lean-squad/actions/runs/24921939370)

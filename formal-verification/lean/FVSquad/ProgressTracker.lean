@@ -423,5 +423,56 @@ theorem PT21_applyChange_remove_not_hasPeer (pm : ProgressMap) (id next_idx : Na
     hasPeer (applyChange pm id ChangeType.Remove next_idx) id = false :=
   PT16_removePeer_not_hasPeer pm id
 
+-- ---------------------------------------------------------------------------
+-- PT22–PT24: initTracker membership and applyChanges stability
+-- ---------------------------------------------------------------------------
+
+/-- **PT22** — `initTracker ids next_idx` has `id` as a peer iff `id ∈ ids`.
+
+    `initTracker` is exactly `ids.map (fun i => (i, Progress.mk_new next_idx))`, so
+    membership in the map (as a key) corresponds precisely to membership in `ids`. -/
+theorem PT22_initTracker_hasPeer_iff (ids : List Nat) (next_idx id : Nat) :
+    hasPeer (initTracker ids next_idx) id = true ↔ id ∈ ids := by
+  rw [hasPeer_iff]
+  simp only [initTracker, List.mem_map]
+  constructor
+  · rintro ⟨pair, ⟨i, hi, rfl⟩, heq⟩
+    rw [← heq]; exact hi
+  · intro hi
+    exact ⟨(id, Progress.mk_new next_idx), ⟨id, hi, rfl⟩, rfl⟩
+
+/-- **PT23** — `initTracker ids next_idx` does NOT have `id` as a peer iff `id ∉ ids`.
+
+    Direct complement of PT22 via boolean negation. -/
+theorem PT23_initTracker_not_hasPeer_iff (ids : List Nat) (next_idx id : Nat) :
+    hasPeer (initTracker ids next_idx) id = false ↔ id ∉ ids := by
+  rw [← PT22_initTracker_hasPeer_iff]
+  cases hasPeer (initTracker ids next_idx) id <;> simp
+
+/-- **PT24** — `applyChanges` does not affect the presence of peer `id` if `id` does
+    not appear in the change list.
+
+    `applyChanges` is a left fold: each step calls either `insertPeer` (Add) or
+    `removePeer` (Remove) for the change's peer ID.  By PT18 and PT19, neither
+    operation touches the presence of any *other* peer.  Induction over the change
+    list concludes that the membership of `id` is unchanged end-to-end. -/
+theorem PT24_applyChanges_stable_for_absent
+    (pm : ProgressMap) (changes : List (Nat × ChangeType)) (next_idx id : Nat)
+    (h : id ∉ changes.map (·.1)) :
+    hasPeer (applyChanges pm changes next_idx) id = hasPeer pm id := by
+  induction changes generalizing pm with
+  | nil => rfl
+  | cons head t ih =>
+    obtain ⟨cid, ct⟩ := head
+    simp only [List.map, List.mem_cons, not_or] at h
+    obtain ⟨hne, ht⟩ := h
+    -- applyChanges pm ((cid,ct)::t) ni is definitionally applyChanges (applyChange pm cid ct ni) t ni
+    have step : applyChanges pm ((cid, ct) :: t) next_idx =
+                applyChanges (applyChange pm cid ct next_idx) t next_idx := rfl
+    rw [step, ih _ ht]
+    cases ct with
+    | Add    => exact PT19_insertPeer_preserves_others pm cid _ id hne
+    | Remove => exact PT18_removePeer_preserves_others pm id cid (fun h => hne h.symm)
+
 
 end FVSquad.ProgressTracker
