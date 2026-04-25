@@ -35,6 +35,9 @@ directly.  Lean `Nat.sub` saturates at 0, matching the Rust set-to-zero branch.
 | US13 | `maybeIncrease_roundtrip`                | ✅ proved | increase then reduce with same size restores `uncommittedSize` |
 | US14 | `emptyList_reduce_noop`                  | ✅ proved | `size = 0` ⟹ `maybeReduce` is a no-op                         |
 | US15 | `maybeIncrease_size_zero_unchanged`      | ✅ proved | `size = 0` ⟹ `maybeIncrease` leaves `uncommittedSize` same    |
+| US16 | `maybeIncrease_false_iff`                | ✅ proved | Complete rejection iff: max≠0 ∧ size≠0 ∧ used≠0 ∧ over-budget |
+| US17 | `maybeIncrease_true_iff`                 | ✅ proved | Complete acceptance iff: max=0 ∨ size=0 ∨ used=0 ∨ fits (dual US16) |
+| US18 | `maybeReduce_ge_sub`                     | ✅ proved | reduce: `uncommittedSize - size ≤ result` (saturation safety)  |
 
 **Sorry count**: 0.  All theorems are proved without `sorry`.
 -/
@@ -239,5 +242,78 @@ theorem US14_emptyList_reduce_noop (s : US) (noLimit : Bool) :
     maybeReduce s noLimit 0 = (s, true) := by
   unfold maybeReduce
   by_cases hno : noLimit <;> simp [hno]
+
+-- ---------------------------------------------------------------------------
+-- US16–US18: Complete characterisations and invariant-preservation
+-- ---------------------------------------------------------------------------
+
+/-- **US16** — Complete characterisation of rejection: `maybeIncrease` returns `false`
+    **if and only if** all four "allow" conditions fail simultaneously.
+
+    The four allow-guards in `maybeIncrease` are:
+    1. `maxUncommittedSize = 0` (no-limit sentinel)
+    2. `size = 0` (zero-size entry is always free)
+    3. `uncommittedSize = 0` (empty bucket is always free)
+    4. `size + uncommittedSize ≤ maxUncommittedSize` (fits in budget)
+
+    Rejection occurs precisely when none of these guards fires. -/
+theorem US16_maybeIncrease_false_iff (s : US) (size : Nat) :
+    (maybeIncrease s size).2 = false ↔
+      s.maxUncommittedSize ≠ 0 ∧ size ≠ 0 ∧ s.uncommittedSize ≠ 0 ∧
+      size + s.uncommittedSize > s.maxUncommittedSize := by
+  unfold maybeIncrease
+  by_cases h1 : s.maxUncommittedSize = 0
+  · simp [h1]
+  · simp only [if_neg h1]
+    by_cases h2 : size = 0
+    · simp [h2]
+    · simp only [if_neg h2]
+      by_cases h3 : s.uncommittedSize = 0
+      · simp [h3]
+      · simp only [if_neg h3]
+        by_cases h4 : size + s.uncommittedSize ≤ s.maxUncommittedSize
+        · simp only [if_pos h4]; constructor
+          · intro h; exact absurd h (by decide)
+          · intro ⟨_, _, _, h5⟩; omega
+        · constructor
+          · intro _; exact ⟨h1, h2, h3, Nat.lt_of_not_le h4⟩
+          · intro _; simp [h4]
+
+/-- **US17** — Complete characterisation of acceptance: `maybeIncrease` returns `true`
+    if and only if at least one of the four "free pass" conditions holds.
+    This is the dual of US16.  -/
+theorem US17_maybeIncrease_true_iff (s : US) (size : Nat) :
+    (maybeIncrease s size).2 = true ↔
+      s.maxUncommittedSize = 0 ∨ size = 0 ∨ s.uncommittedSize = 0 ∨
+      size + s.uncommittedSize ≤ s.maxUncommittedSize := by
+  unfold maybeIncrease
+  by_cases h1 : s.maxUncommittedSize = 0
+  · simp [h1]
+  · simp only [if_neg h1]
+    by_cases h2 : size = 0
+    · simp [h2]
+    · simp only [if_neg h2]
+      by_cases h3 : s.uncommittedSize = 0
+      · simp [h3]
+      · simp only [if_neg h3]
+        by_cases h4 : size + s.uncommittedSize ≤ s.maxUncommittedSize
+        · simp [h4]
+        · simp only [if_neg h4]; simp [h1, h2, h3]; omega
+
+/-- **US18** — `maybeReduce` decreases `uncommittedSize` by at most `size`:
+    `uncommittedSize_before - size ≤ uncommittedSize_after` (with saturation at 0).
+
+    Both branches of `maybeReduce` satisfy this: the normal branch subtracts exactly
+    `size`; the overflow branch sets the result to 0 which is ≥ `before - size`
+    (since before < size in that branch).  -/
+theorem US18_maybeReduce_ge_sub (s : US) (size : Nat) :
+    s.uncommittedSize - size ≤ (maybeReduce s false size).1.uncommittedSize := by
+  simp only [maybeReduce, Bool.false_eq_true, ite_false]
+  by_cases h1 : size = 0
+  · simp only [h1, ite_true]; omega
+  · simp only [h1, ite_false]
+    by_cases h2 : size > s.uncommittedSize
+    · simp only [h2, ite_true]; omega
+    · simp only [h2, ite_false]; omega
 
 end FVSquad.UncommittedState
