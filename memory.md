@@ -1,15 +1,15 @@
 # Lean Squad Memory — dsyme/raft-lean-squad
 
 ## Last Updated
-Run 115 — 2026-04-26 04:00 UTC
+Run 118 — 2026-04-26 09:30 UTC
 
 ## Repository
 - **Language**: Rust (Raft consensus library)
-- **FV Tool**: Lean 4 (v4.28.0, lakefile.toml with Mathlib)
+- **FV Tool**: Lean 4 (v4.30.0-rc2, lakefile.toml, stdlib only — no Mathlib)
 - **FV Directory**: `formal-verification/`
-- **Lean Files**: ~72 in `formal-verification/lean/FVSquad/`
-- **Theorems**: ~673 (0 sorry across most files; some sorry in advanced protocol files)
-- **CI**: `.github/workflows/lean-ci.yml` — builds Lean + runs Rust correspondence tests
+- **Lean Files**: 73 in `formal-verification/lean/FVSquad/`
+- **Theorems**: ~722 (0 sorry)
+- **CI**: `.github/workflows/lean-ci.yml` — threshold 25 Rust correspondence tests
 
 ## Status Issue
 - Issue #139 — `[Lean Squad] Formal Verification Status` (open)
@@ -24,30 +24,31 @@ ElectionBroadcastChain, ConcreteProtocolStep, ElectionConcreteModel, CommitRule,
 NextEntries, MaybeCommit, MaybePersist, MaybePersistFUI, RaftLogAppend, ReadOnly, UncommittedState,
 UnstablePersistBridge, LeaderCompleteness (partial), ProgressTracker (PT1-PT26)
 
-## Correspondence Tests (26 total Rust tests)
-All correspondence targets in `formal-verification/tests/` have Rust tests.
-- **Run 115 NEW**: `progress` — 55 Rust assertions for Progress state machine
-  (`test_progress_correspondence` in `src/tracker/progress.rs`)
-  Fixtures: pReplicate(5,6), pProbe(3,7), pSnapshot(2,3,snap=10)
-  Groups: maybeUpdate, maybeDecrTo×3, optimisticUpdate, transitions, isPaused
-  Result: 55 pass, no mismatches
-- **Note**: ins_size=256 needed for pReplicate (ins_size=0 makes full()=true)
+## Correspondence Tests (25 Rust test functions)
+All in `formal-verification/tests/` with Lean `#guard` counterparts.
+- ProgressTrackerCorrespondence: 47 #guard (PT25/PT26 added Run 116)
+- See state.json for full target list
 
-## CI Status (Run 115 audit)
-- `lean-ci.yml`: healthy. Threshold updated 20→26 correspondence tests.
-- lean-toolchain: v4.28.0 ✅, lake-manifest.json ✅, globs ✅
+## CI Status (Run 118 audit)
+- `lean-ci.yml`: healthy. Threshold updated 20→25 (Run 118).
+- lean-toolchain: v4.30.0-rc2 ✅
+- Correspondence test job: `cargo test correspondence --features protobuf-codec`
 
-## Active Gaps (from CRITIQUE.md Run 105)
+## Pending/Conflicts
+- `proofs-r130` branch (RaftSafety.lean + CRITIQUE.md changes): CONFLICT with main — skip for reconciliation run
+- run-117 branch not found remotely (may not have been pushed); changes recorded in state.json tentatively
+
+## Active Gaps (from CRITIQUE.md Run 112)
 1. **LeaderCompleteness full chain**: `HLogConsistency` still hypothetical; highest priority
 2. **Term-indexed safety**: connecting MaybeCommit MC4 to top-level proof
 3. **ProgressTracker integration**: PT1-PT26 per-op but no RaftReachable connection
-4. **Paper**: last updated Run 108 (647T/66F/524g/12-layer)
+4. **Paper/Report**: last updated Run 115 (671T) — needs update for Runs 116-118
 
 ## Key Files
 - `formal-verification/TARGETS.md` — prioritised target list
-- `formal-verification/CORRESPONDENCE.md` — correspondence map (updated Run 115)
-- `formal-verification/CRITIQUE.md` — proof utility critique (Run 110)
-- `formal-verification/REPORT.md` — project report
+- `formal-verification/CORRESPONDENCE.md` — correspondence map (updated Run 118)
+- `formal-verification/CRITIQUE.md` — proof utility critique (Run 112)
+- `formal-verification/REPORT.md` — project report (Run 115)
 - `formal-verification/paper/paper.tex` — conference paper (Run 108)
 
 ## Notes
