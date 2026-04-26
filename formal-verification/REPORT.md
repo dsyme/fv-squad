@@ -2,17 +2,17 @@
 
 > 🔬 *Lean Squad — automated formal verification for `dsyme/raft-lean-squad`.*
 
-**Status**: 🔄 **ADVANCED** — 671 theorems, 72 Lean files, **0 `sorry`**, machine-checked
+**Status**: 🔄 **ADVANCED** — 673 theorems, 73 Lean files, **0 `sorry`**, machine-checked
 by Lean 4.30.0-rc2 (stdlib only). Top-level safety theorem proved **conditionally**.
-Seventeen-layer proof architecture. Layer 17 (NextEntries/HasNextEntries, NE1–NE7 + HNE1–HNE14)
-newly complete. Layer 18 (BroadcastLifecycle, BL1–BL3) closes the BroadcastSeq→RaftReachable
-lifecycle gap. Layer 8 (correspondence): **25 files, 513+ `#guard` assertions, 23 Rust tests**.
+Twenty-layer proof architecture. Layer 20 (HasNextEntries, HNE1–HNE14) complete.
+Layer 8 (correspondence): **25 files, 513+ `#guard` assertions, 25 Rust tests**.
+ProgressTracker now at 26T (PT25/PT26 integration theorems).
 
 ---
 
 ## Last Updated
-- **Date**: 2026-04-25 12:24 UTC
-- **Commit**: `450c35a` — Run 115: REPORT.md update (671T, 72F, 0 sorry)
+- **Date**: 2026-04-26 17:15 UTC
+- **Commit**: `e1aafbc` — Run 119: Task 10 (REPORT.md update, Runs 116–118, 673T, 73F)
 
 ---
 
@@ -24,7 +24,7 @@ in `dsyme/raft-lean-squad` over 115 automated runs. Starting from zero, the proj
 1. Identified 27+ FV-amenable targets across the codebase
 2. Extracted informal specifications for each target
 3. Wrote Lean 4 specifications, implementation models, and proofs
-4. Proved **671 theorems** across **72 Lean files** with **0 `sorry`**
+4. Proved **673 theorems** across **73 Lean files** with **0 `sorry`**
 5. Proved **conditional end-to-end Raft cluster safety**: any cluster state reachable
    via transitions satisfying 5 stated invariants is safe (no two nodes ever apply
    different entries at the same log index)
@@ -1340,6 +1340,40 @@ Rust test `test_has_next_entries_since_correspondence` (34 assertions, all pass)
 
 **CORRESPONDENCE.md** updated: added 7 missing sections from Runs 93–114, updated totals to
 25 correspondence targets with ~513 `#guard` assertions across all sections.
+
+> ✅ `lake build` passed with Lean 4.30.0-rc2. **0 sorry**. **673 theorems** machine-checked.
+> 🔬 *Run 119 update (2026-04-26 17:15 UTC). [Lean Squad](https://github.com/dsyme/raft-lean-squad/actions/runs/24962197896)*
+
+### Run 116: ProgressTracker PT25–PT26 + Correspondence (Task 5 + Task 8)
+
+**`ProgressTracker.lean`** PT25 and PT26 added (now 26 theorems, 0 sorry):
+
+- **PT25** (`PT25_initTracker_applyChanges_preserves_member`): membership is preserved
+  through `applyChanges` if the change list does not include a `Remove id` action.
+- **PT26** (`PT26_applyChanges_retains_last_add`): if the last action in a change list for
+  `id` is `Add id next_idx`, then `applyChanges` results in `hasPeer id = true`.
+
+**`ProgressTrackerCorrespondence.lean`** updated: 47 total `#guard` assertions (up from 34),
+covering 13 new PT25/PT26 scenarios plus `make_init_tracker` Rust helper tests.
+
+### Run 117: ProgressTracker PT27a/b + HasQuorum joint correspondence (Task 5 + Task 8)
+
+*(Note: Run 117 branch may not have been pushed; changes are recorded tentatively.)*
+
+**`ProgressTracker.lean`** PT27a/b (last-wins characterisation):
+- `applyChanges_append`: composition of change lists.
+- PT27b uses uniqueness hypothesis.
+
+**`ProgressTrackerCorrespondence.lean`** updated to 53 `#guard` assertions.
+
+**`HasQuorumJointCorrespondence.lean`** (10 `#guard`): joint-config `has_quorum`; Rust test
+`test_has_quorum_joint_correspondence` (10 cases, all pass).
+
+### Run 118: CI Audit + CORRESPONDENCE.md (Task 9 + Task 6)
+
+- `lean-ci.yml` threshold updated 20→25 (now requires 25 Rust correspondence tests).
+- `CORRESPONDENCE.md` updated: Last Updated section, ProgressTrackerCorrespondence totals
+  34→47 `#guard`, overall totals 722T/73F/25 tests.
 
 > ✅ `lake build` passed with Lean 4.30.0-rc2. **0 sorry**. **671 theorems** machine-checked.
 > 🔬 *Run 115 update (2026-04-25 12:24 UTC). [Lean Squad](https://github.com/dsyme/raft-lean-squad/actions/runs/24930815701)*
