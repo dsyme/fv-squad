@@ -3,8 +3,8 @@
 > 🔬 *Lean Squad — automated formal verification for `dsyme/raft-lean-squad`.*
 
 ## Last Updated
-- **Date**: 2026-04-25 09:00 UTC
-- **Commit**: `cd61b14` — Run 110: Task 7 (Critique) + Task 8 (UncommittedStateCorrespondence)
+- **Date**: 2026-04-26 17:10 UTC
+- **Commit**: `e1aafbc` — Run 119: Task 7 (Critique update Runs 111–118) + Task 10 (Report update)
 
 ---
 
@@ -2149,3 +2149,156 @@ would predict a different `uncommittedSize` than Rust after increase.  However, 
 usage with noLimit doesn't rely on the exact value of `uncommittedSize`, this is low risk.
 
 > 🔬 Run 110 critique update (2026-04-25 09:00 UTC). [Lean Squad](https://github.com/dsyme/raft-lean-squad/actions/runs/24927053229)
+
+---
+
+## Runs 111–118 Critique Update (2026-04-26)
+
+**Summary**: 647T (Run 110) → 673T (Run 118), adding 26 new theorems across 6 Lean files.
+Correspondence suite expanded to 25 files, 513+ `#guard` assertions, 25 Rust tests.
+No `sorry` introduced. Key gains: three new proof layers (BroadcastLifecycle, NextEntries,
+HasNextEntries), integration theorems for ProgressTracker, and full correspondence coverage
+for all active targets.
+
+| Metric | Run 110 | Run 118 |
+|--------|---------|---------|
+| Total theorem declarations | 647 | **673** (+26) |
+| Lean 4 files | 68 | **73** (+5) |
+| `sorry` remaining | 0 | **0** |
+| `#guard` tests (correspondence) | ~450 | **513+** |
+| Correspondence files | 22 | **25** |
+| Rust correspondence tests | 22 | **25** |
+
+### New Layer 18: `BroadcastLifecycle.lean` — 3 theorems (BL1–BL3) *(Run 112)*
+
+**What it proves**: the lifecycle integration connecting `BroadcastSeq` to the `RaftReachable`
+inductive type:
+
+- **BL1** (`broadcastSeq_to_validAEList`): any `BroadcastSeq` can be embedded in a
+  `ValidAEList` — bridging the concrete broadcast model to the abstract step sequence.
+- **BL2** (`raftReachable_after_broadcast`): if `cs_init` is `RaftReachable`, then the
+  final state after any `BroadcastSeq` applied to it is also `RaftReachable`.
+- **BL3** (`raftReachable_from_init_broadcast`): a `BroadcastSeq` from `initialCluster`
+  produces a `RaftReachable` state — closes the base case of the induction.
+
+**Assessment**: Closes the `BroadcastSeq → RaftReachable` lifecycle gap previously noted in
+the Run 105 critique. BL2 and BL3 mean that any reachability argument can transition from the
+concrete broadcast model to the abstract reachability predicate without an extra hypothesis.
+**Medium value** — removes an explicitly abstract seam in the proof architecture.
+
+### New Layer 19: `NextEntries.lean` — 7 theorems (NE1–NE7) *(Run 113)*
+
+Models `RaftLog::next_entries` / `next_entries_since` as a list-slice function.
+
+- **NE1** (`NE1_none_iff_not_has`): `nextEntriesSince` returns `None` iff there are no entries
+  in `[since+1, committed]` — complete biconditional.
+- **NE2** (`NE2_some_length`): when `Some`, the result has length `committed − max(since, applied)`.
+- **NE3** (`NE3_some_indices`): each entry `e` in the result at position `i` satisfies the
+  correct index equation (slice offset arithmetic).
+- **NE4–NE7**: monotonicity properties — `since` decreases result size (NE4), `committed`
+  increases it (NE5), `persisted` increases it (NE6), equal-`applied` case simplifies (NE7).
+
+**Assessment**: Medium value. These are tight specification theorems for log retrieval:
+NE1 catches a class of off-by-one bugs (missing or extra entries at boundaries). NE2 and NE3
+together give a complete characterisation of what the function returns. The monotonicity
+theorems are less likely to catch real bugs directly but establish useful compositional
+properties for higher-level proofs.
+
+### New Layer 20: `HasNextEntries.lean` — 14 theorems (HNE1–HNE14) *(Run 111)*
+
+Models `applied_index_upper_bound` and `has_next_entries_since`.
+
+- **HNE1–HNE8**: `appliedIndexUpperBound` arithmetic — bounded by `committed` (HNE1),
+  bounded by `persisted + max_apply_unpersisted_log_limit` (HNE2), equal to `committed`
+  when persisted is large (HNE3), equal to `persisted + limit` when small (HNE4),
+  monotone in each argument (HNE5–HNE7), and the zero-limit case (HNE8).
+- **HNE9** (`HNE9_hasNextEntriesSince_true_iff`): the exact condition under which
+  `hasNextEntriesSince` returns `true` — complete biconditional.
+- **HNE10–HNE13**: `hasNextEntriesSince` monotonicity in `since`, `committed`, `persisted`.
+- **HNE14** (`HNE14_hasNextEntries_eq_since_applied`): `hasNextEntries` equals calling
+  `hasNextEntriesSince` at the applied index.
+
+**Assessment**: High value for this specific function. `hasNextEntriesSince` drives the
+Raft apply loop — deciding when entries are ready for the state machine. HNE9 is the key
+theorem: the complete biconditional guards against off-by-one errors and incorrect
+`max_apply_unpersisted_log_limit` handling. HNE2 and HNE4 capture the `persisted + limit`
+branch, which is the subtler case involving the pipelining limit.
+
+**Correspondence**: `HasNextEntriesCorrespondence.lean` (33 `#guard`, Run 114) +
+Rust `test_has_next_entries_correspondence` (34 cases, all pass). Level: **exact**.
+
+### ProgressTracker PT25–PT26 *(Run 116)*
+
+Two new integration theorems added to `ProgressTracker.lean` (now 26T total):
+
+- **PT25** (`PT25_initTracker_applyChanges_preserves_member`): if `id` is a member of an
+  `initTracker` initialised from `ids`, then `applyChanges` with any change list that does
+  not include a `Remove id` step preserves that membership.
+- **PT26** (`PT26_applyChanges_retains_last_add`): if the last action for `id` in a change
+  list is `Add id next_idx`, then `applyChanges` results in `hasPeer id = true`.
+
+**Assessment**: Medium value. PT25 and PT26 prove the "add wins" semantics of configuration
+changes: once added, a peer is not inadvertently dropped. PT26 is particularly important for
+the correctness of `ProgressTracker::apply_conf_change` — the last `Add` for a peer must be
+reflected in the final map.
+
+**Correspondence**: `ProgressTrackerCorrespondence.lean` updated to 47 `#guard` assertions
+(from 34 in Run 115), covering 13 PT25/PT26 scenarios and the `make_init_tracker` helper.
+
+### New Correspondence Tests (Runs 111–116)
+
+| File | `#guard` | Run | Notes |
+|------|---------|-----|-------|
+| `NextEntriesCorrespondence.lean` | 20 | 113 | NE1–NE7; fi=4, 20 Lean+Rust cases |
+| `HasNextEntriesCorrespondence.lean` | 33 | 114 | HNE1–HNE14; 34 Rust cases; **exact** correspondence |
+| `ProgressTrackerCorrespondence.lean` | 47 | 116 | +13 PT25/PT26 scenarios; `make_init_tracker` helper |
+
+### Updated Gaps and Recommendations (Run 118)
+
+1. **HLogConsistency discharge from RaftReachable** (highest priority): `HLogConsistency`
+   is still taken as a conditional hypothesis in `LeaderCompleteness.lean` (LC7/LC8).
+   `BroadcastLifecycle.lean` closes the `BroadcastSeq → RaftReachable` gap (BL2/BL3), but
+   connecting this to `HLogConsistency` unconditionally requires showing that
+   `HAEInvariant` holds inductively across reachable states. `AEBroadcastInvariant.lean`
+   provides most of the infrastructure (ABI1–ABI8), but the full inductive closure over
+   `RaftReachable` is not yet complete.
+
+2. **ProgressTracker integration with RaftReachable**: PT1–PT26 prove all per-operation
+   invariants but there is no integration theorem showing that the progress map of any
+   `RaftReachable` state satisfies `all_wf`. This requires connecting PT14 (fresh tracker
+   is `all_wf`) through the step constructor's update logic.
+
+3. **Term-indexed safety**: MC4 in `MaybeCommit.lean` establishes that committed index
+   advances only to current-term entries, but this is not yet wired into the top-level
+   safety proof. Connecting MC4 to `RSS6`/`RSS8` would formalise Raft §5.4.2 at the
+   entry-identity level.
+
+4. **VotersLearnersDisjointRelaxed propagation** (ongoing): Any proof relying on the
+   strict 4-clause predicate (flagged in CI9–CI12) should be reviewed. The relaxed
+   3-clause version matches the Rust semantics; this has not yet been propagated to
+   `ConfigurationInvariants.lean` downstream proofs.
+
+5. **Paper/Report update**: `paper.tex` was updated in Run 108 to 647T/66F/524g. Needs
+   updating for Runs 111–118 (673T, 73F, 0 sorry, 25 correspondence targets).
+
+6. **`progress_set` target** (Phase 1): `src/tracker/progress_set.rs` implements
+   `quorum_active` over a progress map — an interesting target whose specification would
+   compose with `ProgressTracker` membership theorems (PT16–PT26). Not yet started.
+
+### Overall Assessment (Run 118)
+
+**673 theorem declarations, 73 Lean files, 0 `sorry`, 25 correspondence test targets,
+513+ `#guard` assertions.** The FV project is in a mature state:
+
+- **Layers 1–7** (core correctness): complete, all proved, 0 sorry.
+- **Correspondence layer**: comprehensive; all major proof targets have validated models.
+- **Protocol-level safety** (Layers 5–7, RaftTrace): conditionally proved. The conditions
+  are now small in number and all meaningful (HLogConsistency, CommitCertInvariant).
+- **New targets** (Layers 18–20): `BroadcastLifecycle`, `NextEntries`, `HasNextEntries` —
+  all fully proved, adding 24 theorems to the protocol-level and operational layers.
+
+The project continues to produce genuine value: HNE9 and NE1 are precise biconditional
+specifications that would catch real off-by-one bugs in the log application loop. The
+`progress_set` gap remains as the most tractable new target to expand coverage.
+
+> 🔬 Runs 111–118 critique update (2026-04-26 17:10 UTC). [Lean Squad](https://github.com/dsyme/raft-lean-squad/actions/runs/24962197896)
