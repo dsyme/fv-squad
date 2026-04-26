@@ -2,31 +2,29 @@
 
 > 🔬 *Lean Squad — automated formal verification for `dsyme/raft-lean-squad`.*
 
-**Status**: 🔄 **ADVANCED** — 647 theorems, 66 Lean files, **0 `sorry`**, machine-checked
+**Status**: 🔄 **ADVANCED** — 671 theorems, 72 Lean files, **0 `sorry`**, machine-checked
 by Lean 4.30.0-rc2 (stdlib only). Top-level safety theorem proved **conditionally**.
-Sixteen-layer proof architecture. Layer 15 (ReadOnly) extended with **RO14** `advance_preserves_nodup`.
-Layer 16 (UncommittedState, US1–US18) fully proved: **US16/US17** biconditionals complete the
-flow-control characterisation. Layer 8 (correspondence): **22 files, 450+ `#guard` assertions,
-21 Rust tests**. Layer 13 (ProgressTracker): 24T, fully proved. Layer 14 (ConfigurationInvariants):
-11T, key finding — VotersLearnersDisjoint stricter than Rust demotion state.
+Seventeen-layer proof architecture. Layer 17 (NextEntries/HasNextEntries, NE1–NE7 + HNE1–HNE14)
+newly complete. Layer 18 (BroadcastLifecycle, BL1–BL3) closes the BroadcastSeq→RaftReachable
+lifecycle gap. Layer 8 (correspondence): **25 files, 513+ `#guard` assertions, 23 Rust tests**.
 
 ---
 
 ## Last Updated
-- **Date**: 2026-04-25 08:10 UTC
-- **Commit**: `66da52b` — Run 109: REPORT.md update (647T, 66F, 0 sorry)
+- **Date**: 2026-04-25 12:24 UTC
+- **Commit**: `450c35a` — Run 115: REPORT.md update (671T, 72F, 0 sorry)
 
 ---
 
 ## Executive Summary
 
 The FVSquad project applied Lean 4 formal verification to the Raft consensus implementation
-in `dsyme/raft-lean-squad` over 109 automated runs. Starting from zero, the project:
+in `dsyme/raft-lean-squad` over 115 automated runs. Starting from zero, the project:
 
-1. Identified 26+ FV-amenable targets across the codebase
+1. Identified 27+ FV-amenable targets across the codebase
 2. Extracted informal specifications for each target
 3. Wrote Lean 4 specifications, implementation models, and proofs
-4. Proved **647 theorems** across **66 Lean files** with **0 `sorry`**
+4. Proved **671 theorems** across **72 Lean files** with **0 `sorry`**
 5. Proved **conditional end-to-end Raft cluster safety**: any cluster state reachable
    via transitions satisfying 5 stated invariants is safe (no two nodes ever apply
    different entries at the same log index)
@@ -44,7 +42,13 @@ in `dsyme/raft-lean-squad` over 109 automated runs. Starting from zero, the proj
 13. Proved **RO1–RO14** (`ReadOnly.lean`): complete invariant cycle for ReadIndex queue
 14. Proved **US1–US18** (`UncommittedState.lean`): complete biconditional characterisation of
     flow-control bookkeeping (US16/US17 are the strongest — full iff for accept/reject decision)
-15. Validated 22 correspondence targets via 450+ `#guard` tests and 21 Rust tests
+15. Proved **HNE1–HNE14** (`HasNextEntries.lean`): `appliedIndexUpperBound` and `hasNextEntriesSince`
+    correctness theorems — snapshot offset bounds + monotone entry retrieval
+16. Proved **NE1–NE7** (`NextEntries.lean`): `nextEntries`/`nextEntriesSince` slice model with
+    offset/length arithmetic
+17. Proved **BL1–BL3** (`BroadcastLifecycle.lean`): `BroadcastSeq` implies `ValidAEList`,
+    and `BroadcastSeq` from `RaftReachable` gives `RaftReachable` — lifecycle fully connected
+18. Validated **25 correspondence targets** via 513+ `#guard` tests and 23 Rust tests
 
 No additional bugs were found in the implementation code beyond CI9–CI12 (itself a positive
 finding). One notable spec misalignment was found: the initial VotersLearnersDisjoint predicate
@@ -1260,3 +1264,82 @@ decision, making any implementation divergence immediately detectable.
 
 > ✅ `lake build` passed with Lean 4.30.0-rc2. **0 sorry**. **647 theorems** machine-checked.
 > 🔬 *Run 109 update (2026-04-25 08:10 UTC). [Lean Squad](https://github.com/dsyme/raft-lean-squad/actions/runs/24926413764)*
+
+---
+
+## Runs 110–114 Update: UncommittedState Correspondence, HasNextEntries, NextEntries, BroadcastLifecycle
+
+| Metric | Run 109 | Run 114 |
+|--------|---------|---------|
+| Lean files | 66 | **72** |
+| Theorems | 647 | **671** |
+| sorry | 0 | **0** ✅ |
+| Correspondence files | 22 | **25** |
+| `#guard` assertions | 450+ | **513+** |
+| Rust tests | 21 | **23** |
+
+### Run 110: UncommittedStateCorrespondence + CRITIQUE.md update (Task 7, Task 8 Route B)
+
+**`UncommittedStateCorrespondence.lean`** (13 `#guard`, 8 maybeIncrease + 5 maybeReduce cases):
+Rust test `test_uncommitted_state_correspondence` (13 assertions, all pass).
+
+**Key finding documented**: `noLimit` fast-path state divergence — Lean increments
+`uncommittedSize` while Rust returns early without updating. Boolean correspondence still holds.
+
+CRITIQUE.md updated with Run 110 findings.
+
+### Run 111: HasNextEntries.lean (HNE1–HNE14, Task 3) + TARGETS.md/RESEARCH.md (Task 1)
+
+**`HasNextEntries.lean`** (14 theorems, 0 sorry):
+
+- **HNE1–HNE7** (`appliedIndexUpperBound` group): the snapshot-relative applied index cannot
+  exceed the last stored entry index; proofs by `omega` on list lengths.
+- **HNE8–HNE14** (`hasNextEntriesSince` group): characterise when `hasNextEntriesSince` is
+  true — entry at given index exists in the unstable log; monotonicity over applied index.
+
+TARGETS.md updated with target 27 (has_next_entries, Phase 5). RESEARCH.md Run 111 section added.
+
+### Run 112: BroadcastLifecycle (BL1–BL3, Task 5) + next_entries informal spec (Task 2)
+
+**`BroadcastLifecycle.lean`** (3 theorems, 0 sorry):
+
+- **BL1** (`broadcastSeq_to_validAEList`): `BroadcastSeq` implies `ValidAEList` — any broadcast
+  sequence produces a valid AppendEntries message list.
+- **BL2** (`raftReachable_after_broadcast`): from `RaftReachable`, applying a `BroadcastSeq`
+  yields a new `RaftReachable` state.
+- **BL3** (`raftReachable_from_init_broadcast`): from `initialCluster`, applying a `BroadcastSeq`
+  yields `RaftReachable` — closes the lifecycle gap from initial state.
+
+Together BL1–BL3 connect `BroadcastSeq` to `RaftReachable`, bridging the
+`ElectionBroadcastChain` to the main `RaftReachable` reachability predicate.
+
+`specs/next_entries_informal.md` written (next_entries_since/next_entries informal spec,
+NE1–NE7 properties identified for formalisation).
+
+### Run 113: NextEntries (NE1–NE7, Task 3) + NextEntriesCorrespondence (Task 5/8)
+
+**`NextEntries.lean`** (7 theorems, 0 sorry): `nextEntries` and `nextEntriesSince` slice model.
+
+- **NE1**: `nextEntriesSince` returns an empty list when `applied ≥ last`.
+- **NE2–NE4**: correctness of the offset/length computation for the returned slice.
+- **NE5–NE7**: monotonicity — higher applied index yields equal-or-shorter result; snapshot
+  boundary interaction.
+
+**`NextEntriesCorrespondence.lean`** (20 `#guard`, fi=4, UNLT=10000): 20 Lean `#guard` tests
+covering the complete behavioural envelope of `nextEntries`/`nextEntriesSince` against the Rust
+implementation. Rust test `test_next_entries_correspondence` (20 assertions, all pass).
+
+### Run 114: HasNextEntriesCorrespondence (Task 4/8 Route B) + CORRESPONDENCE.md (Task 6)
+
+**`HasNextEntriesCorrespondence.lean`** (33 `#guard`):
+- 9 cases for `appliedIndexUpperBound` (snapshot-boundary, empty-log, within-log)
+- 17 cases for `hasNextEntriesSince` (false-when-empty, false-when-within-limit, true-when-beyond)
+- 7 cases for `hasNextEntries` (overall entry-existence guard)
+
+Rust test `test_has_next_entries_since_correspondence` (34 assertions, all pass).
+
+**CORRESPONDENCE.md** updated: added 7 missing sections from Runs 93–114, updated totals to
+25 correspondence targets with ~513 `#guard` assertions across all sections.
+
+> ✅ `lake build` passed with Lean 4.30.0-rc2. **0 sorry**. **671 theorems** machine-checked.
+> 🔬 *Run 115 update (2026-04-25 12:24 UTC). [Lean Squad](https://github.com/dsyme/raft-lean-squad/actions/runs/24930815701)*

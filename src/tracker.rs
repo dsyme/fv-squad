@@ -551,6 +551,16 @@ mod tests {
             t
         }
 
+        /// Mirror of Lean `initTracker ids next_idx`: each peer gets `Progress::new(next_idx, 10)`.
+        fn make_init_tracker(ids: &[u64], next_idx: u64) -> ProgressTracker {
+            let mut t = ProgressTracker::new(10);
+            t.conf = Configuration::new(ids.iter().copied(), std::iter::empty());
+            for &id in ids {
+                t.progress.insert(id, Progress::new(next_idx, 10));
+            }
+            t
+        }
+
         // --- removePeer (Lean: #guard 1–5) ---
         // Case 1: removing present peer reduces count by 1
         {
@@ -640,6 +650,119 @@ mod tests {
                     "wf invariant: matched+1 ≤ next_idx for all peers"
                 );
             }
+        }
+
+        // --- PT25/PT26 integration: initTracker + applyChanges membership ---
+        // Mirrors FVSquad/ProgressTrackerCorrespondence.lean #guard 34–43.
+
+        // #guard 34: PT25 — peer 1 in initTracker, not in changes → still present.
+        {
+            let mut t = make_init_tracker(&[1, 2, 3], 5);
+            t.apply_conf(
+                t.conf.clone(),
+                vec![(4u64, MapChangeType::Add), (2u64, MapChangeType::Remove)],
+                8,
+            );
+            assert!(t.progress.contains_key(&1u64), "#guard34: peer 1 survives (not in changes)");
+        }
+
+        // #guard 35: PT25 — peer 3 survives changes touching only peers 2 and 4.
+        {
+            let mut t = make_init_tracker(&[1, 2, 3], 5);
+            t.apply_conf(
+                t.conf.clone(),
+                vec![(2u64, MapChangeType::Remove), (4u64, MapChangeType::Add)],
+                8,
+            );
+            assert!(t.progress.contains_key(&3u64), "#guard35: peer 3 untouched");
+        }
+
+        // #guard 36: PT25 complement — peer 2 explicitly removed → absent.
+        {
+            let mut t = make_init_tracker(&[1, 2, 3], 5);
+            t.apply_conf(t.conf.clone(), vec![(2u64, MapChangeType::Remove)], 8);
+            assert!(!t.progress.contains_key(&2u64), "#guard36: peer 2 removed");
+        }
+
+        // #guard 37: PT26 — peer 9 added, then unrelated changes → peer 9 present.
+        {
+            let mut t = make_pm3();
+            t.apply_conf(
+                t.conf.clone(),
+                vec![
+                    (9u64, MapChangeType::Add),
+                    (7u64, MapChangeType::Add),
+                    (8u64, MapChangeType::Add),
+                ],
+                10,
+            );
+            assert!(t.progress.contains_key(&9u64), "#guard37: peer 9 retained after unrelated adds");
+        }
+
+        // #guard 38: PT26 complement — peer 9 added then removed → absent.
+        {
+            let mut t = make_pm3();
+            t.apply_conf(
+                t.conf.clone(),
+                vec![(9u64, MapChangeType::Add), (9u64, MapChangeType::Remove)],
+                10,
+            );
+            assert!(!t.progress.contains_key(&9u64), "#guard38: peer 9 removed after add+remove");
+        }
+
+        // #guard 39: Combined — peers 1,3 remain; 2 removed; 5 added.
+        {
+            let mut t = make_init_tracker(&[1, 2, 3], 5);
+            t.apply_conf(
+                t.conf.clone(),
+                vec![(2u64, MapChangeType::Remove), (5u64, MapChangeType::Add)],
+                10,
+            );
+            assert!(t.progress.contains_key(&1u64), "#guard39: peer 1 present");
+            assert!(!t.progress.contains_key(&2u64), "#guard39: peer 2 absent");
+            assert!(t.progress.contains_key(&3u64), "#guard39: peer 3 present");
+            assert!(t.progress.contains_key(&5u64), "#guard39: peer 5 added");
+        }
+
+        // #guard 40: applyChanges on empty initTracker with one Add.
+        {
+            let mut t = make_init_tracker(&[], 5);
+            t.apply_conf(t.conf.clone(), vec![(7u64, MapChangeType::Add)], 5);
+            assert!(t.progress.contains_key(&7u64), "#guard40: peer 7 added from empty tracker");
+        }
+
+        // #guard 41: Add then Remove same peer → absent.
+        {
+            let mut t = make_init_tracker(&[1, 2], 5);
+            t.apply_conf(
+                t.conf.clone(),
+                vec![(3u64, MapChangeType::Add), (3u64, MapChangeType::Remove)],
+                5,
+            );
+            assert!(!t.progress.contains_key(&3u64), "#guard41: peer 3 absent after add+remove");
+        }
+
+        // #guard 42: Remove then Add same peer → present again.
+        {
+            let mut t = make_init_tracker(&[1, 2], 5);
+            t.apply_conf(
+                t.conf.clone(),
+                vec![(1u64, MapChangeType::Remove), (1u64, MapChangeType::Add)],
+                10,
+            );
+            assert!(t.progress.contains_key(&1u64), "#guard42: peer 1 re-added");
+        }
+
+        // #guard 43: Re-added peer has next_idx from the applyChanges call.
+        {
+            let mut t = make_init_tracker(&[1, 2], 5);
+            t.apply_conf(
+                t.conf.clone(),
+                vec![(1u64, MapChangeType::Remove), (1u64, MapChangeType::Add)],
+                10,
+            );
+            let p = t.progress.get(&1u64).expect("#guard43: peer 1 present");
+            assert_eq!(p.next_idx, 10, "#guard43: next_idx=10 after re-add");
         }
     }
 

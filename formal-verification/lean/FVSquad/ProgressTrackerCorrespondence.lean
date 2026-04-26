@@ -207,4 +207,52 @@ instance : BEq Progress where
 -- 33. initTracker result is fully wf (matched=0, next_idx=next_idx ≥ 1).
 #guard (initTracker [1, 2, 3, 4] 5).all (fun e => Nat.ble (e.2.matched + 1) e.2.next_idx)
 
+-- ---------------------------------------------------------------------------
+-- PT25 / PT26 integration: initTracker + applyChanges membership
+-- (Lean Squad Run 116 — Task 5 integration theorems)
+-- ---------------------------------------------------------------------------
+
+-- 34. PT25 scenario: peer 1 is in initTracker, not mentioned in changes → still present.
+#guard hasPeer (applyChanges (initTracker [1, 2, 3] 5)
+    [(4, ChangeType.Add), (2, ChangeType.Remove)] 8) 1 = true
+
+-- 35. PT25 scenario: peer 3 survives a change list that touches only peers 2 and 4.
+#guard hasPeer (applyChanges (initTracker [1, 2, 3] 5)
+    [(2, ChangeType.Remove), (4, ChangeType.Add)] 8) 3 = true
+
+-- 36. PT25 complement: peer 2 is removed → no longer present.
+#guard hasPeer (applyChanges (initTracker [1, 2, 3] 5)
+    [(2, ChangeType.Remove)] 8) 2 = false
+
+-- 37. PT26 scenario: peer 9 is added, then unrelated changes → peer 9 is present.
+#guard hasPeer (applyChanges (applyChange pm3 9 ChangeType.Add 10)
+    [(7, ChangeType.Add), (8, ChangeType.Add)] 10) 9 = true
+
+-- 38. PT26 complement: peer 9 added then removed → no longer present.
+#guard hasPeer (applyChanges (applyChange pm3 9 ChangeType.Add 10)
+    [(7, ChangeType.Add), (9, ChangeType.Remove)] 10) 9 = false
+
+-- 39. Combined: initTracker + multi-change: peers [1,3] remain; 2 removed; 5 added.
+#guard
+  let pm' := applyChanges (initTracker [1, 2, 3] 5)
+      [(2, ChangeType.Remove), (5, ChangeType.Add)] 10
+  hasPeer pm' 1 = true ∧ hasPeer pm' 2 = false ∧
+  hasPeer pm' 3 = true ∧ hasPeer pm' 5 = true
+
+-- 40. applyChanges on empty initTracker with one Add creates a single-peer map.
+#guard hasPeer (applyChanges (initTracker [] 5) [(7, ChangeType.Add)] 5) 7 = true
+
+-- 41. applyChanges Add then Remove same peer on initTracker leaves it absent.
+#guard hasPeer (applyChanges (initTracker [1, 2] 5)
+    [(3, ChangeType.Add), (3, ChangeType.Remove)] 5) 3 = false
+
+-- 42. applyChanges Remove then Add same peer restores it with fresh Progress.
+#guard hasPeer (applyChanges (initTracker [1, 2] 5)
+    [(1, ChangeType.Remove), (1, ChangeType.Add)] 10) 1 = true
+
+-- 43. After Remove-then-Add, the re-added peer has next_idx from applyChanges call.
+#guard (applyChanges (initTracker [1, 2] 5)
+    [(1, ChangeType.Remove), (1, ChangeType.Add)] 10).any
+    (fun e => e.1 == 1 && e.2.next_idx == 10)
+
 end FVSquad.ProgressTrackerCorrespondence
