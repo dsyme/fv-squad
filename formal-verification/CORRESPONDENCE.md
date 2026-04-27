@@ -7,10 +7,9 @@ correspondence level, known divergences, and the impact on any proofs that rely 
 definition.
 
 ## Last Updated
-- **Date**: 2026-04-27 10:30 UTC
-- **Commit**: `8413ca0` — Run 121: Task 9 — CI threshold 20→25 (25 Rust correspondence tests). Task 6 — CORRESPONDENCE.md updated for Runs 115–120: ProgressTrackerCorrespondence 34→47 `#guard` (PT25/PT26 membership integration), new sections for `BroadcastLifecycle.lean`, `HasNextEntries.lean`, `NextEntries.lean`. Totals: 673 theorems, 560+ `#guard`, 72 Lean files, 29 correspondence targets, 25 Rust correspondence tests.
+- **Date**: 2026-04-26 04:00 UTC
+- **Commit**: `e1aafbc` — Run 115: Task 8 — Added Rust correspondence test `test_progress_correspondence` (55 assertions). Task 9 — Updated CI threshold to 26. Now 26 correspondence targets, 26 Rust correspondence tests.
 - **Commit**: `adac6a1` — Run 114: Task 4 — Added `HasNextEntriesCorrespondence.lean` (33 `#guard`, Rust test `test_has_next_entries_since_correspondence`). Task 6 — Updated CORRESPONDENCE.md with all correspondence targets added since Run 92 (Runs 93–114). Totals: 671 theorems, 513 `#guard`, 71 Lean files, 26 correspondence targets, 25 Rust correspondence tests.
-- **Commit**: `7f4845a` — Run 92: Task 8 — Added QuorumRecentlyActiveCorrespondence (14 `#guard` + 14 Rust assertions); added validation evidence section. Task 5 — UnstablePersistBridge (8 theorems, closes firstUpdateIndex gap). Totals: 544T, 412 `#guard`, 58F, 0 sorry, 19 correspondence targets.
 
 ---
 
@@ -705,9 +704,10 @@ Tests cover:
 ### Validation evidence
 
 - **Lean side**: 55 `#guard` tests in `FVSquad/ProgressCorrespondence.lean` (lake build ✅, 0 sorry)
-- **Rust side**: Rust implementation manually cross-checked against each `#guard` case;
-  the Lean model definitions (especially `maybeDecrTo`) were verified to match the Rust logic via `PR26`
-- **Fixture**: Inline in `ProgressCorrespondence.lean`
+- **Rust side**: 55 runtime assertions in `tracker::progress::tests::test_progress_correspondence`
+  (`src/tracker/progress.rs`). Added in Run 115. All 55 pass (`cargo test test_progress_correspondence`).
+- **Test harness**: `formal-verification/tests/progress/README.md`
+- **Fixture**: Three concrete Progress states (Replicate/Probe/Snapshot) shared between both sides
 
 ### Correspondence level: **Abstraction**
 

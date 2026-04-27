@@ -408,4 +408,133 @@ mod tests {
             }
         }
     }
+
+    /// Task 8 (Route B) — Progress state machine correspondence tests.
+    ///
+    /// Validates that the Rust `Progress` implementation agrees with the Lean 4 model
+    /// in `formal-verification/lean/FVSquad/ProgressCorrespondence.lean` on the same
+    /// set of representative inputs (55 Lean `#guard` tests → 55 Rust assertions).
+    ///
+    /// Test fixtures mirror the Lean fixtures exactly:
+    ///   - `pReplicate`: matched=5, next_idx=6, Replicate, paused=false, pending_snapshot=0
+    ///   - `pProbe`:     matched=3, next_idx=7, Probe,     paused=false, pending_snapshot=0
+    ///   - `pSnapshot`:  matched=2, next_idx=3, Snapshot,  paused=false, pending_snapshot=10
+    #[test]
+    fn test_progress_correspondence() {
+        // Helper: build a Progress fixture (ins_size=0 → ins.full() always false,
+        // matching Lean `ins_full := false`)
+        let make = |state: ProgressState,
+                    matched: u64,
+                    next_idx: u64,
+                    pending_snapshot: u64,
+                    pending_request_snapshot: u64,
+                    recent_active: bool| {
+            let mut p = Progress::new(next_idx, 256);  // 256 capacity → ins.full() = false
+            p.state = state;
+            p.matched = matched;
+            p.pending_snapshot = pending_snapshot;
+            p.pending_request_snapshot = pending_request_snapshot;
+            p.recent_active = recent_active;
+            p
+        };
+
+        // ins_size=256 → ins.full() = false (empty), matching Lean `ins_full := false`
+        // (With ins_size=0, full() returns true because count==cap==0.)
+        let p_repl  = make(ProgressState::Replicate, 5, 6, 0, 0, true);
+        let p_probe = make(ProgressState::Probe,     3, 7, 0, 0, true);
+        let p_snap  = make(ProgressState::Snapshot,  2, 3, 10, 0, true);
+
+        // --- maybeUpdate (Lean guards 1–12) ---
+        let mut p = p_repl.clone(); assert!(p.maybe_update(8));
+        let mut p = p_repl.clone(); p.maybe_update(8); assert_eq!(p.matched, 8);
+        let mut p = p_repl.clone(); p.maybe_update(8); assert_eq!(p.next_idx, 9);
+        let mut p = p_repl.clone(); p.maybe_update(8); assert!(!p.paused);
+        let mut p = p_repl.clone(); p.maybe_update(8);
+        assert!(p.matched + 1 <= p.next_idx, "wf after maybeUpdate");
+
+        let mut p = p_repl.clone(); assert!(!p.maybe_update(5));
+        let mut p = p_repl.clone(); p.maybe_update(5); assert_eq!(p.matched, 5);
+        let mut p = p_repl.clone(); assert!(!p.maybe_update(3));
+
+        let mut p = p_probe.clone(); p.maybe_update(10); assert_eq!(p.next_idx, 11);
+        let mut p = p_probe.clone(); p.maybe_update(4);  assert_eq!(p.next_idx, 7);
+        let mut p = p_probe.clone(); p.maybe_update(10);
+        assert!(p.matched + 1 <= p.next_idx, "wf pProbe maybeUpdate");
+
+        // --- maybeDecrTo Replicate (Lean guards 13–20) ---
+        let mut p = p_repl.clone(); assert!(!p.maybe_decr_to(4, 3, INVALID_INDEX));
+        let mut p = p_repl.clone(); p.maybe_decr_to(4, 3, INVALID_INDEX); assert_eq!(p, p_repl);
+
+        let mut p = p_repl.clone(); assert!(!p.maybe_decr_to(5, 4, INVALID_INDEX));
+        let mut p = p_repl.clone(); p.maybe_decr_to(5, 4, INVALID_INDEX); assert_eq!(p, p_repl);
+
+        let mut p = p_repl.clone(); assert!(p.maybe_decr_to(7, 3, INVALID_INDEX));
+        let mut p = p_repl.clone(); p.maybe_decr_to(7, 3, INVALID_INDEX); assert_eq!(p.next_idx, 6);
+        let mut p = p_repl.clone(); p.maybe_decr_to(7, 3, INVALID_INDEX);
+        assert!(p.matched + 1 <= p.next_idx, "wf replicate decr");
+
+        let mut p = p_repl.clone(); assert!(p.maybe_decr_to(5, 0, 1));
+        let mut p = p_repl.clone(); p.maybe_decr_to(5, 0, 1); assert_eq!(p.pending_request_snapshot, 1);
+
+        // --- maybeDecrTo Probe (Lean guards 21–29) ---
+        let mut p = p_probe.clone(); assert!(!p.maybe_decr_to(5, 3, INVALID_INDEX));
+        let mut p = p_probe.clone(); p.maybe_decr_to(5, 3, INVALID_INDEX); assert_eq!(p, p_probe);
+
+        let mut p = p_probe.clone(); assert!(!p.maybe_decr_to(9, 3, INVALID_INDEX));
+
+        let mut p = p_probe.clone(); assert!(p.maybe_decr_to(6, 3, INVALID_INDEX));
+        let mut p = p_probe.clone(); p.maybe_decr_to(6, 3, INVALID_INDEX); assert_eq!(p.next_idx, 4);
+        let mut p = p_probe.clone(); p.maybe_decr_to(6, 3, INVALID_INDEX); assert!(!p.paused);
+        let mut p = p_probe.clone(); p.maybe_decr_to(6, 3, INVALID_INDEX);
+        assert!(p.matched + 1 <= p.next_idx, "wf probe decr");
+
+        let mut p = p_probe.clone(); p.maybe_decr_to(6, 9, INVALID_INDEX); assert_eq!(p.next_idx, 6);
+        let mut p = p_probe.clone(); p.maybe_decr_to(6, 0, INVALID_INDEX); assert_eq!(p.next_idx, 4);
+
+        // --- maybeDecrTo Snapshot (Lean guards 30–33) ---
+        let mut p = p_snap.clone(); assert!(!p.maybe_decr_to(4, 2, INVALID_INDEX));
+
+        let mut p = p_snap.clone(); assert!(p.maybe_decr_to(4, 2, 7));
+        let mut p = p_snap.clone(); p.maybe_decr_to(4, 2, 7); assert_eq!(p.pending_request_snapshot, 7);
+        let mut p = p_snap.clone(); p.maybe_decr_to(4, 2, 7);
+        assert!(p.matched + 1 <= p.next_idx, "wf snapshot decr");
+
+        // --- optimisticUpdate (Lean guards 34–39) ---
+        let mut p = p_repl.clone();  p.optimistic_update(8); assert_eq!(p.next_idx, 9);
+        let mut p = p_probe.clone(); p.optimistic_update(4); assert_eq!(p.next_idx, 5);
+        let mut p = p_repl.clone();  p.optimistic_update(8); assert_eq!(p.matched, p_repl.matched);
+        let mut p = p_repl.clone();  p.optimistic_update(8); assert_eq!(p.state, p_repl.state);
+        let mut p = p_repl.clone();  p.optimistic_update(5); assert!(p.matched + 1 <= p.next_idx);
+        let mut p = p_probe.clone(); p.optimistic_update(3); assert!(p.matched + 1 <= p.next_idx);
+
+        // --- State transitions (Lean guards 40–51) ---
+        let mut p = p_probe.clone(); p.become_replicate();
+        assert_eq!(p.state, ProgressState::Replicate);
+        assert_eq!(p.next_idx, p_probe.matched + 1);  // 4
+        assert!(p.matched + 1 <= p.next_idx);
+
+        let mut p = p_repl.clone(); p.become_probe();
+        assert_eq!(p.state, ProgressState::Probe);
+        assert_eq!(p.next_idx, p_repl.matched + 1);   // 6
+        assert!(p.matched + 1 <= p.next_idx);
+
+        // becomeProbe from Snapshot: max(matched+1, pending_snapshot+1) = max(3,11) = 11
+        let mut p = p_snap.clone(); p.become_probe();
+        assert_eq!(p.state, ProgressState::Probe);
+        assert_eq!(p.next_idx, 11);
+        assert!(p.matched + 1 <= p.next_idx);
+
+        let mut p = p_probe.clone(); p.become_snapshot(15);
+        assert_eq!(p.state, ProgressState::Snapshot);
+        assert_eq!(p.pending_snapshot, 15);
+        assert!(p.matched + 1 <= p.next_idx);
+
+        // --- isPaused (Lean guards 52–55) ---
+        let p = make(ProgressState::Probe, 0, 1, 0, 0, false);
+        assert!(!p.is_paused());
+        let mut p = make(ProgressState::Probe, 0, 1, 0, 0, false); p.pause();
+        assert!(p.is_paused());
+        let p = p_repl.clone(); assert!(!p.is_paused());  // empty inflights
+        let p = p_snap.clone(); assert!(p.is_paused());   // snapshot always paused
+    }
 }
