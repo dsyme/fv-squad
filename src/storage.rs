@@ -527,7 +527,7 @@ mod test {
     use crate::eraftpb::{ConfState, Entry, Snapshot};
     use crate::errors::{Error as RaftError, StorageError};
 
-    use super::{GetEntriesContext, MemStorage, Storage};
+    use super::{GetEntriesContext, MemStorage, MemStorageCore, Storage};
 
     fn new_entry(index: u64, term: u64) -> Entry {
         let mut e = Entry::default();
@@ -808,5 +808,108 @@ mod test {
         // Apply snapshot fails due to StorageError::SnapshotOutOfDate
         let snap = new_snapshot(3, 3, nodes);
         storage.wl().apply_snapshot(snap).unwrap_err();
+    }
+
+    /// Lean Squad correspondence test for `MemStorageCore::first_index` / `last_index` /
+    /// `compact` / `append` vs the Lean 4 model `FVSquad.MemStorage` in
+    /// `formal-verification/lean/FVSquad/MemStorage.lean`.
+    ///
+    /// 🔬 Lean Squad automated formal verification — Task 8 Route B.
+    /// Each assertion here corresponds to a `#guard` in
+    /// `formal-verification/lean/FVSquad/MemStorageCorrespondence.lean`.
+    /// Fixture cases are shared with `formal-verification/tests/mem_storage/cases.json`.
+    #[test]
+    fn test_mem_storage_correspondence() {
+        // Helper: build a MemStorageCore with snapshot_metadata.index = snapshot_index
+        // and entries with the given (index, term) pairs starting at snapshot_index + 1.
+        // The Lean model uses mk(snapshotIndex, terms) for the equivalent.
+        let make_core = |snapshot_index: u64, terms: &[u64]| -> MemStorageCore {
+            let mut core = MemStorageCore::default();
+            core.snapshot_metadata.index = snapshot_index;
+            core.snapshot_metadata.term = 1;
+            core.entries = terms
+                .iter()
+                .enumerate()
+                .map(|(i, &t)| new_entry(snapshot_index + 1 + i as u64, t))
+                .collect();
+            core
+        };
+
+        // ── firstIndex ────────────────────────────────────────────────────────
+        // Case firstIndex-1: si=4, terms=[5,5] → 5
+        assert_eq!(make_core(4, &[5, 5]).first_index(), 5, "firstIndex-1");
+        // Case firstIndex-2: si=0, terms=[] → 1
+        assert_eq!(make_core(0, &[]).first_index(), 1, "firstIndex-2");
+        // Case firstIndex-3: si=9, terms=[1,2,3] → 10
+        assert_eq!(make_core(9, &[1, 2, 3]).first_index(), 10, "firstIndex-3");
+
+        // ── lastIndex ─────────────────────────────────────────────────────────
+        // Case lastIndex-1: si=4, terms=[5,5] → 6
+        assert_eq!(make_core(4, &[5, 5]).last_index(), 6, "lastIndex-1");
+        // Case lastIndex-2: si=0, terms=[] → 0
+        assert_eq!(make_core(0, &[]).last_index(), 0, "lastIndex-2");
+        // Case lastIndex-3: si=9, terms=[1,2,3] → 12
+        assert_eq!(make_core(9, &[1, 2, 3]).last_index(), 12, "lastIndex-3");
+
+        // ── compact ───────────────────────────────────────────────────────────
+        // compact-noop: ci = firstIndex (= 5) → no change; first_index()=5, terms=[5,5]
+        {
+            let mut core = make_core(4, &[5, 5]);
+            core.compact(5).unwrap();
+            assert_eq!(core.first_index(), 5, "compact-noop first_index");
+            assert_eq!(core.entries.iter().map(|e| e.term).collect::<Vec<_>>(), vec![5, 5], "compact-noop terms");
+        }
+        // compact-drop1: ci = 6 → drop first entry; first_index()=6, terms=[5]
+        {
+            let mut core = make_core(4, &[5, 5]);
+            core.compact(6).unwrap();
+            assert_eq!(core.first_index(), 6, "compact-drop1 first_index");
+            assert_eq!(core.entries.iter().map(|e| e.term).collect::<Vec<_>>(), vec![5], "compact-drop1 terms");
+        }
+        // compact-below-fi: ci = 3 < firstIndex(5) → noop; first_index()=5, terms=[5,5]
+        {
+            let mut core = make_core(4, &[5, 5]);
+            core.compact(3).unwrap();
+            assert_eq!(core.first_index(), 5, "compact-below-fi first_index");
+            assert_eq!(core.entries.iter().map(|e| e.term).collect::<Vec<_>>(), vec![5, 5], "compact-below-fi terms");
+        }
+
+        // ── append ────────────────────────────────────────────────────────────
+        // append-replace-all: startIndex=5(=fi), newTerms=[6,6,6] → terms=[6,6,6]
+        {
+            let mut core = make_core(4, &[5, 5]);
+            core.append(&[new_entry(5, 6), new_entry(6, 6), new_entry(7, 6)]).unwrap();
+            assert_eq!(core.entries.iter().map(|e| e.term).collect::<Vec<_>>(), vec![6, 6, 6], "append-replace-all");
+        }
+        // append-replace-last: startIndex=6, newTerms=[6] → terms=[5,6]
+        {
+            let mut core = make_core(4, &[5, 5]);
+            core.append(&[new_entry(6, 6)]).unwrap();
+            assert_eq!(core.entries.iter().map(|e| e.term).collect::<Vec<_>>(), vec![5, 6], "append-replace-last");
+        }
+        // append-extend: startIndex=7(=li+1), newTerms=[7] → terms=[5,5,7]
+        {
+            let mut core = make_core(4, &[5, 5]);
+            core.append(&[new_entry(7, 7)]).unwrap();
+            assert_eq!(core.entries.iter().map(|e| e.term).collect::<Vec<_>>(), vec![5, 5, 7], "append-extend");
+        }
+        // append-truncate: startIndex=5(=fi), terms=[5,5,5] → [6,6]
+        {
+            let mut core = make_core(4, &[5, 5, 5]);
+            core.append(&[new_entry(5, 6), new_entry(6, 6)]).unwrap();
+            assert_eq!(core.entries.iter().map(|e| e.term).collect::<Vec<_>>(), vec![6, 6], "append-truncate");
+        }
+        // append-empty-noop: newTerms=[] → no change
+        {
+            let mut core = make_core(4, &[5, 5]);
+            core.append(&[]).unwrap();
+            assert_eq!(core.entries.iter().map(|e| e.term).collect::<Vec<_>>(), vec![5, 5], "append-empty-noop");
+        }
+        // append-insert-mid: startIndex=7(=fi+2), terms=[5,5,5] → [5,5,9,9]
+        {
+            let mut core = make_core(4, &[5, 5, 5]);
+            core.append(&[new_entry(7, 9), new_entry(8, 9)]).unwrap();
+            assert_eq!(core.entries.iter().map(|e| e.term).collect::<Vec<_>>(), vec![5, 5, 9, 9], "append-insert-mid");
+        }
     }
 }

@@ -1,0 +1,134 @@
+[
+  {
+    "id": "firstIndex-1",
+    "op": "firstIndex",
+    "snapshotIndex": 4,
+    "terms": [5, 5],
+    "expected": 5
+  },
+  {
+    "id": "firstIndex-2",
+    "op": "firstIndex",
+    "snapshotIndex": 0,
+    "terms": [],
+    "expected": 1
+  },
+  {
+    "id": "firstIndex-3",
+    "op": "firstIndex",
+    "snapshotIndex": 9,
+    "terms": [1, 2, 3],
+    "expected": 10
+  },
+  {
+    "id": "lastIndex-1",
+    "op": "lastIndex",
+    "snapshotIndex": 4,
+    "terms": [5, 5],
+    "expected": 6
+  },
+  {
+    "id": "lastIndex-2",
+    "op": "lastIndex",
+    "snapshotIndex": 0,
+    "terms": [],
+    "expected": 0
+  },
+  {
+    "id": "lastIndex-3",
+    "op": "lastIndex",
+    "snapshotIndex": 9,
+    "terms": [1, 2, 3],
+    "expected": 12
+  },
+  {
+    "id": "compact-noop",
+    "op": "compact",
+    "snapshotIndex": 4,
+    "terms": [5, 5],
+    "compactIndex": 5,
+    "expectedFirstIndex": 5,
+    "expectedTerms": [5, 5],
+    "note": "ci = firstIndex → noop"
+  },
+  {
+    "id": "compact-drop1",
+    "op": "compact",
+    "snapshotIndex": 4,
+    "terms": [5, 5],
+    "compactIndex": 6,
+    "expectedFirstIndex": 6,
+    "expectedTerms": [5],
+    "note": "ci = firstIndex+1 → drop first entry"
+  },
+  {
+    "id": "compact-below-fi",
+    "op": "compact",
+    "snapshotIndex": 4,
+    "terms": [5, 5],
+    "compactIndex": 3,
+    "expectedFirstIndex": 5,
+    "expectedTerms": [5, 5],
+    "note": "ci < firstIndex → noop"
+  },
+  {
+    "id": "append-replace-all",
+    "op": "append",
+    "snapshotIndex": 4,
+    "terms": [5, 5],
+    "startIndex": 5,
+    "newTerms": [6, 6, 6],
+    "expectedSnapshotIndex": 4,
+    "expectedTerms": [6, 6, 6]
+  },
+  {
+    "id": "append-replace-last",
+    "op": "append",
+    "snapshotIndex": 4,
+    "terms": [5, 5],
+    "startIndex": 6,
+    "newTerms": [6],
+    "expectedSnapshotIndex": 4,
+    "expectedTerms": [5, 6]
+  },
+  {
+    "id": "append-extend",
+    "op": "append",
+    "snapshotIndex": 4,
+    "terms": [5, 5],
+    "startIndex": 7,
+    "newTerms": [7],
+    "expectedSnapshotIndex": 4,
+    "expectedTerms": [5, 5, 7]
+  },
+  {
+    "id": "append-truncate",
+    "op": "append",
+    "snapshotIndex": 4,
+    "terms": [5, 5, 5],
+    "startIndex": 5,
+    "newTerms": [6, 6],
+    "expectedSnapshotIndex": 4,
+    "expectedTerms": [6, 6]
+  },
+  {
+    "id": "append-empty-noop",
+    "op": "append",
+    "snapshotIndex": 4,
+    "terms": [5, 5],
+    "startIndex": 5,
+    "newTerms": [],
+    "expectedSnapshotIndex": 4,
+    "expectedTerms": [5, 5]
+  },
+  {
+    "id": "append-insert-mid",
+    "op": "append",
+    "snapshotIndex": 4,
+    "terms": [5, 5, 5],
+    "startIndex": 7,
+    "newTerms": [9, 9],
+    "expectedSnapshotIndex": 4,
+    "expectedTerms": [5, 5, 9, 9]
+  }
+]
