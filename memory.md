@@ -1,7 +1,7 @@
 # Lean Squad Memory — dsyme/raft-lean-squad
 
 ## Last Updated
-Run 124 — 2026-04-27 16:13 UTC
+Run 125 — 2026-04-27 17:40 UTC (composition assessment: A3-A6 phases corrected, A7 chartered)
 
 ## Repository
 - **Language**: Rust (Raft consensus library)
@@ -38,12 +38,29 @@ All in `formal-verification/tests/` with Lean `#guard` counterparts.
 ## Pending/Conflicts
 - `proofs-r130` branch (RaftSafety.lean + CRITIQUE.md changes): CONFLICT with main — skip for reconciliation run
 
-## Active Gaps (from CRITIQUE.md Run 119)
-1. **HLogConsistency full discharge**: connect AEBroadcastInvariant inductive closure to RaftReachable
-2. **ProgressTracker integration**: all_wf in RaftReachable state (PT1-PT26 per-op but no RaftReachable connection)
-3. **Term-indexed safety**: MC4 → RSS6/RSS8 (Raft §5.4.2)
-4. **Paper/Report**: paper.tex updated Run 120 (673T/73F/20 layers) — PDF not compiled (LaTeX unavailable)
-5. **progress_set**: Phase 5 ✅ — ProgressSet.lean (PS1–PS8, 0 sorry, Run 122) + ProgressSetCorrespondence.lean (26 #guard). PR submitted.
+## Active Gaps (from Run 125 composition assessment)
+1. **A7 (election_lifecycle_bridge)** — THE SINGLE REMAINING GAP FOR FULL COMPOSITION:
+   Create `FVSquad/ElectionLifecycle.lean` with:
+   - `ElectionEpoch` structure: winner, term, voters, broadcast round
+   - Show elected leader's AE broadcast satisfies `BroadcastSeq` / `ValidAEStep` preconditions
+   - Apply EBC6 (broadcastSeq_hqc_preserved) + CPS13 → unconditional `hqc_preserved`
+   - Connect to `RaftReachable.step` → unconditional `raftReachable_safe`
+   - Also integrate MC4 (term-safety) into the election lifecycle
+   - Estimated: ~20–40 theorems, difficulty medium-high
+2. **ProgressTracker integration**: PT1-PT26 per-op but no RaftReachable connection
+3. **Paper/Report**: paper.tex updated Run 120 (673T/73F/20 layers) — PDF not compiled (LaTeX unavailable)
+
+## Composition Status (Run 125)
+All 5 `RaftReachable.step` hypotheses status:
+- `hlogs'`: ✅ Discharged (CPS8/CPS9 + ValidAEStep model)  
+- `hno_overwrite`: ✅ Discharged (CPS1)
+- `hcommitted_mono`: ✅ Discharged (CPS11)
+- `hnew_cert`: ✅ Discharged (CR8 + MC4)
+- `hqc_preserved`: ⚠️ Conditionally discharged (EBC6 + ECM6 + CPS13 chain — needs A7 bridge)
+
+Proof chain for `hqc_preserved`: RE5/RE7 → [A7 gap] → EBC6 → ECM6 → CPS13 → RaftReachable.step ✅
+
+A3-A6 phases updated in TARGETS.md (were stale at Phase 1, now correctly Phase 5 ✅)
 
 ## Key Files
 - `formal-verification/TARGETS.md` — prioritised target list
