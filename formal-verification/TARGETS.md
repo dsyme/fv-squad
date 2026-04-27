@@ -43,9 +43,11 @@ See `CRITIQUE.md §Critical Gap Analysis` for the full analysis.
 |----------|----|--------------|------|-------|-----------|---------------|
 | **A1** | `election_model` | `FVSquad/RaftElection.lean` | Model `NodeState` (currentTerm, votedFor, role), vote-granting rules, term monotonicity | 5 ✅ | Medium | Completed: RT1-RT15, RI1-RI15, `processVoteRequest`, `electionSafety`. All proved (0 sorry). |
 | **A2** | `election_safety` | `FVSquad/RaftElection.lean` | Prove at most one leader per term (ElectionSafety); uses HQ20 + TallyVotes | 5 ✅ | Medium-high | `electionSafety` proved. RI11-RI15 cluster-level invariants. |
-| **A3** | `leader_completeness` | `FVSquad/LeaderCompleteness.lean` | Compose HQ20 + IU16 + RSS5: elected leader has all quorum-certified entries | 1 | **High** | `hqc_preserved` (full discharge) |
-| **A4** | `concrete_transitions` | `FVSquad/ConcreteRaft.lean` | AppendEntries + RequestVote with terms; discharge `hlogs'`, `hno_overwrite`, `hcommitted_mono` | 1 | Medium | 3 of 5 step hypotheses |
-| **A5** | `commit_rule` | `FVSquad/ConcreteRaft.lean` | Discharge `hnew_cert` — commit only after quorum ACK; builds on CMC3 | 1 | Medium-high | `hnew_cert` |
+| **A3** | `leader_completeness` | `FVSquad/LeaderCompleteness.lean` | Compose HQ20 + IU16 + RSS5: elected leader has all quorum-certified entries | 5 ✅⚠️ | **High** | LC1-LC7 proved (0 sorry). `hqc_preserved` conditionally discharged via CPS13 given `CandidateLogCovers`. Full unconditional discharge requires A7 (election lifecycle bridge). |
+| **A4** | `concrete_transitions` | `FVSquad/ConcreteTransitions.lean` + `FVSquad/ConcreteProtocolStep.lean` | AppendEntries + RequestVote with terms; discharge `hlogs'`, `hno_overwrite`, `hcommitted_mono` | 5 ✅ | Medium | **Completed.** CT1–CT6 + CPS1–CPS14 all proved (0 sorry). `hno_overwrite` (CPS1), `hcommitted_mono` (CPS11), `hlogs'` (scoped to ValidAEStep) all discharged. |
+| **A5** | `commit_rule` | `FVSquad/CommitRule.lean` | Discharge `hnew_cert` — commit only after quorum ACK; builds on CMC3 | 5 ✅ | Medium-high | **Completed.** CR1–CR9 all proved (0 sorry). `hnew_cert` discharged via CR8. MC4 proves A6 term safety (`maybe_commit` only commits from current term). |
+| **A6** | `hae_inductive` | `FVSquad/AEBroadcastInvariant.lean` + `FVSquad/ElectionBroadcastChain.lean` | Inductive `hae` across AE broadcast; `hqc_preserved` from full broadcast round | 5 ✅⚠️ | Medium | **Completed for broadcast model.** ABI1–ABI10 + EBC1–EBC6 proved (0 sorry). `hae_broadcast_invariant_schema` (ABI8) + `broadcastSeq_hqc_preserved` (EBC6) close the broadcast induction. The remaining gap is A7: connecting `BroadcastSeq` to the full election lifecycle. |
+| **A7** | `election_lifecycle_bridge` | `FVSquad/ElectionLifecycle.lean` *(new)* | Show that after a concrete Raft election (RaftElection.lean) the leader performs a `BroadcastSeq` satisfying ABI8/EBC6 preconditions, giving unconditional `hqc_preserved` and closing `RaftReachable.step` fully | 1 | **Medium-high (~20–40 theorems)** | **The single remaining gap for full composition.** All prerequisites exist (RE5, ABI8, EBC6, CPS13). Needs to define `ElectionEpoch` tying election winner to a broadcast round, then invoke the broadcast-induction chain. |
 
 ## Other Pending Targets
 
@@ -155,7 +157,8 @@ is formalising "all voters have accepted" as a model-level predicate.
 
 | Priority | ID | Proposed file | Goal | Phase | Difficulty |
 |----------|----|--------------|------|-------|-----------|
-| **A6** | `hae_inductive` | `FVSquad/AEBroadcastInvariant.lean` | Inductive `hae` across AE history | 1 | Medium |
+| **A6** | `hae_inductive` | `FVSquad/AEBroadcastInvariant.lean` + `FVSquad/ElectionBroadcastChain.lean` | Inductive `hae` across AE broadcast | 5 ✅ | Medium | **Completed.** ABI1–ABI10 + EBC1–EBC6 all proved (0 sorry). See main A-targets table above. |
+| **A7** | `election_lifecycle_bridge` | `FVSquad/ElectionLifecycle.lean` *(new)* | Connect election → broadcast → `hqc_preserved` → `RaftReachable.step` | 1 | Medium-high | **The single remaining gap.** Charter: define `ElectionEpoch`, invoke ABI8+EBC6+CPS13 chain. ~20–40 theorems. |
 
 ---
 
