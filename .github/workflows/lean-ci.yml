@@ -144,10 +144,10 @@ jobs:
           echo "=== Correspondence test summary ==="
           echo "    Passed: $PASSED"
           echo "    Failed: $FAILED"
-          if [ "$PASSED" -lt 20 ]; then
-            echo "⚠️  WARNING: expected at least 20 correspondence test functions (got $PASSED)"
+          if [ "$PASSED" -lt 25 ]; then
+            echo "⚠️  WARNING: expected at least 25 correspondence test functions (got $PASSED)"
           else
-            echo "✅  $PASSED correspondence test functions passed (≥20 expected)"
+            echo "✅  $PASSED correspondence test functions passed (≥25 expected)"
           fi
           echo "=== Correspondence tests done ==="
           exit $TEST_EXIT

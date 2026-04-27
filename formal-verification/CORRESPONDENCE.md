@@ -7,7 +7,8 @@ correspondence level, known divergences, and the impact on any proofs that rely 
 definition.
 
 ## Last Updated
-- **Date**: 2026-04-25 12:30 UTC
+- **Date**: 2026-04-27 10:30 UTC
+- **Commit**: `8413ca0` — Run 121: Task 9 — CI threshold 20→25 (25 Rust correspondence tests). Task 6 — CORRESPONDENCE.md updated for Runs 115–120: ProgressTrackerCorrespondence 34→47 `#guard` (PT25/PT26 membership integration), new sections for `BroadcastLifecycle.lean`, `HasNextEntries.lean`, `NextEntries.lean`. Totals: 673 theorems, 560+ `#guard`, 72 Lean files, 29 correspondence targets, 25 Rust correspondence tests.
 - **Commit**: `adac6a1` — Run 114: Task 4 — Added `HasNextEntriesCorrespondence.lean` (33 `#guard`, Rust test `test_has_next_entries_since_correspondence`). Task 6 — Updated CORRESPONDENCE.md with all correspondence targets added since Run 92 (Runs 93–114). Totals: 671 theorems, 513 `#guard`, 71 Lean files, 26 correspondence targets, 25 Rust correspondence tests.
 - **Commit**: `7f4845a` — Run 92: Task 8 — Added QuorumRecentlyActiveCorrespondence (14 `#guard` + 14 Rust assertions); added validation evidence section. Task 5 — UnstablePersistBridge (8 theorems, closes firstUpdateIndex gap). Totals: 544T, 412 `#guard`, 58F, 0 sorry, 19 correspondence targets.
 
@@ -2455,7 +2456,7 @@ during a demotion transition.  This divergence is documented as a known mismatch
 
 ---
 
-## `FVSquad/ProgressTrackerCorrespondence.lean` — ProgressTracker Correspondence (34 `#guard`, Run ~107)
+## `FVSquad/ProgressTrackerCorrespondence.lean` — ProgressTracker Correspondence (47 `#guard`, Runs ~107–116)
 
 **Lean file**: `formal-verification/lean/FVSquad/ProgressTrackerCorrespondence.lean`
 **Rust source**: `src/tracker.rs` — `ProgressTracker` membership operations
@@ -2466,11 +2467,16 @@ during a demotion transition.  This divergence is documented as a known mismatch
 | `insertPeer` / `removePeer` | `ProgressTracker` map insertion/removal | **abstraction** |
 | `applyChanges` | `ProgressTracker::apply_conf` | **abstraction** |
 
+**New in Run 116 (PT25/PT26)**: Added 13 `#guard` cases testing membership integration for
+`initTracker`/`applyChanges` composition (theorems PT25: `initTracker_then_applyChanges_member`
+and PT26: `applyChanges_retains_last_add`). These exercises the "last-add-wins" invariant
+across compound `applyChanges` sequences.
+
 ### Validation evidence
 
-- **Lean side**: 34 `#guard` in `ProgressTrackerCorrespondence.lean` (lake build ✅, 0 sorry).
-- **Rust side**: `test_progress_tracker_correspondence` in `src/tracker.rs` (all pass).
-- **Correspondence test status**: ✅ Complete.
+- **Lean side**: 47 `#guard` in `ProgressTrackerCorrespondence.lean` (lake build ✅, 0 sorry, updated Run 116).
+- **Rust side**: `test_progress_tracker_correspondence` in `src/tracker.rs` (all pass, includes `make_init_tracker` Rust helper added in Run 116).
+- **Correspondence test status**: ✅ Complete — 47 `#guard` + Rust assertions all pass.
 
 ---
 
@@ -2529,3 +2535,122 @@ within u64 range in practice).
   - Rust: `cargo test test_has_next_entries_since_correspondence`
 - **Coverage**: upper-bound formula, anti-monotonicity (sinceIdx near boundary), monotonicity in committed/persisted, zero-limit vs non-zero-limit paths, `has_next_entries` as alias for `has_next_entries_since(applied)`.
 - **Correspondence test status**: ✅ Complete — 33 `#guard` + 34 Rust assertions all pass.
+
+---
+
+## `FVSquad/HasNextEntries.lean` — HasNextEntries Spec (14 theorems HNE1–HNE14, Run 111)
+
+**Lean file**: `formal-verification/lean/FVSquad/HasNextEntries.lean`
+**Rust source**: `src/raft_log.rs` — `RaftLog::applied_index_upper_bound` / `RaftLog::has_next_entries_since` / `RaftLog::has_next_entries`
+
+This is a **pure spec file** (no correspondence test `#guard`); its correspondence is
+validated through `HasNextEntriesCorrespondence.lean` (33 `#guard`, Run 114 — see above).
+
+| Lean name | Rust counterpart | Rust location | Correspondence |
+|-----------|-----------------|---------------|----------------|
+| `appliedIndexUpperBound` | `RaftLog::applied_index_upper_bound` | `src/raft_log.rs#L447` | **exact** |
+| `hasNextEntriesSince` | `RaftLog::has_next_entries_since` | `src/raft_log.rs#L456` | **exact** |
+| `hasNextEntries` | `RaftLog::has_next_entries` | `src/raft_log.rs#L470` | **exact** (alias for `hasNextEntriesSince applied`) |
+
+### Theorems (HNE1–HNE14)
+
+- **HNE1–HNE3**: `appliedIndexUpperBound` range (≤ committed, ≤ persisted+limit, equals min).
+- **HNE4–HNE6**: `hasNextEntriesSince` returns `false` when `committed ≤ applied` (no entries to apply).
+- **HNE7–HNE8**: `hasNextEntries` is equivalent to `hasNextEntriesSince applied`.
+- **HNE9–HNE11**: Anti-monotonicity — a larger `sinceIdx` makes `hasNextEntriesSince` less likely to return `true`.
+- **HNE12–HNE14**: Monotonicity — larger `committed`/`persisted` makes `hasNextEntriesSince` more likely to return `true`.
+
+### Divergences
+
+Lean uses `Nat` (unbounded); Rust uses `u64`. Overflow not modelled (index values are
+well within u64 range in practice). All three functions are pure computations with no I/O,
+mutation, or side effects.
+
+### Validation evidence
+
+- **Lean side**: 14 theorems proved in `HasNextEntries.lean` (lake build ✅, 0 sorry, Lean 4.30.0-rc2).
+- **Correspondence tests**: `HasNextEntriesCorrespondence.lean` (33 `#guard`) + `test_has_next_entries_since_correspondence` Rust test (34 assertions). See that section above.
+- **Correspondence test status**: ✅ Complete (via correspondence file).
+
+---
+
+## `FVSquad/NextEntries.lean` — NextEntries Spec (7 theorems NE1–NE7, Run 113)
+
+**Lean file**: `formal-verification/lean/FVSquad/NextEntries.lean`
+**Rust source**: `src/raft_log.rs` — `RaftLog::next_entries_since` / `RaftLog::next_entries`
+
+This is a **pure spec file** (no correspondence test `#guard`); its correspondence is
+validated through `NextEntriesCorrespondence.lean` (20 Rust cases, Run 113 — see above).
+
+| Lean name | Rust counterpart | Rust location | Correspondence |
+|-----------|-----------------|---------------|----------------|
+| `nextEntriesSince` | `RaftLog::next_entries_since` | `src/raft_log.rs#L475` | **abstraction** (`max_size` truncation ignored) |
+| `nextEntries` | `RaftLog::next_entries` | `src/raft_log.rs#L492` | **abstraction** (alias; `max_size` truncation ignored) |
+
+### Theorems (NE1–NE7)
+
+- **NE1**: `nextEntriesSince` returns `none` when upper bound ≤ offset (no entries).
+- **NE2**: `nextEntriesSince` returns `some` when entries exist in the range.
+- **NE3**: `nextEntries` returns `none` iff `hasNextEntries` returns `false` (consistency with HNE).
+- **NE4**: `nextEntries` returns `some` iff `hasNextEntries` returns `true`.
+- **NE5**: The returned list is non-empty when `some` is returned.
+- **NE6**: Anti-monotonicity — larger `sinceIdx` cannot produce a longer result.
+- **NE7**: `nextEntries` is `nextEntriesSince applied`.
+
+### Known divergences (Abstraction)
+
+- **`max_size` truncation**: Rust accepts an optional `max_size` that limits the returned
+  `Vec` size via `limit_size`. The Lean model ignores this parameter and always returns
+  the full slice `[offset..upperBound]`. Proofs about `nextEntriesSince` hold only when
+  `max_size = None` (no truncation) or the result fits within the budget.
+- **`slice` error handling**: Rust `slice` can return `Err` (panics in practice). The Lean
+  model assumes success and returns the index range directly.
+
+### Validation evidence
+
+- **Lean side**: 7 theorems proved in `NextEntries.lean` (lake build ✅, 0 sorry, Lean 4.30.0-rc2).
+- **Correspondence tests**: `NextEntriesCorrespondence.lean` (`#guard` tests) + `test_next_entries_correspondence` Rust test (20 cases). See that section above.
+- **Correspondence test status**: ✅ Complete (via correspondence file).
+
+---
+
+## `FVSquad/BroadcastLifecycle.lean` — BroadcastLifecycle Integration (3 theorems BL1–BL3, Run 112)
+
+**Lean file**: `formal-verification/lean/FVSquad/BroadcastLifecycle.lean`
+**Rust source**: N/A — This is a **pure abstract proof** connecting Lean model layers.
+  It does not directly model any single Rust function; it bridges the abstract protocol
+  model (`RaftReachable`) with the concrete election model (`BroadcastSeq`).
+
+| Lean name | Lean dependency | Correspondence |
+|-----------|----------------|----------------|
+| `broadcastSeq_to_validAEList` (BL1) | `ElectionBroadcastChain.lean` + `ConcreteTransitions.lean` | Internal model bridging — no Rust counterpart |
+| `raftReachable_after_broadcast` (BL2) | `MultiStepReachability.lean` + BL1 | Internal model bridging |
+| `raftReachable_from_init_broadcast` (BL3) | `RaftTrace.lean` + BL2 | Internal model bridging |
+
+### Purpose
+
+These theorems close the lifecycle gap between:
+- `BroadcastSeq` (concrete election broadcast model, `ElectionBroadcastChain.lean`)
+- `RaftReachable` (abstract inductive reachability predicate, `RaftTrace.lean`)
+
+The connection is:
+```
+initialCluster → RaftReachable.init  (BL3 / BL1 + MS3)
+BroadcastSeq → ValidAEList          (BL1)
+RaftReachable + BroadcastSeq → RaftReachable  (BL2)
+```
+
+This means the `hqc_preserved` gap identified in `ElectionBroadcastChain.lean` (EBC6) is
+now dischargeable from concrete election conditions, rather than being an abstract hypothesis.
+
+### Divergences
+
+None. This file is entirely within the abstract Lean model. There is no Rust code being
+modelled — the correspondence question does not apply. The proofs strengthen the internal
+consistency of the abstract model, making `RaftReachable` more usable in composed proofs.
+
+### Validation evidence
+
+- **Lean side**: 3 theorems proved in `BroadcastLifecycle.lean` (lake build ✅, 0 sorry, Lean 4.30.0-rc2).
+- **No correspondence tests**: this file bridges abstract model layers; there is no Rust counterpart to test against.
+- **Correspondence test status**: N/A — internal model bridging only.
