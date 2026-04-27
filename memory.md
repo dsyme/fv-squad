@@ -1,14 +1,14 @@
 # Lean Squad Memory — dsyme/raft-lean-squad
 
 ## Last Updated
-Run 120 — 2026-04-27 04:08 UTC
+Run 122 — 2026-04-27 15:30 UTC
 
 ## Repository
 - **Language**: Rust (Raft consensus library)
 - **FV Tool**: Lean 4 (v4.30.0-rc2, lakefile.toml, stdlib only — no Mathlib)
 - **FV Directory**: `formal-verification/`
-- **Lean Files**: 73 in `formal-verification/lean/FVSquad/`
-- **Theorems**: ~673 (0 sorry)
+- **Lean Files**: 75 in `formal-verification/lean/FVSquad/`
+- **Theorems**: ~681 (0 sorry)
 - **CI**: `.github/workflows/lean-ci.yml` — threshold 25 Rust correspondence tests
 
 ## Status Issue
@@ -22,7 +22,8 @@ joint_safety_composition, raft_protocol, raft_trace, progress_tracker, configura
 multistep_reachability, election_model (RaftElection.lean), AEBroadcastInvariant, BroadcastLifecycle,
 ElectionBroadcastChain, ConcreteProtocolStep, ElectionConcreteModel, CommitRule, HasNextEntries,
 NextEntries, MaybeCommit, MaybePersist, MaybePersistFUI, RaftLogAppend, ReadOnly, UncommittedState,
-UnstablePersistBridge, LeaderCompleteness (partial), ProgressTracker (PT1-PT26)
+UnstablePersistBridge, LeaderCompleteness (partial), ProgressTracker (PT1-PT26),
+**progress_set (PS1-PS8, Run 122)** — ProgressSet.lean (8T, 0 sorry) + ProgressSetCorrespondence.lean (26 #guard)
 
 ## Correspondence Tests (25 Rust test functions)
 All in `formal-verification/tests/` with Lean `#guard` counterparts.
@@ -42,7 +43,7 @@ All in `formal-verification/tests/` with Lean `#guard` counterparts.
 2. **ProgressTracker integration**: all_wf in RaftReachable state (PT1-PT26 per-op but no RaftReachable connection)
 3. **Term-indexed safety**: MC4 → RSS6/RSS8 (Raft §5.4.2)
 4. **Paper/Report**: paper.tex updated Run 120 (673T/73F/20 layers) — PDF not compiled (LaTeX unavailable)
-5. **progress_set**: Phase 2 target — informal spec written Run 120; Lean spec (ProgressSet.lean) next
+5. **progress_set**: Phase 5 ✅ — ProgressSet.lean (PS1–PS8, 0 sorry, Run 122) + ProgressSetCorrespondence.lean (26 #guard). PR submitted.
 
 ## Key Files
 - `formal-verification/TARGETS.md` — prioritised target list
