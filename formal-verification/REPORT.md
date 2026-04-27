@@ -11,8 +11,8 @@ ProgressTracker now at 26T (PT25/PT26 integration theorems).
 ---
 
 ## Last Updated
-- **Date**: 2026-04-26 17:15 UTC
-- **Commit**: `e1aafbc` — Run 119: Task 10 (REPORT.md update, Runs 116–118, 673T, 73F)
+- **Date**: 2026-04-27 17:40 UTC
+- **Commit**: `941858f` — Run 125 composition assessment: A3–A6 status updated, A7 chartered, Critical Gap revised
 
 ---
 
@@ -56,34 +56,88 @@ was stricter than the Rust implementation.
 
 ---
 
-## Critical Gap: The Election Model
+## Critical Gap: The Election Lifecycle Bridge
+
+### Status summary (Run 125 assessment)
 
 The top-level theorem `raftReachable_safe` (RT2) proves:
 > *Any `RaftReachable` cluster state is safe.*
 
-But `RaftReachable.step` takes 5 hypotheses as parameters:
+`RaftReachable.step` takes 5 hypotheses as parameters. **4 of 5 are now fully discharged**
+from concrete proved theorems. The fifth is conditionally discharged — one bridge file
+remains to close it unconditionally.
 
 | Hypothesis | Meaning | Status |
 |---|---|---|
-| `hlogs'` | Only one voter's log changes per step | Proved for AppendEntries (CPS8/CPS9); needs full election model |
-| `hno_overwrite` | Committed entries not overwritten | **Addressed** by CPS1 (validAEStep_hno_overwrite) |
-| `hqc_preserved` | Quorum-certified entries remain quorum-certified | **Closed by ECM6** given `hae` (log agreement); chain: ECM6 → ECM3 → CPS13 |
-| `hcommitted_mono` | Committed indices only advance | **Addressed** by CPS11 (constructor helper for local monotonicity) |
-| `hnew_cert` | New commits are quorum-certified | **Closed** by CommitRule (CR5, CR8, definitional via `Iff.rfl`) |
+| `hlogs'` | Only one voter's log changes per step | ✅ **Discharged** — ValidAEStep models single-voter AppendEntries (CPS8/CPS9) |
+| `hno_overwrite` | Committed entries not overwritten | ✅ **Discharged** — CPS1 (`validAEStep_hno_overwrite`) via `h_committed_le_prev` + CT2 |
+| `hqc_preserved` | Quorum-certified entries remain quorum-certified | ⚠️ **Conditionally discharged** — EBC6 + ECM6 + CPS13 chain proves it after a `BroadcastSeq`; **remaining gap: connect election winner to broadcast round (A7)** |
+| `hcommitted_mono` | Committed indices only advance | ✅ **Discharged** — CPS11 from ValidAEStep |
+| `hnew_cert` | New commits are quorum-certified | ✅ **Discharged** — CR8 (`CommitRule`) + MC4 (A6 term safety: `maybeCommit` only commits from current term) |
 
-The **A5 bridge** (CPS2: `validAEStep_raftReachable`), the **hqc_preserved discharge**
-(CPS13: `validAEStep_hqc_preserved_from_lc`), and the **concrete hqc_preserved**
-(ECM6: `hqc_preserved_of_validAEStep`) are all now proved. ECM6 is the strongest result:
-it shows that `hqc_preserved` holds given only `hae` (log agreement between each voter
-and the leader at the voter's last index) without needing to pass `CandidateLogCovers`
-as a separate parameter.
+### The proof chain for `hqc_preserved`
 
-The remaining gap is:
-1. **`hae` inductive derivation** — showing that log agreement holds as an inductive
-   invariant across the full AE broadcast history (ECM5 gives it for a single step;
-   the inductive case needs the history of all prior AE steps).
-2. **Term tracking** — integrating Raft terms into the concrete election model so that
-   only entries from the current leader's term are committed.
+All links in the discharge chain for `hqc_preserved` are now proved **except the
+election→broadcast connection (A7)**:
+
+```
+RaftElection.lean        ElectionBroadcastChain.lean         ConcreteProtocolStep.lean
+  RE5: electionSafety  ─→  EBC6: broadcastSeq_hqc_preserved ─→  CPS13: hqc_preserved from LC
+  RE7: voteGranted → isUpToDate                                   RaftTrace.lean
+  (leader winner ─→ ?)  ← A7: ElectionLifecycle bridge (⬜) ─→   RT2: raftReachable_safe ✅
+```
+
+- **ABI8** (`hae_broadcast_invariant_schema`): `hae` is an inductive invariant across
+  a sequential AE broadcast. Proved in `AEBroadcastInvariant.lean`.
+- **EBC6** (`broadcastSeq_hqc_preserved`): A full `BroadcastSeq` + election gives
+  `hqc_preserved`. Proved in `ElectionBroadcastChain.lean`.
+- **ECM6** (`hqc_preserved_of_hae`): `hae` → `hqc_preserved` (requires `CandidateLogCovers`
+  via CPS13). Proved in `ElectionConcreteModel.lean`.
+- **⬜ A7** (`election_lifecycle_bridge`): Show that after a concrete Raft election
+  (a winner from `RaftElection.lean` satisfying RE5/RE7), the leader performs a
+  `BroadcastSeq` satisfying the EBC6 preconditions. This is the **single remaining gap**
+  for full composition. File: `FVSquad/ElectionLifecycle.lean` (new). Estimated ~20–40
+  theorems. Difficulty: **medium-high**.
+
+### How close are we?
+
+**Very close.** The proof architecture is complete. All 20+ layers of the proof are built.
+The remaining work is a single bridge file:
+
+| What exists | What's missing |
+|-------------|---------------|
+| Election model: `NodeState`, `processVoteRequest`, `electionSafety` (RE5), `voteGranted → isUpToDate` (RE7) — all in `RaftElection.lean` | An `ElectionEpoch` structure tying a election winner to a specific term and broadcast round |
+| Broadcast induction: `hae` invariant across AE broadcast (ABI8), `BroadcastSeq → hqc_preserved` (EBC6) | Proof that an elected leader's AE broadcast satisfies the `BroadcastSeq` / `ValidAEStep` preconditions |
+| Leader completeness: `CandidateLogCovers` from `hae` (ECM3), `hqc_preserved` from `CandidateLogCovers` (CPS13) | Connection from winner's vote-based `isUpToDate` guarantee (RE7) to the `hae` invariant across the broadcast |
+| Term safety: `maybeCommit` only commits current-term entries (MC4) | Connecting MC4 to the election model to ensure only the current leader's entries are committed |
+| All 4 other `RaftReachable.step` hypotheses discharged (CPS1, CPS11, CR8) | — |
+
+### Identified unknowns for A7
+
+1. **`ElectionEpoch` model**: needs to define a concrete notion of "election round" —
+   which leader won, which term, which voters participated — so that the broadcast
+   round can be unambiguously tied to the election outcome.
+2. **`ValidAEStep` preconditions for broadcast**: `prevLogIndex = 0` is required by
+   ABI1/ABI3 for the initial broadcast. This is satisfied if the leader sends AE from
+   the beginning of its log, which is the Raft heartbeat/replication behaviour. Needs
+   formal statement as a protocol property.
+3. **Leader-log assumption**: ECM5/ABI1 require that the leader's log contains the
+   entries being sent. In the real protocol this follows from the leader always using
+   its own log. Needs to be an axiom or a proved property of `NodeState`.
+4. **Term integration**: MC4 proves term safety for `maybe_commit`; this needs to
+   appear as a hypothesis in `ElectionEpoch` or as an invariant proved from
+   `ValidAEStep` + `currentTerm`.
+
+### Chartered path to completion
+
+| Step | File | Goal | Est. theorems |
+|------|------|------|---------------|
+| A7.1 | `ElectionLifecycle.lean` | Define `ElectionEpoch` structure: winner, term, voters, broadcast | 2–3 defs |
+| A7.2 | `ElectionLifecycle.lean` | Show broadcast satisfies `BroadcastSeq` preconditions (prevLogIndex=0, leader log consistent) | 5–10 lemmas |
+| A7.3 | `ElectionLifecycle.lean` | Apply EBC6 to get `hqc_preserved` from `ElectionEpoch` | 3–5 theorems |
+| A7.4 | `ElectionLifecycle.lean` | Connect `ElectionEpoch` to `RaftReachable.step` → unconditional `raftReachable_safe` | 5–10 theorems |
+| A7.5 | `ElectionLifecycle.lean` | Term-safety: connect MC4 to election model, discharge term condition | 5–10 theorems |
+| **Total** | | | **~20–40 theorems** |
 
 ---
 
@@ -100,13 +154,15 @@ graph TD
     E["🛡️ Layer 5: Raft Safety<br/>RaftSafety (RSS1–RSS8)<br/>RaftProtocol (RP6, RP8)"]
     F["⚠️ Layer 6: Reachability (conditional)<br/>RaftTrace (RT1, RT2)<br/>raftReachable_safe"]
     G["🔬 Layer 7: Concrete Election Model<br/>RaftElection · LeaderCompleteness<br/>ConcreteTransitions · CommitRule · MaybeCommit<br/>ConcreteProtocolStep (CPS2/CPS13)<br/>ElectionReachability (ER1–ER12)<br/>ElectionConcreteModel (ECM1–ECM7)<br/>AEBroadcastInvariant (ABI1–ABI10)<br/>ElectionBroadcastChain (EBC1–EBC6)<br/>RaftLogAppend (RA1–RA9+3)<br/>MaybePersistFUI (FU1–FU8)"]
+    H["⬜ A7: ElectionLifecycle bridge (new)<br/>ElectionEpoch structure<br/>election winner → BroadcastSeq<br/>→ hqc_preserved unconditional<br/>~20–40 theorems remaining"]
 
     A --> B
     B --> C
     C --> D
     D --> E
     E --> F
-    G -->|"CPS2: A5 bridge proved<br/>ECM6: hqc_preserved from hae+AE<br/>ER10: CandidateLogCovers from shared-source"| F
+    G -->|"CPS2: A5 bridge proved<br/>ECM6: hqc_preserved from hae+AE<br/>EBC6: broadcast → hqc_preserved"| H
+    H -->|"A7: election→broadcast→safety<br/>SINGLE REMAINING GAP"| F
 ```
 
 ---
