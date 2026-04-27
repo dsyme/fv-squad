@@ -1,16 +1,17 @@
 {
   "lean_version": "4.28.0",
-  "theorem_count": 711,
+  "theorem_count": 718,
   "sorry_count": 0,
-  "last_run": 126,
-  "hqc_preserved_gap": "CLOSED via AEBroadcastInvariant+ElectionBroadcastChain.",
+  "last_run": 127,
+  "hqc_preserved_gap": "CLOSED. A7 ElectionLifecycle.lean (EL1-EL7) fully closes composition. fullProtocolStep_safe proves end-to-end safety with no abstract axioms.",
   "aeneas_status": "permanently_blocked_no_new_privileges",
   "toolchain_notes": "lean-toolchain = leanprover/lean4:v4.28.0 (lake uses this). elan stable = 4.30.0-rc2. Use v4.28.0 API only (no List.get?, use List.getElem? or List.nth?).",
   "notes": [
     "Run 122: Task 3+Task 6: ProgressSet.lean (PS1-PS8, 0 sorry) + ProgressSetCorrespondence.lean (26 #guard). CORRESPONDENCE.md ProgressSet section.",
     "Run 124: Task 4+Task 5: MemStorage.lean (MemStorageCore model, MS1-MS8, 0 sorry). 77 jobs.",
     "Run 125: Task 3+Task 5: mem_storage_informal.md (complete informal spec). MemStorage.lean MS9-MS14 (6 new theorems, 0 sorry). MemStorageCorrespondence.lean (18 #guard). 78 jobs, 0 sorry. PR: lean-squad/run-125-memstorage-informal-ms9-14.",
-    "Run 126: Task 3+Task 8: IsContinuousEnts.lean (ICE1-ICE8, 0 sorry) + MemStorage correspondence tests (15 #guard Rust assertions). compact-entire divergence noted in cases.json."
+    "Run 126: Task 3+Task 8: IsContinuousEnts.lean (ICE1-ICE8, 0 sorry) + MemStorage correspondence tests (15 #guard Rust assertions). compact-entire divergence noted in cases.json.",
+    "Run 127: A7 closed. ElectionLifecycle.lean (EL1-EL7, 0 sorry). All 5 RaftReachable.step hypotheses discharged. fullProtocolStep_safe = top-level safety."
   ],
   "run_history": [
     {
@@ -75,6 +76,21 @@
       "sorry_count_after": 0,
       "lean_file_count_after": 79,
       "pr_branch": "lean-squad/run-126-iscontinuous-memstorage-corr-25010482848"
+    },
+    {
+      "run": 127,
+      "date": "2026-04-27",
+      "tasks": [
+        "A7 ElectionLifecycle (command mode)"
+      ],
+      "changes": [
+        "ElectionLifecycle.lean EL1-EL7",
+        "TARGETS.md A7\u2192Phase5",
+        "REPORT.md Critical Gap closed"
+      ],
+      "sorry_count_after": 0,
+      "lean_file_count_after": 78,
+      "pr_branch": "lean-squad/election-lifecycle-a7"
     }
   ],
   "next_steps": [
