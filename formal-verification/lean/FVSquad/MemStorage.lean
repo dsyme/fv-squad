@@ -240,4 +240,103 @@ theorem MS8_append_empty_noop (s : MemStorageCore) (startIndex : Nat) :
     append s startIndex [] = s := by
   simp [append]
 
+-- ═══════════════════════════════════════════════════════════
+-- Additional theorems (MS9–MS14)
+-- ═══════════════════════════════════════════════════════════
+
+/-! ### MS9 — `compact` is idempotent
+
+Applying `compact` twice at the same index is the same as once. -/
+
+/-- `compact (compact s ci) ci = compact s ci` -/
+theorem MS9_compact_idempotent (s : MemStorageCore) (ci : Nat) :
+    compact (compact s ci) ci = compact s ci :=
+  MS3_compact_noop (compact s ci) ci (by rw [MS5_compact_firstIndex]; exact Nat.le_max_right _ _)
+
+/-! ### MS10 — two `compact` calls compose
+
+`compact (compact s ci1) ci2 = compact s ci2` whenever `ci1 ≤ ci2 ≤ lastIndex s + 1`. -/
+
+/-- `compact` at `ci2` after `compact` at `ci1 ≤ ci2` equals `compact` at `ci2` directly. -/
+theorem MS10_compact_compose (s : MemStorageCore) (ci1 ci2 : Nat)
+    (h12 : ci1 ≤ ci2)
+    (h2 : ci2 ≤ lastIndex s + 1) :
+    compact (compact s ci1) ci2 = compact s ci2 := by
+  simp only [compact, firstIndex, lastIndex] at *
+  by_cases hle1 : ci1 ≤ s.snapshotIndex + 1
+  · simp only [if_pos hle1]
+  · simp only [if_neg hle1]
+    have hci1_pos : 0 < ci1 := by omega
+    have hfi1 : ci1 - 1 + 1 = ci1 := Nat.succ_pred_eq_of_pos hci1_pos
+    -- Rewrite ci1 - 1 + 1 → ci1 in goal so conditions become linear
+    simp only [hfi1]
+    by_cases hle2 : ci2 ≤ ci1
+    · -- ci1 ≤ ci2 and ci2 ≤ ci1 means ci1 = ci2
+      have heq : ci1 = ci2 := Nat.le_antisymm h12 hle2
+      subst heq
+      simp only [Nat.le_refl, if_true, if_neg hle1]
+    · -- ci2 > ci1; the second compact is active
+      simp only [if_neg hle2]
+      by_cases hle2' : ci2 ≤ s.snapshotIndex + 1
+      · omega
+      · simp only [if_neg hle2']
+        congr 1; rw [List.drop_drop]; congr 1; omega
+
+/-! ### MS11 — `entryCount` after `append` equals `keepCount + newTerms.length`
+
+After appending, the total entry count = entries before `startIndex` + new entries. -/
+
+/-- After a non-empty append at `startIndex ≥ firstIndex s`,
+    `entryCount (append s startIndex newTerms) = (startIndex - firstIndex s) + newTerms.length`. -/
+theorem MS11_entryCount_after_append
+    (s : MemStorageCore) (startIndex : Nat) (newTerms : List Nat)
+    (hne : newTerms ≠ [])
+    (hge : startIndex ≥ firstIndex s)
+    (hle : startIndex ≤ lastIndex s + 1) :
+    entryCount (append s startIndex newTerms) =
+    (startIndex - firstIndex s) + newTerms.length := by
+  rcases newTerms with (_ | ⟨hd, tl⟩)
+  · exact absurd rfl hne
+  · simp only [entryCount, append, List.isEmpty, firstIndex, lastIndex] at *
+    simp only [Bool.false_eq_true, ↓reduceIte, List.length_append, List.length_take,
+               List.length_cons]
+    rw [Nat.min_eq_left (by omega)]
+
+/-! ### MS12 — `append` at `lastIndex + 1` does not truncate
+
+When appending at exactly `lastIndex s + 1`, all existing entries are preserved. -/
+
+/-- Appending at `lastIndex s + 1` preserves the existing `terms`. -/
+theorem MS12_append_at_end_preserves (s : MemStorageCore) (newTerms : List Nat)
+    (hne : newTerms ≠ []) :
+    (append s (lastIndex s + 1) newTerms).terms = s.terms ++ newTerms := by
+  rcases newTerms with (_ | ⟨hd, tl⟩)
+  · exact absurd rfl hne
+  · simp only [append, List.isEmpty, firstIndex, lastIndex, Bool.false_eq_true, ↓reduceIte]
+    have : s.snapshotIndex + s.terms.length + 1 - (s.snapshotIndex + 1) = s.terms.length := by
+      omega
+    rw [this, List.take_length]
+
+/-! ### MS13 — `append` from `firstIndex` replaces entire log
+
+When appending starting at `firstIndex s`, the `terms` list is replaced by `newTerms`. -/
+
+/-- Appending at `firstIndex s` replaces `terms` with `newTerms`. -/
+theorem MS13_append_at_firstIndex_replaces (s : MemStorageCore) (newTerms : List Nat)
+    (hne : newTerms ≠ []) :
+    (append s (firstIndex s) newTerms).terms = newTerms := by
+  rcases newTerms with (_ | ⟨hd, tl⟩)
+  · exact absurd rfl hne
+  · simp only [append, List.isEmpty, firstIndex, Bool.false_eq_true, ↓reduceIte,
+               Nat.sub_self, List.take_zero, List.nil_append]
+
+/-! ### MS14 — `firstIndex` after compact equals `max (firstIndex s) ci`
+
+This is MS5 restated for easy cross-reference. -/
+
+/-- After compact at `ci`, `firstIndex = max (firstIndex s) ci`. -/
+theorem MS14_firstIndex_compact (s : MemStorageCore) (ci : Nat) :
+    firstIndex (compact s ci) = max (firstIndex s) ci :=
+  MS5_compact_firstIndex s ci
+
 end FVSquad.MemStorage
