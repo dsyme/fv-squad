@@ -52,3 +52,25 @@ All in `formal-verification/tests/` with Lean `#guard` counterparts.
 - `formal-verification/REPORT.md` — project report (Run 119, 673T/73F)
 - `formal-verification/paper/paper.tex` — conference paper (Run 120, 673T/73F/20 layers)
 - `formal-verification/specs/progress_set_informal.md` — informal spec (Run 120, PS1-PS8)
+
+## Run 123 (2026-04-27) — Task 10 + Task 3
+
+### Task 10: REPORT.md updated
+- Status: 681T / 74F / 671 #guard
+- Run 119-122 history appended
+
+### Task 3: New target — MemStorageCore log operations
+- **Informal spec**: `formal-verification/specs/mem_storage_informal.md` (MS1-MS8)
+- **Lean spec**: `formal-verification/lean/FVSquad/MemStorage.lean`
+- **Proved**: MS1 (compact advances firstIndex), MS2 (no-op), MS3 (suffix=ents), 
+  MS4 (prefix preserved), MS5 (compact preserves contiguous), MS7 (lastIndex), MS8 (length)
+- **Key lemma**: `firstIndex_after_drop` — dropping offset elts advances firstIndex by offset
+- **Sorry**: MS6 (append preserves contiguous) — `firstIndex {take ++ ents}` equality is hard
+  to prove via rw because `firstIndex` uses a `match` that Lean can't easily pattern-match
+  against. Workaround needed: opaque function or different definition. Deferred to Task 5.
+- **PR**: lean-squad/run-123-task10-task3-25004024142
+- **Sorry count**: 1 (was 0 overall in prior files, now 1 in MemStorage.lean)
+
+### Next steps
+- Task 5: prove MS6 in MemStorage.lean (or restructure firstIndex definition to allow rw)
+- Continue with other Phase 3 targets (LogUnstable, InflightProposal, etc.)

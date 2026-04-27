@@ -1,228 +1,234 @@
 {
-    "lean_version": "4.30.0-rc2",
-    "theorem_count": 673,
-    "sorry_count": 0,
-    "last_run": 121,
-    "hqc_preserved_gap": "CLOSED via AEBroadcastInvariant+ElectionBroadcastChain. BroadcastLifecycle.lean (BL1-BL3) connects BroadcastSeq\u2192RaftReachable lifecycle.",
-    "aeneas_status": "permanently_blocked_no_new_privileges",
-    "toolchain_notes": "no Mathlib, stdlib only. WF7/WF8 use Nat.not_le.mpr. LogUnstable/IsUpToDate have NO namespace.",
-    "notes": [
-        "Run 117: Task 5: PT27a/b (last-wins characterisation: applyChanges_append + PT24+PT20/21). ProgressTrackerCorrespondence #guard 44-53 (10 new last-wins cases). Task 8 Route B: HasQuorumJointCorrespondence.lean (10 #guard, joint-config has_quorum). test_has_quorum_joint_correspondence Rust test (10 cases, all pass). NOTE: run-117 branch not found/fetchable \u2014 may not have been pushed; changes not confirmed in main. Theorem count from state may differ.",
-        "Run 118: Task 9 (CI audit): threshold updated 20->25 (25 Rust corr tests). Task 6: CORRESPONDENCE.md updated for Runs 115-116 (ProgressTrackerCorrespondence 34->47 #guard, PT25/PT26; totals 722T/73F). Note: proofs-r130 branch conflicts \u2014 skip for reconciliation later.",
-        "Run 119: Task 7 (CRITIQUE.md update Runs 111-118: 647->673T, 68->73F, new layers BL1-BL3/NE1-NE7/HNE1-HNE14/PT25-PT26, 25 corr tests). Task 10 (REPORT.md update 671->673T, 72->73F).",
-        "Run 120: Task 11: paper.tex updated 647->673T, 66->73F, 88->120 runs, 12->20 proof layers. Task 5->2: progress_set_informal.md (PS1-PS8, quorum_active spec). LaTeX/Lean unavailable - PDF not compiled, no .lean created.",
-        "Run 121: Task 9 CI threshold 20\u219225 (25 Rust corr tests). Task 6: CORRESPONDENCE.md Runs 115-120 (ProgressTrackerCorrespondence 34\u219247 #guard PT25/PT26; new sections BroadcastLifecycle BL1-BL3, HasNextEntries HNE1-HNE14, NextEntries NE1-NE7; 29 corr targets, 25 Rust tests). 673T, 72F, 0 sorry."
-    ],
-    "run_history": [
-        {
-            "run": 119,
-            "date": "2026-04-26",
-            "tasks": [
-                "Task 7 (CRITIQUE.md update Runs 111-118)",
-                "Task 10 (REPORT.md update 671->673T)"
-            ],
-            "changes": [
-                "CRITIQUE.md: Last Updated + new Runs 111-118 section (new layers BL/NE/HNE, PT25-PT26, 25 corr targets)",
-                "REPORT.md: Last Updated + status 671->673T/72->73F + Run 116-118 history"
-            ],
-            "sorry_count_after": 0,
-            "lean_file_count_after": 73,
-            "pr_branch": "lean-squad/run-119-task7-task10-24962197896"
-        },
-        {
-            "run": 120,
-            "date": "2026-04-27",
-            "tasks": [
-                "Task 11 (Conference Paper update)",
-                "Task 5->2 (progress_set informal spec)"
-            ],
-            "changes": [
-                "paper.tex: 647->673T, 66->73F, 88->120 runs, 12->20 proof layers, 524->587 #guard, 24->26 corr files",
-                "specs/progress_set_informal.md: PS1-PS8 (quorum_active, self-inclusion, monotonicity, reset idempotency)"
-            ],
-            "sorry_count_after": 0,
-            "lean_file_count_after": 73,
-            "pr_branch": "lean-squad/run-120-task11-task5-24975914976"
-        },
-        {
-            "run": 121,
-            "date": "2026-04-27",
-            "tasks": [
-                "Task 9 (CI threshold 20\u219225)",
-                "Task 6 (CORRESPONDENCE.md update Runs 115-120)"
-            ],
-            "changes": [
-                "lean-ci.yml: correspondence test threshold 20\u219225 (25 Rust tests)",
-                "CORRESPONDENCE.md: ProgressTrackerCorrespondence 34\u219247 #guard (PT25/PT26)",
-                "CORRESPONDENCE.md: new section HasNextEntries.lean (HNE1-HNE14)",
-                "CORRESPONDENCE.md: new section NextEntries.lean (NE1-NE7)",
-                "CORRESPONDENCE.md: new section BroadcastLifecycle.lean (BL1-BL3)",
-                "CORRESPONDENCE.md: Last Updated 2026-04-27, 673T/72F/29 targets/25 tests"
-            ],
-            "sorry_count_after": 0,
-            "lean_file_count_after": 72,
-            "pr_branch": "lean-squad/run-121-task9-task6-24989781340"
-        }
-    ],
-    "next_steps": [
-        "Task 3/4/5: ProgressSet.lean \u2014 formalise progress_set/quorum_active spec (PS1-PS8 from progress_set_informal.md)",
-        "Task 7: Update CRITIQUE.md with Runs 119-121",
-        "Task 10/11: Update REPORT.md and paper.pdf with Runs 119-121",
-        "Task 5: ProgressTracker integration theorem (connect PT1-PT26 to leader init)",
-        "Task 8 Route B: NextEntriesCorrespondence \u2014 add more edge-case #guard tests"
-    ],
-    "correspondence_test_targets": [
-        {
-            "name": "find_conflict",
-            "file": "FindConflictCorrespondence.lean",
-            "guard_count": 17,
-            "status": "complete"
-        },
-        {
-            "name": "maybe_append",
-            "file": "MaybeAppendCorrespondence.lean",
-            "guard_count": 18,
-            "status": "complete"
-        },
-        {
-            "name": "limit_size",
-            "file": "LimitSizeCorrespondence.lean",
-            "guard_count": 11,
-            "status": "complete"
-        },
-        {
-            "name": "vote_result",
-            "file": "VoteResultCorrespondence.lean",
-            "guard_count": 10,
-            "status": "complete"
-        },
-        {
-            "name": "committed_index",
-            "file": "CommittedIndexCorrespondence.lean",
-            "guard_count": 12,
-            "status": "complete"
-        },
-        {
-            "name": "is_up_to_date",
-            "file": "IsUpToDateCorrespondence.lean",
-            "guard_count": 14,
-            "status": "complete"
-        },
-        {
-            "name": "find_conflict_by_term",
-            "file": "FindConflictByTermCorrespondence.lean",
-            "guard_count": 15,
-            "status": "complete"
-        },
-        {
-            "name": "config_validate",
-            "file": "ConfigValidateCorrespondence.lean",
-            "guard_count": 11,
-            "status": "complete"
-        },
-        {
-            "name": "inflights",
-            "file": "InflightsCorrespondence.lean",
-            "guard_count": 16,
-            "status": "complete"
-        },
-        {
-            "name": "tally_votes",
-            "file": "TallyVotesCorrespondence.lean",
-            "guard_count": 10,
-            "status": "complete"
-        },
-        {
-            "name": "has_quorum",
-            "file": "HasQuorumCorrespondence.lean",
-            "guard_count": 12,
-            "status": "complete"
-        },
-        {
-            "name": "joint_vote_result",
-            "file": "JointVoteCorrespondence.lean",
-            "guard_count": 18,
-            "status": "complete"
-        },
-        {
-            "name": "quorum_recently_active",
-            "file": "QuorumRecentlyActiveCorrespondence.lean",
-            "guard_count": 14,
-            "status": "complete"
-        },
-        {
-            "name": "maybe_persist",
-            "file": "MaybePersistCorrespondence.lean",
-            "guard_count": 13,
-            "status": "complete"
-        },
-        {
-            "name": "raft_log_append",
-            "file": "RaftLogAppendCorrespondence.lean",
-            "guard_count": 15,
-            "status": "complete"
-        },
-        {
-            "name": "maybe_commit",
-            "file": "MaybeCommitCorrespondence.lean",
-            "guard_count": 14,
-            "status": "complete"
-        },
-        {
-            "name": "maybe_persist_fui",
-            "file": "MaybePersistFUICorrespondence.lean",
-            "guard_count": 13,
-            "status": "complete"
-        },
-        {
-            "name": "read_only",
-            "file": "ReadOnlyCorrespondence.lean",
-            "guard_count": 12,
-            "status": "complete"
-        },
-        {
-            "name": "election",
-            "file": "ElectionCorrespondence.lean",
-            "guard_count": 16,
-            "status": "complete"
-        },
-        {
-            "name": "log_unstable",
-            "file": "LogUnstableCorrespondence.lean",
-            "guard_count": 14,
-            "status": "complete"
-        },
-        {
-            "name": "configuration_invariants",
-            "file": "ConfigurationInvariantsCorrespondence.lean",
-            "guard_count": 12,
-            "status": "complete"
-        },
-        {
-            "name": "progress",
-            "file": "ProgressCorrespondence.lean",
-            "guard_count": 55,
-            "status": "complete"
-        },
-        {
-            "name": "next_entries",
-            "file": "NextEntriesCorrespondence.lean",
-            "guard_count": 20,
-            "status": "complete"
-        },
-        {
-            "name": "has_next_entries",
-            "file": "HasNextEntriesCorrespondence.lean",
-            "guard_count": 33,
-            "status": "complete"
-        },
-        {
-            "name": "progress_tracker",
-            "file": "ProgressTrackerCorrespondence.lean",
-            "guard_count": 47,
-            "status": "complete"
-        }
-    ],
-    "last_run_date": "2026-04-27",
-    "last_task": "Task 9 (CI threshold 20\u219225) + Task 6 (CORRESPONDENCE.md Runs 115-120)"
+  "lean_version": "4.30.0-rc2",
+  "theorem_count": 688,
+  "sorry_count": 1,
+  "last_run": 123,
+  "hqc_preserved_gap": "CLOSED via AEBroadcastInvariant+ElectionBroadcastChain. BroadcastLifecycle.lean (BL1-BL3) connects BroadcastSeq\u2192RaftReachable lifecycle.",
+  "aeneas_status": "permanently_blocked_no_new_privileges",
+  "toolchain_notes": "no Mathlib, stdlib only. WF7/WF8 use Nat.not_le.mpr. LogUnstable/IsUpToDate have NO namespace.",
+  "notes": [
+    "Run 117: Task 5: PT27a/b (last-wins characterisation: applyChanges_append + PT24+PT20/21). ProgressTrackerCorrespondence #guard 44-53 (10 new last-wins cases). Task 8 Route B: HasQuorumJointCorrespondence.lean (10 #guard, joint-config has_quorum). test_has_quorum_joint_correspondence Rust test (10 cases, all pass). NOTE: run-117 branch not found/fetchable \u2014 may not have been pushed; changes not confirmed in main. Theorem count from state may differ.",
+    "Run 118: Task 9 (CI audit): threshold updated 20->25 (25 Rust corr tests). Task 6: CORRESPONDENCE.md updated for Runs 115-116 (ProgressTrackerCorrespondence 34->47 #guard, PT25/PT26; totals 722T/73F). Note: proofs-r130 branch conflicts \u2014 skip for reconciliation later.",
+    "Run 119: Task 7 (CRITIQUE.md update Runs 111-118: 647->673T, 68->73F, new layers BL1-BL3/NE1-NE7/HNE1-HNE14/PT25-PT26, 25 corr tests). Task 10 (REPORT.md update 671->673T, 72->73F).",
+    "Run 120: Task 11: paper.tex updated 647->673T, 66->73F, 88->120 runs, 12->20 proof layers. Task 5->2: progress_set_informal.md (PS1-PS8, quorum_active spec). LaTeX/Lean unavailable - PDF not compiled, no .lean created.",
+    "Run 121: Task 9 CI threshold 20\u219225 (25 Rust corr tests). Task 6: CORRESPONDENCE.md Runs 115-120 (ProgressTrackerCorrespondence 34\u219247 #guard PT25/PT26; new sections BroadcastLifecycle BL1-BL3, HasNextEntries HNE1-HNE14, NextEntries NE1-NE7; 29 corr targets, 25 Rust tests). 673T, 72F, 0 sorry."
+  ],
+  "run_history": [
+    {
+      "run": 119,
+      "date": "2026-04-26",
+      "tasks": [
+        "Task 7 (CRITIQUE.md update Runs 111-118)",
+        "Task 10 (REPORT.md update 671->673T)"
+      ],
+      "changes": [
+        "CRITIQUE.md: Last Updated + new Runs 111-118 section (new layers BL/NE/HNE, PT25-PT26, 25 corr targets)",
+        "REPORT.md: Last Updated + status 671->673T/72->73F + Run 116-118 history"
+      ],
+      "sorry_count_after": 0,
+      "lean_file_count_after": 73,
+      "pr_branch": "lean-squad/run-119-task7-task10-24962197896"
+    },
+    {
+      "run": 120,
+      "date": "2026-04-27",
+      "tasks": [
+        "Task 11 (Conference Paper update)",
+        "Task 5->2 (progress_set informal spec)"
+      ],
+      "changes": [
+        "paper.tex: 647->673T, 66->73F, 88->120 runs, 12->20 proof layers, 524->587 #guard, 24->26 corr files",
+        "specs/progress_set_informal.md: PS1-PS8 (quorum_active, self-inclusion, monotonicity, reset idempotency)"
+      ],
+      "sorry_count_after": 0,
+      "lean_file_count_after": 73,
+      "pr_branch": "lean-squad/run-120-task11-task5-24975914976"
+    },
+    {
+      "run": 121,
+      "date": "2026-04-27",
+      "tasks": [
+        "Task 9 (CI threshold 20\u219225)",
+        "Task 6 (CORRESPONDENCE.md update Runs 115-120)"
+      ],
+      "changes": [
+        "lean-ci.yml: correspondence test threshold 20\u219225 (25 Rust tests)",
+        "CORRESPONDENCE.md: ProgressTrackerCorrespondence 34\u219247 #guard (PT25/PT26)",
+        "CORRESPONDENCE.md: new section HasNextEntries.lean (HNE1-HNE14)",
+        "CORRESPONDENCE.md: new section NextEntries.lean (NE1-NE7)",
+        "CORRESPONDENCE.md: new section BroadcastLifecycle.lean (BL1-BL3)",
+        "CORRESPONDENCE.md: Last Updated 2026-04-27, 673T/72F/29 targets/25 tests"
+      ],
+      "sorry_count_after": 0,
+      "lean_file_count_after": 72,
+      "pr_branch": "lean-squad/run-121-task9-task6-24989781340"
+    }
+  ],
+  "next_steps": [
+    "Task 3/4/5: ProgressSet.lean \u2014 formalise progress_set/quorum_active spec (PS1-PS8 from progress_set_informal.md)",
+    "Task 7: Update CRITIQUE.md with Runs 119-121",
+    "Task 10/11: Update REPORT.md and paper.pdf with Runs 119-121",
+    "Task 5: ProgressTracker integration theorem (connect PT1-PT26 to leader init)",
+    "Task 8 Route B: NextEntriesCorrespondence \u2014 add more edge-case #guard tests"
+  ],
+  "correspondence_test_targets": [
+    {
+      "name": "find_conflict",
+      "file": "FindConflictCorrespondence.lean",
+      "guard_count": 17,
+      "status": "complete"
+    },
+    {
+      "name": "maybe_append",
+      "file": "MaybeAppendCorrespondence.lean",
+      "guard_count": 18,
+      "status": "complete"
+    },
+    {
+      "name": "limit_size",
+      "file": "LimitSizeCorrespondence.lean",
+      "guard_count": 11,
+      "status": "complete"
+    },
+    {
+      "name": "vote_result",
+      "file": "VoteResultCorrespondence.lean",
+      "guard_count": 10,
+      "status": "complete"
+    },
+    {
+      "name": "committed_index",
+      "file": "CommittedIndexCorrespondence.lean",
+      "guard_count": 12,
+      "status": "complete"
+    },
+    {
+      "name": "is_up_to_date",
+      "file": "IsUpToDateCorrespondence.lean",
+      "guard_count": 14,
+      "status": "complete"
+    },
+    {
+      "name": "find_conflict_by_term",
+      "file": "FindConflictByTermCorrespondence.lean",
+      "guard_count": 15,
+      "status": "complete"
+    },
+    {
+      "name": "config_validate",
+      "file": "ConfigValidateCorrespondence.lean",
+      "guard_count": 11,
+      "status": "complete"
+    },
+    {
+      "name": "inflights",
+      "file": "InflightsCorrespondence.lean",
+      "guard_count": 16,
+      "status": "complete"
+    },
+    {
+      "name": "tally_votes",
+      "file": "TallyVotesCorrespondence.lean",
+      "guard_count": 10,
+      "status": "complete"
+    },
+    {
+      "name": "has_quorum",
+      "file": "HasQuorumCorrespondence.lean",
+      "guard_count": 12,
+      "status": "complete"
+    },
+    {
+      "name": "joint_vote_result",
+      "file": "JointVoteCorrespondence.lean",
+      "guard_count": 18,
+      "status": "complete"
+    },
+    {
+      "name": "quorum_recently_active",
+      "file": "QuorumRecentlyActiveCorrespondence.lean",
+      "guard_count": 14,
+      "status": "complete"
+    },
+    {
+      "name": "maybe_persist",
+      "file": "MaybePersistCorrespondence.lean",
+      "guard_count": 13,
+      "status": "complete"
+    },
+    {
+      "name": "raft_log_append",
+      "file": "RaftLogAppendCorrespondence.lean",
+      "guard_count": 15,
+      "status": "complete"
+    },
+    {
+      "name": "maybe_commit",
+      "file": "MaybeCommitCorrespondence.lean",
+      "guard_count": 14,
+      "status": "complete"
+    },
+    {
+      "name": "maybe_persist_fui",
+      "file": "MaybePersistFUICorrespondence.lean",
+      "guard_count": 13,
+      "status": "complete"
+    },
+    {
+      "name": "read_only",
+      "file": "ReadOnlyCorrespondence.lean",
+      "guard_count": 12,
+      "status": "complete"
+    },
+    {
+      "name": "election",
+      "file": "ElectionCorrespondence.lean",
+      "guard_count": 16,
+      "status": "complete"
+    },
+    {
+      "name": "log_unstable",
+      "file": "LogUnstableCorrespondence.lean",
+      "guard_count": 14,
+      "status": "complete"
+    },
+    {
+      "name": "configuration_invariants",
+      "file": "ConfigurationInvariantsCorrespondence.lean",
+      "guard_count": 12,
+      "status": "complete"
+    },
+    {
+      "name": "progress",
+      "file": "ProgressCorrespondence.lean",
+      "guard_count": 55,
+      "status": "complete"
+    },
+    {
+      "name": "next_entries",
+      "file": "NextEntriesCorrespondence.lean",
+      "guard_count": 20,
+      "status": "complete"
+    },
+    {
+      "name": "has_next_entries",
+      "file": "HasNextEntriesCorrespondence.lean",
+      "guard_count": 33,
+      "status": "complete"
+    },
+    {
+      "name": "progress_tracker",
+      "file": "ProgressTrackerCorrespondence.lean",
+      "guard_count": 47,
+      "status": "complete"
+    }
+  ],
+  "last_run_date": "2026-04-27",
+  "last_task": "Task 9 (CI threshold 20\u219225) + Task 6 (CORRESPONDENCE.md Runs 115-120)",
+  "lean_file_count": 75,
+  "last_tasks": "Task 10 (REPORT update) + Task 3 (MemStorage formal spec)",
+  "next_targets": [
+    "MS6 sorry proof (append preserves contiguous)",
+    "Progress on phase 3+ targets"
+  ]
 }
