@@ -1,14 +1,14 @@
 # Lean Squad Memory — dsyme/raft-lean-squad
 
 ## Last Updated
-Run 122 — 2026-04-27 15:30 UTC
+Run 124 — 2026-04-27 16:13 UTC
 
 ## Repository
 - **Language**: Rust (Raft consensus library)
 - **FV Tool**: Lean 4 (v4.30.0-rc2, lakefile.toml, stdlib only — no Mathlib)
 - **FV Directory**: `formal-verification/`
 - **Lean Files**: 75 in `formal-verification/lean/FVSquad/`
-- **Theorems**: ~681 (0 sorry)
+- **Theorems**: ~689 (0 sorry)
 - **CI**: `.github/workflows/lean-ci.yml` — threshold 25 Rust correspondence tests
 
 ## Status Issue
@@ -70,6 +70,28 @@ All in `formal-verification/tests/` with Lean `#guard` counterparts.
   against. Workaround needed: opaque function or different definition. Deferred to Task 5.
 - **PR**: lean-squad/run-123-task10-task3-25004024142
 - **Sorry count**: 1 (was 0 overall in prior files, now 1 in MemStorage.lean)
+
+
+### Run 124 (2026-04-27) — Task 4 + Task 5
+
+### Task 4: Implementation Extraction — MemStorageCore
+- **Model**: `MemStorageCore` structure with `snapshotIndex : Nat` + `terms : List Nat`
+  (contiguity baked in: entry i has log index `snapshotIndex + 1 + i`)
+- **Definitions**: `firstIndex`, `lastIndex`, `compact`, `append`
+- **Source**: `src/storage.rs` (`MemStorageCore::compact`, `append`, `first_index`, `last_index`)
+- **Lean file**: `FVSquad/MemStorage.lean`
+
+### Task 5: Proof Assistance — MS1-MS8 all proved
+- **MS1**: `firstIndex ≤ lastIndex + 1`
+- **MS2**: `terms = [] ↔ lastIndex < firstIndex`
+- **MS3**: `compact` no-op when `ci ≤ firstIndex`
+- **MS4**: `compact` preserves `lastIndex`
+- **MS5**: `firstIndex (compact s ci) = max (firstIndex s) ci`
+- **MS6**: `append` preserves `firstIndex`
+- **MS7**: `lastIndex = startIndex + length - 1` (non-empty append)
+- **MS8**: `append [] = no-op`
+- **Sorry count**: 0. `lake build` passed (77 jobs, Lean 4.30.0-rc2)
+- **PR**: lean-squad/run-124-memstorage-task4-task5-25006260511
 
 ### Next steps
 - Task 5: prove MS6 in MemStorage.lean (or restructure firstIndex definition to allow rw)

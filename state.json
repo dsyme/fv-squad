@@ -1,8 +1,8 @@
 {
   "lean_version": "4.30.0-rc2",
-  "theorem_count": 688,
-  "sorry_count": 1,
-  "last_run": 123,
+  "theorem_count": 689,
+  "sorry_count": 0,
+  "last_run": 124,
   "hqc_preserved_gap": "CLOSED via AEBroadcastInvariant+ElectionBroadcastChain. BroadcastLifecycle.lean (BL1-BL3) connects BroadcastSeq\u2192RaftReachable lifecycle.",
   "aeneas_status": "permanently_blocked_no_new_privileges",
   "toolchain_notes": "no Mathlib, stdlib only. WF7/WF8 use Nat.not_le.mpr. LogUnstable/IsUpToDate have NO namespace.",
@@ -62,14 +62,30 @@
       "sorry_count_after": 0,
       "lean_file_count_after": 72,
       "pr_branch": "lean-squad/run-121-task9-task6-24989781340"
+    },
+    {
+      "run": 124,
+      "date": "2026-04-27",
+      "tasks": [
+        "Task 4 (Implementation Extraction)",
+        "Task 5 (Proof Assistance)"
+      ],
+      "changes": [
+        "MemStorage.lean: MemStorageCore model (snapshotIndex + terms list, contiguity baked in)",
+        "MemStorage.lean: MS1-MS8 (8 theorems, 0 sorry) \u2014 firstIndex/lastIndex/compact/append props",
+        "lake build: 77 jobs, Lean 4.30.0-rc2, 0 sorry"
+      ],
+      "sorry_count_after": 0,
+      "lean_file_count_after": 75,
+      "pr_branch": "lean-squad/run-124-memstorage-task4-task5-25006260511"
     }
   ],
   "next_steps": [
-    "Task 3/4/5: ProgressSet.lean \u2014 formalise progress_set/quorum_active spec (PS1-PS8 from progress_set_informal.md)",
-    "Task 7: Update CRITIQUE.md with Runs 119-121",
-    "Task 10/11: Update REPORT.md and paper.pdf with Runs 119-121",
-    "Task 5: ProgressTracker integration theorem (connect PT1-PT26 to leader init)",
-    "Task 8 Route B: NextEntriesCorrespondence \u2014 add more edge-case #guard tests"
+    "Task 6: Update CORRESPONDENCE.md with MemStorage section",
+    "Task 8 Route B: Add MemStorageCorrespondence.lean with #guard tests",
+    "Task 5: ProgressTracker integration theorem (connect PT1-PT26 to RaftReachable)",
+    "Task 7: Update CRITIQUE.md with Runs 122-124",
+    "Task 10/11: Update REPORT.md and paper.tex with Runs 122-124"
   ],
   "correspondence_test_targets": [
     {
