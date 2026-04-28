@@ -8,6 +8,10 @@
 \usepackage{xcolor}
 \usepackage{microtype}
 \usepackage{balance}
+\usepackage{draftwatermark}
+\SetWatermarkText{DRAFT}
+\SetWatermarkScale{1.5}
+\SetWatermarkColor[gray]{0.85}
 
 %% Tolerate slightly loose lines to avoid overfull \texttt identifiers
 \tolerance=1500
@@ -62,7 +66,7 @@
 
 \begin{document}
 
-\title{Truly Automated Formal Specification and Verification with Near-Zero Human Labour}
+\title{Truly Automated Formal Specification and Verification with Near-Zero Human Labour\\\normalsize\textcolor{red}{--- DRAFT ---}}
 
 \author{Don Syme}
 \affiliation{\institution{GitHub Next}\country{United Kingdom}}
