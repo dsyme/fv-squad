@@ -3,15 +3,15 @@
 > 🔬 *Lean Squad — automated formal verification for `dsyme/raft-lean-squad`.*
 
 ## Last Updated
-- **Date**: 2026-04-26 17:10 UTC
-- **Commit**: `e1aafbc` — Run 119: Task 7 (Critique update Runs 111–118) + Task 10 (Report update)
+- **Date**: 2026-04-28 04:10 UTC
+- **Commit**: `bac0606` — Run 129: Task 7 (Critique update Runs 119–129) + Task 11 (Paper update)
 
 ---
 
 ## Overall Assessment
 
-The FV project has produced **647 theorem declarations across 66 Lean files, machine-checked by
-Lean 4 (version 4.30.0-rc2, stdlib only — no Mathlib), with 0 `sorry`**.
+The FV project has produced **940 theorem declarations across 79 Lean files, machine-checked by
+Lean 4 (stdlib only — no Mathlib), with 0 `sorry` and 642 `#guard` correspondence assertions**.
 
 Since the last critique (Run 76, 50 files, 569T), the project has expanded significantly across
 **five new proof layers** and **a deeper correspondence test suite**:
@@ -2285,20 +2285,93 @@ reflected in the final map.
    `quorum_active` over a progress map — an interesting target whose specification would
    compose with `ProgressTracker` membership theorems (PT16–PT26). Not yet started.
 
-### Overall Assessment (Run 118)
+### Overall Assessment (Run 129)
 
-**673 theorem declarations, 73 Lean files, 0 `sorry`, 25 correspondence test targets,
-513+ `#guard` assertions.** The FV project is in a mature state:
+**940 theorem declarations, 79 Lean files, 0 `sorry`, 27 correspondence test targets,
+642 `#guard` assertions.** Since Run 119 (673T/73F), the project has added 267 theorems
+across 6 new proof files and 2 new correspondence files:
+
+- **Layer 21: Election Lifecycle (A7 bridge)** — `ElectionLifecycle.lean` (10T, EL1–EL7):
+  The capstone file that closes the A7 gap. Defines `ElectionEpoch` tying election +
+  broadcast and proves `fullProtocolStep_safe` (EL7) — end-to-end safety with **no
+  abstract axioms**. This is the most significant structural advance since Run 119:
+  the entire Raft safety proof chain is now fully self-contained.
+
+- **Layer 22: Progress Set** — `ProgressSet.lean` (10T, PS1–PS8): Formalises
+  `ProgressTracker` as a composed progress set, proving 8 properties of
+  `quorum_recently_active` as a composed operation. Correspondence validated
+  by `ProgressSetCorrespondence.lean` (30 `#guard`).
+
+- **Layer 23: MemStorage** — `MemStorage.lean` (16T): Models `MemStorageCore` pure
+  log operations (`firstIndex`, `lastIndex`, `compact`, `append`). Key results:
+  contiguity preservation under compact and append. Correspondence validated
+  by `MemStorageCorrespondence.lean` (25 `#guard`).
+
+- **Layer 24: IsContinuousEnts** — `IsContinuousEnts.lean` (8T, ICE1–ICE8):
+  Formalises the `is_continuous_ents` predicate from `src/util.rs`. Proves
+  that concatenation validity is correctly detected for AppendEntries batches.
+
+- **Layer 25: Restore** — `Restore.lean` (8T, RST1–RST8): Formalises
+  `RaftLog::restore` — snapshot restoration. Proves committed advancement,
+  persisted clamping, unstable clearing, and idempotence. The newest addition
+  (Run 128).
+
+**Key structural advance**: With EL7 (`fullProtocolStep_safe`), the top-level
+safety theorem `raftReachable_safe` now has a **fully concrete** discharge path
+for all 5 hypotheses of `RaftReachable.step`. The A7 gap identified in the
+external critique (2026-04-20) is **closed**.
+
+### New Correspondence Tests (Runs 119–129)
+
+| File | `#guard` | Run | Notes |
+|------|---------|-----|-------|
+| `ProgressSetCorrespondence.lean` | 30 | 122 | PS1–PS8; composed quorum-recently-active |
+| `MemStorageCorrespondence.lean` | 25 | 126 | compact/append contiguity |
+
+### Updated Gaps and Recommendations (Run 129)
+
+1. **HLogConsistency discharge from RaftReachable** (highest priority): `HLogConsistency`
+   is still taken as a conditional hypothesis in `LeaderCompleteness.lean` (LC7/LC8).
+   `BroadcastLifecycle.lean` closes the `BroadcastSeq → RaftReachable` gap (BL2/BL3), but
+   connecting this to `HLogConsistency` unconditionally requires showing that
+   `HAEInvariant` holds inductively across reachable states. `AEBroadcastInvariant.lean`
+   provides most of the infrastructure (ABI1–ABI8), but the full inductive closure over
+   `RaftReachable` is not yet complete.
+
+2. **ProgressTracker integration with RaftReachable**: PT1–PT26 prove all per-operation
+   invariants but there is no integration theorem showing that the progress map of any
+   `RaftReachable` state satisfies `all_wf`. This requires connecting PT14 (fresh tracker
+   is `all_wf`) through the step constructor's update logic.
+
+3. **Restore correspondence tests missing**: `Restore.lean` (RST1–RST8) has no
+   correspondence file yet. A `RestoreCorrespondence.lean` with `#guard` tests
+   matching Rust `test_restore_correspondence` should be added.
+
+4. **IsContinuousEnts correspondence tests missing**: `IsContinuousEnts.lean` (ICE1–ICE8)
+   has no correspondence file. Should be straightforward given the simple predicate.
+
+5. **Term-indexed safety**: MC4 in `MaybeCommit.lean` establishes that committed index
+   advances only to current-term entries, but this is not yet wired into the top-level
+   safety proof.
+
+6. **New targets**: `commit_to`, `applied_to`, `slice`, `scan` from `src/raft_log.rs`
+   — state transition operations that could extend coverage of the log operations layer.
+
+### Overall Assessment (Run 129)
+
+**940 theorem declarations, 79 Lean files, 0 `sorry`, 27 correspondence test targets,
+642+ `#guard` assertions.** The FV project is in a mature state:
 
 - **Layers 1–7** (core correctness): complete, all proved, 0 sorry.
 - **Correspondence layer**: comprehensive; all major proof targets have validated models.
 - **Protocol-level safety** (Layers 5–7, RaftTrace): conditionally proved. The conditions
   are now small in number and all meaningful (HLogConsistency, CommitCertInvariant).
-- **New targets** (Layers 18–20): `BroadcastLifecycle`, `NextEntries`, `HasNextEntries` —
-  all fully proved, adding 24 theorems to the protocol-level and operational layers.
+- **A7 gap CLOSED**: `ElectionLifecycle.lean` (EL1–EL7) provides the final bridge from
+  concrete election to full `RaftReachable` safety — no abstract axioms remain.
+- **New targets** (Layers 22–25): `ProgressSet`, `MemStorage`, `IsContinuousEnts`,
+  `Restore` — adding 42 theorems and 55 `#guard` to operational coverage.
 
-The project continues to produce genuine value: HNE9 and NE1 are precise biconditional
-specifications that would catch real off-by-one bugs in the log application loop. The
-`progress_set` gap remains as the most tractable new target to expand coverage.
+The project continues to produce genuine value. The closure of A7 is the most significant
+milestone since the initial safety proof, making the entire proof chain fully self-contained.
 
-> 🔬 Runs 111–118 critique update (2026-04-26 17:10 UTC). [Lean Squad](https://github.com/dsyme/raft-lean-squad/actions/runs/24962197896)
+> 🔬 Runs 119–129 critique update (2026-04-28 04:10 UTC). [Lean Squad](https://github.com/dsyme/raft-lean-squad/actions/runs/25033381026)

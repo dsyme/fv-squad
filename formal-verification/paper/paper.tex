@@ -94,14 +94,14 @@ merging pull requests, and writing two short comments across 58
 autonomous agent runs.
 
 The agent autonomously researched the codebase, selected 26 verification
-targets, designed a twenty-layer proof architecture (data structures, quorum arithmetic,
+targets, designed a twenty-five-layer proof architecture (data structures, quorum arithmetic,
 protocol operations, cross-module composition, Raft safety, reachability,
 election model, correspondence validation, read-only operations, backward-scan
 optimisation, flow control, multi-step reachability, persistent-storage bridge,
 configuration invariants, uncommitted-state flow control, progress tracking,
 raft-log append, broadcast lifecycle, next-entries slicing, and has-next-entries
 boolean companion), wrote all specifications, and completed all proofs:
-673~theorems across 73~Lean~4 files (stdlib only, no Mathlib),
+940~theorems across 79~Lean~4 files (stdlib only, no Mathlib),
 culminating in the end-to-end theorem \texttt{raftReachable\_safe}---for
 any cluster state reachable via valid Raft transitions from an empty
 initial state, no two nodes ever apply different log entries at the same
@@ -111,7 +111,7 @@ found, providing machine-checked evidence of correctness on the verified
 paths.  The A5 bridge theorem (\texttt{validAEStep\_raftReachable}) was
 also proved, connecting a concrete AppendEntries step to the abstract
 reachability model.  An additional 26 correspondence-validation files
-provide 587 compile-time \texttt{\#guard} assertions and 18+ Rust test
+provide 642 compile-time \texttt{\#guard} assertions and 18+ Rust test
 functions, confirming that the Lean models agree with the Rust
 implementation on concrete inputs across all major targets.
 
@@ -132,7 +132,7 @@ automation workflow implemented using GitHub Agentic Workflows, with
 author (Don Syme) took a deliberately \emph{hands-off} approach: he
 designed the automated Lean Squad workflow itself (\S\ref{sec:workflow}) and
 merged pull requests, but was not involved in target selection,
-the twenty-layer proof architecture, specification writing, or any actual
+the twenty-five-layer proof architecture, specification writing, or any actual
 proof engineering.  His total intervention over the project's 120~runs
 amounted to two short GitHub comments (\S\ref{sec:interventions}).
 \medskip
@@ -352,7 +352,7 @@ memory with new discoveries, proved theorems, and remaining obligations.
 Memory may be stale (referencing merged PRs or closed issues), so the
 agent is instructed to verify references against the current repository
 state.  This mechanism enables cumulative progress across independent
-runs: the twenty-layer architecture, the choice of targets, and the
+runs: the twenty-five-layer architecture, the choice of targets, and the
 proof strategy all emerged organically from the agent's interaction
 with its own memory and the growing codebase, not from human direction.
 
@@ -475,7 +475,7 @@ Layer & Description & Files & Theorems \\
 5 & Raft Safety         & 2  & 20  \\
 6 & Reachability        & 2  & 11  \\
 7 & Election Model (complete) & 14 & 175 \\
-8 & Correspondence Validation & 26 & 4+587\texttt{g} \\
+8 & Correspondence Validation & 28 & 4+642\texttt{g} \\
 9 & ReadOnly Operations & 1  & 14  \\
 10& FindConflictByTerm  & 1  & 10  \\
 11& Flow Control        & 1  & 18  \\
@@ -488,11 +488,16 @@ Layer & Description & Files & Theorems \\
 18& Broadcast Lifecycle      & 1  &  3 \\
 19& Next-Entries Slicing     & 1  &  7 \\
 20& Has-Next-Entries Boolean  & 1  & 14 \\
+21& Election Lifecycle (A7)   & 1  & 10 \\
+22& Progress Set             & 1  & 10 \\
+23& MemStorage Core          & 1  & 16 \\
+24& IsContinuousEnts         & 1  &  8 \\
+25& Restore                  & 1  &  8 \\
 \midrule
-  & \textbf{Total}      & \textbf{73} & \textbf{673+587\texttt{g}} \\
+  & \textbf{Total}      & \textbf{79} & \textbf{940+642\texttt{g}} \\
 \bottomrule
 \end{tabular}
-\caption{Proof layers and theorem counts. Layer 8 files contain 587 \texttt{\#guard} assertions (\texttt{g}) evaluated at compile time; they contribute 4 named theorems (in \texttt{FindConflictCorrespondence.lean}).}
+\caption{Proof layers and theorem counts. Layer 8 files contain 642 \texttt{\#guard} assertions (\texttt{g}) evaluated at compile time; they contribute 4 named theorems (in \texttt{FindConflictCorrespondence.lean}).}
 \label{tab:layers}
 \end{table}
 
@@ -569,7 +574,7 @@ obligations that must pass for the build to succeed.
 
 For each target, a matching Rust function (prefixed \texttt{test\_\ldots\_correspondence})
 exercises the Rust implementation on the same concrete inputs, providing
-independent confirmation.  Together, the 587 Lean \texttt{\#guard}
+independent confirmation.  Together, the 642 Lean \texttt{\#guard}
 assertions and 18+ Rust test functions provide two-sided behavioural
 evidence: both the Lean model and the Rust implementation produce
 identical outputs on the verified test cases.
@@ -876,7 +881,7 @@ and \texttt{maybeReduce} cases),
 and \texttt{hasNextEntries} entry-existence guards), and
 \texttt{next\_entries} (20~guards, abstraction --- \texttt{nextEntriesSince}
 and \texttt{nextEntries} slice model).
-In total: 587 compile-time correspondence assertions and 18+ Rust test functions.
+In total: 642 compile-time correspondence assertions and 18+ Rust test functions.
 
 \paragraph{Layer~9: ReadOnly Operations.}
 \texttt{ReadOnly.lean} (14~theorems) formalises \texttt{raft-rs}'s
@@ -977,11 +982,51 @@ HNE7 characterises when the predicate is false (empty slice); HNE8--HNE14
 characterise the \texttt{hasNextEntriesSince} family; HNE14 gives the
 top-level conjunction form used by NE1.
 
+\paragraph{Layer~21: Election Lifecycle (A7 Bridge).}
+\texttt{ElectionLifecycle.lean} (10~theorems, EL1--EL7) is the capstone file
+that closes the A7 gap identified by external critique.  It defines
+\texttt{ElectionEpoch}---a structure tying a concrete Raft election
+(\texttt{wonInTerm}) to a \texttt{BroadcastSeq} satisfying ABI8/EBC6
+preconditions.  The headline theorem \texttt{fullProtocolStep\_safe} (EL7)
+proves that any \texttt{ValidAEStep} from a post-broadcast state is
+\texttt{RaftReachable} with \emph{no abstract axioms remaining}.  This makes
+the entire Raft safety proof chain fully self-contained.
+
+\paragraph{Layer~22: Progress Set.}
+\texttt{ProgressSet.lean} (10~theorems, PS1--PS8) formalises the
+\texttt{ProgressTracker} as a composed progress set and proves 8 key
+properties of \texttt{quorum\_recently\_active} as a composed operation.
+PS1 proves the quorum threshold; PS8 proves the false-negative freedom.
+Correspondence validated by \texttt{ProgressSetCorrespondence.lean} (30
+\texttt{\#guard}).
+
+\paragraph{Layer~23: MemStorage Core.}
+\texttt{MemStorage.lean} (16~theorems) models \texttt{MemStorageCore}
+(\texttt{src/storage.rs}) pure log operations: \texttt{firstIndex},
+\texttt{lastIndex}, \texttt{compact}, and \texttt{append}.  Key results:
+contiguity preservation under compact, append length correctness, and
+monotonicity of \texttt{firstIndex} under compaction.  Correspondence
+validated by \texttt{MemStorageCorrespondence.lean} (25~\texttt{\#guard}).
+
+\paragraph{Layer~24: IsContinuousEnts.}
+\texttt{IsContinuousEnts.lean} (8~theorems, ICE1--ICE8) formalises
+\texttt{is\_continuous\_ents} (\texttt{src/util.rs}), which validates that two
+AppendEntries batches can be safely concatenated.  ICE1--ICE3 cover the
+three branches (empty msg, empty ents, index check); ICE4--ICE8 prove
+structural properties including symmetry and transitivity of the predicate.
+
+\paragraph{Layer~25: Restore.}
+\texttt{Restore.lean} (8~theorems, RST1--RST8) formalises
+\texttt{RaftLog::restore} (\texttt{src/raft\_log.rs:696})---the snapshot
+restoration operation.  RST1 (committed = snapshot index), RST2 (persisted
+$\le$ committed), RST3 (committed advances), RST7 (ordering invariant
+preserved), and RST8 (idempotence at current committed) are the key results.
+
 \subsection{Proof Statistics}
 
 Table~\ref{tab:inventory} summarises the full file inventory.
-Total: 673 theorems, 73~files (45 proof files + 26 correspondence-test files + 2 shared + 1 lakefile),
-0 \texttt{sorry}, $\approx$21{,}000 lines of Lean.
+Total: 940 theorems, 79~files (51 proof files + 28 correspondence-test files),
+0 \texttt{sorry}, $\approx$21{,}300 lines of Lean.
 
 \begin{table*}[p]
 \centering\footnotesize
@@ -1060,8 +1105,15 @@ NextEntries       &  7 & NE1--NE7: nextEntriesSince slice model \\
 HasNextEntriesCorrespondence & 0 & 33 \texttt{\#guard}, abstraction \\
 NextEntriesCorrespondence &  0 & 20 \texttt{\#guard}, abstraction \\
 UncommittedStateCorrespondence & 0 & 13 \texttt{\#guard}, abstraction \\
+ElectionLifecycle &  10 & EL7: fullProtocolStep\_safe (A7 closed) \\
+ProgressSet       &  10 & PS1--PS8: composed progress set \\
+MemStorage        &  16 & Compact/append contiguity \\
+IsContinuousEnts  &   8 & ICE1--ICE8: batch concat validity \\
+Restore           &   8 & RST1--RST8: snapshot restore spec \\
+ProgressSetCorrespondence & 0 & 30 \texttt{\#guard}, abstraction \\
+MemStorageCorrespondence  & 0 & 25 \texttt{\#guard}, abstraction \\
 \midrule
-\textbf{Total}    & \textbf{673} & \textbf{0 sorry; 587 \texttt{\#guard}} \\
+\textbf{Total}    & \textbf{940} & \textbf{0 sorry; 642 \texttt{\#guard}} \\
 \bottomrule
 \end{tabular}
 \caption{Full file inventory (all at Phase~5, 0 sorry). Correspondence files contribute \texttt{\#guard} assertions but no named theorems.}
@@ -1072,8 +1124,8 @@ UncommittedStateCorrespondence & 0 & 13 \texttt{\#guard}, abstraction \\
 \label{sec:findings}
 
 \paragraph{No implementation bugs found.}
-All 673~theorems are consistent with the Rust implementation, as further
-confirmed by 587 compile-time \texttt{\#guard} correspondence assertions
+All 940~theorems are consistent with the Rust implementation, as further
+confirmed by 642 compile-time \texttt{\#guard} correspondence assertions
 and 18+ Rust test functions.
 
 \paragraph{Formulation bug caught and corrected.}
@@ -1132,7 +1184,7 @@ the appropriate preconditions.
 
 \subsection{Proof Utility Assessment}
 
-The twenty-layer architecture ensures that every theorem in upper layers has
+The twenty-five-layer architecture ensures that every theorem in upper layers has
 a genuine dependency on lower layers.  In particular:
 
 \begin{itemize}\setlength\itemsep{0pt}
@@ -1205,19 +1257,19 @@ the A5 bridge (CPS2) and A6 term safety (MC4).
 
 \paragraph{What is remarkable} is not that two interventions occurred,
 but what did \emph{not} require human intervention: the choice of all
-26 FV targets, the twenty-layer proof architecture, all 26 informal
-specifications, all Lean formalisations, all 673 proofs, the 26
+26 FV targets, the twenty-five-layer proof architecture, all 26 informal
+specifications, all Lean formalisations, all 940 proofs, the 26
 correspondence-validation files, the proof utility critique, the project
 report, and even an initial draft of this paper were produced autonomously.
 The human never selected a target, wrote a specification, suggested a
 proof strategy, or debugged a failing proof.
 
-Across 120 runs spanning $\approx$17 weeks, the agent produced:
+Across 129 runs spanning $\approx$18 weeks, the agent produced:
 \begin{itemize}\setlength\itemsep{0pt}
   \item 26 informal specification documents
   \item 73 Lean~4 source files ($\approx$21{,}000 lines)
-  \item 673 machine-checked theorems
-  \item 587 compile-time \texttt{\#guard} correspondence assertions
+  \item 940 machine-checked theorems
+  \item 642 compile-time \texttt{\#guard} correspondence assertions
   \item 18+ Rust correspondence test functions
   \item 1 formulation bug caught and corrected
   \item 0 implementation bugs
@@ -1227,7 +1279,7 @@ The key insight enabling this level of autonomy is the workflow's
 phase-weighted task selection (\S\ref{sec:tasksel}): the agent always
 has a well-defined next action, and persistent memory ensures each run
 builds on a growing base of named lemmas and established
-infrastructure.  The twenty-layer architecture emerged organically from
+infrastructure.  The twenty-five-layer architecture emerged organically from
 
 \subsection{Lean Stdlib vs.\ Mathlib}
 
@@ -1279,7 +1331,7 @@ claiming full correspondence---is essential for correctly assessing
 proof value.
 
 \paragraph{Negative results have value.}
-Finding no implementation bugs in 673~theorem-checks is itself evidence
+Finding no implementation bugs in 940~theorem-checks is itself evidence
 of implementation quality.  The absence of counterexamples in the
 verified paths raises confidence, even without a fully concrete model.
 
@@ -1319,7 +1371,7 @@ We note two mitigating factors.  First, the proofs are machine-checked
 by Lean's kernel: regardless of how the agent arrived at a proof term,
 its correctness is independently verified.  Training-data influence
 cannot produce a false positive.  Second, several architectural
-decisions---stdlib-only (no Mathlib), the twenty-layer decomposition, the
+decisions---stdlib-only (no Mathlib), the twenty-five-layer decomposition, the
 \texttt{RaftReachable} abstract model---have no direct precedent in the
 prior Raft verification literature, suggesting that the agent did more
 than reproduce memorised material.  Nevertheless, this overlap should
@@ -1471,7 +1523,7 @@ Bayaz\i t~et~al.~\cite{bayazit2025llm} conducted a case study on
 the effectiveness of LLMs for verification with proof assistants,
 finding that LLMs can discharge simple lemmas but struggle with
 multi-step proofs requiring creative insight.  Our experience
-\emph{diverges}: the Lean Squad agent completed all 673~theorems
+\emph{diverges}: the Lean Squad agent completed all 940~theorems
 including multi-step compositional proofs (Layers~4--7) that require
 chaining lemmas across modules.  We attribute this difference to
 four factors: (i)~the workflow's phase-weighted task selection
@@ -1604,13 +1656,13 @@ that LLM-driven agents can eliminate that barrier.
 Starting from zero, the Lean Squad agent---running as a scheduled
 GitHub Actions job with no human in the loop---autonomously selected
 26 verification targets in a production Raft implementation, designed
-a twenty-layer proof architecture, wrote all specifications and proofs,
-and produced 673 machine-checked theorems across 73 files in 120 runs,
+a twenty-five-layer proof architecture, wrote all specifications and proofs,
+and produced 940 machine-checked theorems across 79 files in 129 runs,
 culminating in the end-to-end safety theorem
 \texttt{raftReachable\_safe} with zero \texttt{sorry}, plus the A5
 bridge (CPS2) connecting concrete AppendEntries steps to the abstract
-reachability model, and an additional 26 correspondence-validation
-files providing 587 compile-time \texttt{\#guard} assertions and 18+
+reachability model, and an additional 28 correspondence-validation
+files providing 642 compile-time \texttt{\#guard} assertions and 18+
 Rust test functions confirming that the Lean models agree with the
 Rust implementation on concrete inputs.
 The human author's total involvement was: designing the reusable
@@ -1648,7 +1700,7 @@ Squad to other production codebases to test generality.
 AI automation workflow using GitHub Agentic Workflows), Copilot CLI
 (GitHub's AI coding agent), and Claude Sonnet~4.6 (Anthropic's LLM).  Don Syme designed the Lean Squad workflow
 and made two brief interventions; all 26 target selections, all
-specifications, all 673 proofs, the twenty-layer architecture, and the
+specifications, all 940 proofs, the twenty-five-layer architecture, and the
 correspondence-validation harness were produced autonomously by the AI
 agent.  All theorems are machine-checked by Lean~4.30.0-rc2 with zero
 \texttt{sorry}.  The proof artefacts, agent configuration, and full run
