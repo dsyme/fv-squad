@@ -43,7 +43,7 @@ Rust functions — they are not imported by the safety chain.
 
 ## Critical Gap: The Election Lifecycle Bridge — ✅ CLOSED
 
-### Status summary (Run 126 — A7 completed)
+### Status summary
 
 The top-level theorem `raftReachable_safe` (RT2) proves:
 > *Any `RaftReachable` cluster state is safe.*
@@ -87,6 +87,47 @@ Of these, **25 files (341 theorems)** form the **main safety chain** that feeds 
 top-level result `fullProtocolStep_safe` (EL7). The remaining **25 files (375 theorems)**
 are **standalone verified components** — each fully proved, but not imported by the safety
 chain.
+
+### Overview
+
+```mermaid
+graph TD
+    subgraph "Main Safety Chain (25 files, 341T)"
+        L1["Layer 1: Data Structures<br/>MajorityVote, FindConflict,<br/>IsUpToDate, Progress"]
+        L2["Layer 2: Quorum Arithmetic<br/>HasQuorum, CommittedIndex,<br/>SafetyComposition"]
+        L3["Layer 3: Protocol Operations<br/>MaybeAppend"]
+        L45["Layers 4–5: Raft Safety<br/>RaftSafety, RaftProtocol, RaftTrace"]
+        L67["Layers 6–7: Election Model<br/>RaftElection → ElectionLifecycle"]
+        EL7["⭐ fullProtocolStep_safe (EL7)<br/>No abstract axioms remain"]
+    end
+
+    subgraph "Standalone Components (25 files, 375T)"
+        DS["Data Structures<br/>Inflights, LogUnstable, ReadOnly,<br/>MemStorage, Restore, ..."]
+        PC["Persistence Chain<br/>MaybePersist, RaftLogAppend, ..."]
+        VC["Voting & Config<br/>TallyVotes, JointVote,<br/>ConfigurationInvariants"]
+        PE["Progress & Entries<br/>ProgressTracker, NextEntries, ..."]
+        SE["Safety Extensions<br/>CommitRule, MaybeCommit,<br/>CrossModuleComposition"]
+    end
+
+    subgraph "Correspondence (28 files, 625 #guard)"
+        COR["Compile-time assertions<br/>Lean model ↔ Rust implementation"]
+    end
+
+    L1 --> L2 --> L3 --> L45 --> L67 --> EL7
+
+    style EL7 fill:#2d6,stroke:#333,stroke-width:3px,color:#000
+    style DS fill:#eef,stroke:#99c
+    style PC fill:#eef,stroke:#99c
+    style VC fill:#eef,stroke:#99c
+    style PE fill:#eef,stroke:#99c
+    style SE fill:#fda,stroke:#c93
+    style COR fill:#efe,stroke:#9c9
+```
+
+The main safety chain forms a single connected dependency graph from foundational
+data-structure lemmas up to the end-to-end safety theorem.  The standalone components
+verify individual Raft subsystems in isolation.  The correspondence files ground both
+groups against the Rust implementation via compile-time checks.
 
 ### Complete Import Dependency Graph
 
@@ -419,6 +460,64 @@ graph TD
 > `ConcreteProtocolStep.lean` or any file in the main chain. The main chain handles `hnew_cert`
 > directly through `ValidAEStep` fields rather than importing `CommitRule`. These files serve
 > as independent verification of the same properties from a different angle.
+
+### Why Standalone Components Are Not in the Safety Chain
+
+The 25 standalone files are not isolated by accident — they reflect a structural fact about
+what the top-level safety theorem needs.  `fullProtocolStep_safe` (EL7) proves that **no two
+nodes apply different entries at the same committed index**.  This property depends only on
+quorum intersection, log-matching preservation across AppendEntries, and the commit rule.
+It does *not* depend on:
+
+- **How the log is stored** (Inflights ring buffer, LogUnstable snapshot/entries layout,
+  MemStorage compact/append) — the safety model abstracts logs as pure functions
+  `Nat → Nat → Option E`, so storage-layer correctness is orthogonal.
+- **How entries are delivered to the application** (NextEntries slicing, HasNextEntries
+  boolean predicate) — delivery happens *after* commit, so it cannot affect the safety
+  invariant.
+- **Flow control** (UncommittedState byte budgets, Progress/ProgressTracker state machine) —
+  these affect liveness and throughput, not safety.
+- **Configuration validation** (ConfigValidate 8-constraint predicate, ConfigurationInvariants
+  voter/learner disjointness) — joint-consensus safety is handled by JointSafetyComposition
+  in the main chain; the standalone config files verify the *validation logic* rather than
+  the safety argument.
+- **Read-only requests** (ReadOnly queue/pending-ack invariant) — a read-only fast path
+  that does not modify the replicated log.
+- **Snapshot restoration** (Restore committed-index monotonicity, idempotence) — restoring
+  from a snapshot is a leader-driven recovery path; safety of the restored state would require
+  extending `RaftReachable` with a snapshot-restore transition.
+
+#### Components that *could* strengthen the safety chain
+
+Three groups of standalone theorems could, in principle, be connected to larger results:
+
+1. **Persistence chain** (MaybePersist + MaybePersistFUI + UnstablePersistBridge +
+   RaftLogAppend, 45T).  These prove that the async-persist mechanism in `raft_log.rs`
+   never advances past stable storage and that `truncate_and_append` preserves the
+   `LogUnstable` well-formedness invariant.  A natural extension would be a
+   **crash-recovery safety theorem**: if a node crashes and restores from its persisted
+   state, the resulting log is a prefix of the pre-crash log, so no committed entry is
+   lost.  This would require modelling the crash/recovery transition in `RaftReachable`
+   and proving that the recovered state satisfies the step hypotheses.
+
+2. **CommitRule + MaybeCommit + CrossModuleComposition** (28T).  These three files prove
+   the *same* properties that the main chain handles through `ValidAEStep` fields, but
+   from the *Rust function signatures* rather than the abstract step model.  Linking them
+   would give a **concrete function-level discharge**: instead of assuming `ValidAEStep`
+   fields hold, one could prove they hold *because* the Rust functions `maybeCommit` and
+   `maybe_append` satisfy CR8 and CMC3.  This is the natural next step toward closing the
+   Lean-model-to-Rust-implementation gap.
+
+3. **TallyVotes + JointTally + JointVote + ConfigurationInvariants** (67T).  These verify
+   the vote-counting and joint-configuration machinery.  The main chain's election model
+   currently takes `ElectionEpoch` as a given structure (one leader wins, then broadcasts).
+   Linking the tally theorems would prove that the **vote-counting algorithm itself** produces
+   at most one winner per term — strengthening `RE5` (electionSafety) from an assumed property
+   of `ElectionEpoch` to a derived consequence of the concrete tally logic.
+
+None of these extensions would change the *statement* of the top-level theorem, but they
+would reduce the trust boundary: fewer assumed properties of `ValidAEStep` and
+`ElectionEpoch`, more derived from concrete Rust-function models.
 
 ### Correspondence Validation (28 files, 625 `#guard`)
 

@@ -1223,6 +1223,33 @@ In particular:
   though the safety proof abstracts over it.
 \end{itemize}
 
+\paragraph{Why standalone components are standalone.}
+The 25 standalone files are not isolated by accident.
+\texttt{fullProtocolStep\_safe} (EL7) proves that no two nodes apply
+different entries at the same committed index---a property that depends
+only on quorum intersection, log-matching preservation, and the commit
+rule.  It does \emph{not} depend on how the log is stored
+(\texttt{Inflights}, \texttt{LogUnstable}, \texttt{MemStorage}), how
+entries are delivered to the application (\texttt{NextEntries}), flow
+control (\texttt{UncommittedState}, \texttt{ProgressTracker}), or
+read-only request handling (\texttt{ReadOnly}).  Three groups could,
+however, strengthen the safety chain:
+(1)~the \emph{persistence chain} (45 theorems) could yield a
+crash-recovery safety theorem if \texttt{RaftReachable} were extended
+with a crash/restore transition;
+(2)~\texttt{CommitRule} + \texttt{MaybeCommit} +
+\texttt{CrossModuleComposition} (28 theorems) prove the same properties
+the main chain assumes via \texttt{ValidAEStep} fields, but from the
+Rust function models---linking them would give a concrete function-level
+discharge, reducing the trust boundary;
+(3)~\texttt{TallyVotes} + \texttt{JointTally} + \texttt{JointVote}
+(67 theorems) could derive election uniqueness from the concrete
+vote-counting algorithm, strengthening \texttt{RE5} from an assumed
+property of \texttt{ElectionEpoch} to a proved consequence of the
+tally logic.
+None of these extensions would change the \emph{statement} of EL7, but
+they would narrow the gap between the abstract model and the Rust code.
+
 The main remaining abstraction is the Rust implementation itself:
 the Lean models capture the algorithms faithfully (as confirmed by
 625 \texttt{\#guard} assertions), but do not use mechanical extraction
