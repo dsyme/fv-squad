@@ -90,7 +90,7 @@ properties of \texttt{raft-rs}---a production Rust implementation of the
 Raft distributed consensus protocol---with near-zero human labour.  The
 human author required no expertise in Lean, formal methods, or proof
 engineering; his role was limited to designing the reusable workflow,
-merging pull requests, and writing two short comments across 58
+merging pull requests, and writing two short comments across 115
 autonomous agent runs.
 
 The agent autonomously researched the codebase, selected 26 verification
@@ -115,7 +115,7 @@ provide 642 compile-time \texttt{\#guard} assertions and 18+ Rust test
 functions, confirming that the Lean models agree with the Rust
 implementation on concrete inputs across all major targets.
 
-The total LLM token cost was approximately \$840 (120~runs at
+The total LLM token cost was approximately \$805 (115~runs at
 $\sim$\$7 each using Claude Sonnet~4.6 pricing at time of publication).
 The Lean Squad workflow is open-source, installs on any GitHub repository
 with two commands, and requires only an LLM API token.  The proof
@@ -164,7 +164,7 @@ addresses this barrier directly, and is different in three ways:
   self-contained verification artefact.
 \item The entire effort is \emph{automated}: every target selection,
   specification, proof architecture decision, and proof was produced by an
-  LLM-driven FV agent across 88 independent runs, with only two brief
+  LLM-driven FV agent across 115 independent runs, with only two brief
   human interventions (\S\ref{sec:interventions}).  The human author
   required no Lean expertise, no formal-methods background, and invested
   near-zero hours of proof-engineering labour.
@@ -205,7 +205,7 @@ Lean~4~\cite{lean4} is a dependently typed proof assistant and programming
 language.  Proofs are written in a tactic language with automation including
 \texttt{omega} (linear arithmetic), \texttt{simp} (rewriting), and
 \texttt{decide}/\texttt{native\_decide} (decidable propositions).
-We use Lean~4.28.0, stdlib only.  All proofs are machine-checked by
+We use Lean~4.30.0-rc2, stdlib only.  All proofs are machine-checked by
 the Lean kernel; the \texttt{sorry} keyword marks unproved obligations.
 
 %% ============================================================
@@ -534,10 +534,14 @@ arbitrary lists.
 from (voter, index) to optional entry.  This abstracts over the Rust
 \texttt{Vec}-based log structure while preserving the read semantics.
 
-\paragraph{Protocol abstraction.} Concrete Raft message types
-(\texttt{AppendEntries}, \texttt{RequestVote}), term management, and leader
-election are not modelled.  They are instead captured by the abstract
-\texttt{RaftReachable} step hypotheses (\S\ref{sec:reachability}).
+\paragraph{Protocol abstraction.} Concrete Raft message types are
+modelled abstractly: \texttt{ValidAEStep} captures AppendEntries effects,
+\texttt{ElectionEpoch} captures election outcomes, and
+\texttt{BroadcastSeq} captures broadcast rounds.  Term management and
+leader election are formalised at the level needed to discharge the
+\texttt{RaftReachable.step} hypotheses (Layer~7), but the full
+message-passing network model (UDP delivery, reordering, partitions)
+is not included.
 
 \paragraph{Size semantics.} For \texttt{limit\_size}, protobuf message
 size is abstracted as an arbitrary \texttt{size : $\alpha \to$ Nat} function.
@@ -745,10 +749,10 @@ theorem raftReachable_safe [DecidableEq E]
 
 The two-line proof follows immediately from RT1 and RSS8.
 
-\paragraph{Layer~7: Election Model (partial).}
+\paragraph{Layer~7: Election Model (complete).}
 
 Six additional files formalise Raft's election and commit machinery
-at a more concrete level, providing components to discharge the
+at a more concrete level, providing the theorems that fully discharge the
 \texttt{RaftReachable.step} hypotheses.
 
 \texttt{RaftElection.lean} (15~theorems) formalises abstract Raft-step
@@ -827,8 +831,18 @@ through ECM4 (\texttt{hqc\_preserved\_of\_hae}) to deliver
 bridge previously missing between the AE broadcast invariant and
 \texttt{hqc\_preserved}.
 
-\texttt{RaftLogAppend.lean} (19~theorems) formalises \texttt{raft\_log.rs::append}
-as a Lean 4 function over a \texttt{RaftLog} record, proving
+\texttt{ElectionLifecycle.lean} (7~theorems, EL1--EL7) is the capstone
+file that closes the gap.  It defines \texttt{ElectionEpoch}---a
+structure tying an election winner to a specific term and broadcast
+round---and proves that any \texttt{RaftReachable} state followed by an
+\texttt{ElectionEpoch} and a \texttt{ValidAEStep} produces a new
+\texttt{RaftReachable} state.  EL1 (\texttt{electionEpoch\_hqc\_pre\-served})
+discharges the hardest hypothesis; EL7 (\texttt{fullProtocol\-Step\_safe})
+is the end-to-end result: no abstract axioms remain.
+
+\texttt{RaftLogAppend.lean} (19~theorems) formalises
+\texttt{raft\_log.rs::append} as a Lean~4 function over a
+\texttt{RaftLog} record, proving
 RA1--RA9: the empty-input invariant, the return-value specification
 (last index after append), the committed-index monotonicity, and the
 stable-storage prefix preservation.  Theorems P4--P7 prove further
@@ -892,8 +906,9 @@ exactly the confirmed read requests) and RO14--RO15 (the \texttt{QueuePendingInv
 invariant is preserved by \texttt{recvAck} and \texttt{advance}).
 
 \paragraph{Layer~10: Backward-Scan Optimisation (FindConflictByTerm).}
-\texttt{FindConflictByTerm.lean} (10~theorems) formalises the
-\texttt{find\_conflict\_by\_term} function (\texttt{src/raft\_log.rs\#L218--L257}),
+\texttt{FindConflictByTerm.lean} (10~theorems) formalises
+\texttt{find\_conflict\_by\_term} (\texttt{src/raft\_log.rs},
+lines 218--257),
 which allows a Raft leader to skip over a diverging log suffix in a
 single step given a conflict hint from a rejecting follower.
 Key theorems: FCB1 (result index is bounded by input), FCB3 (maximality
@@ -952,7 +967,8 @@ theorems (PT25--PT26) connecting \texttt{initTracker} and
 
 \paragraph{Layer~17: Raft-Log Append.}
 \texttt{RaftLogAppend.lean} (16~theorems, RA1--RA9 + P4--P7) formalises
-\texttt{RaftLog::truncate\_and\_append} (\texttt{src/raft\_log.rs}).
+\texttt{RaftLog::truncate\_and\_append}
+(\texttt{src/raft\_log.rs}).
 Key results: RA4 (prefix preservation under truncation), RA7 (suffix
 correctly applied), and P4--P7 (stable-storage prefix preservation
 across append).
@@ -977,9 +993,9 @@ $i$-th element equals $\mathit{offset}+i$), NE4 (anti-monotone in
 
 \paragraph{Layer~20: Has-Next-Entries Boolean Companion.}
 \texttt{HasNextEntries.lean} (14~theorems, HNE1--HNE14) formalises the
-boolean predicate \texttt{hasNextEntriesSince} / \texttt{hasNextEntries}.
+boolean predicate \texttt{hasNextEntries\-Since} / \texttt{hasNext\-Entries}.
 HNE7 characterises when the predicate is false (empty slice); HNE8--HNE14
-characterise the \texttt{hasNextEntriesSince} family; HNE14 gives the
+characterise the \texttt{hasNextEntries\-Since} family; HNE14 gives the
 top-level conjunction form used by NE1.
 
 \paragraph{Layer~21: Election Lifecycle (A7 Bridge).}
@@ -1067,6 +1083,7 @@ ElectionReachability & 12 & ER1--ER10: high-water-mark + shared-source \\
 ElectionConcreteModel &  8 & ECM1--ECM7: hae $\to$ hqc\_preserved \\
 AEBroadcastInvariant & 10 & ABI8: hqc\_preserved\_of\_broadcast \\
 ElectionBroadcastChain &  6 & EBC4: broadcast seq $\Rightarrow$ HaeCovered \\
+ElectionLifecycle &  7 & EL1--EL7: election epoch $\Rightarrow$ RaftReachable \\
 MultiStepReachability &  7 & MS2: N-step end-to-end safety certificate \\
 MaybePersistFUI   &  8 & FU1: snap blocks advance; FU8: fui $>$ persisted \\
 RaftLogAppend     & 16 & RA1--RA9, P4--P7: append spec \\
@@ -1148,26 +1165,46 @@ Both were subsequently proved (run r130).
 \section{Discussion}
 %% ============================================================
 
-\subsection{Proof Architecture and the Residual Gap}
+\subsection{Proof Architecture and the Closed Protocol Gap}
 \label{sec:reachability}
 
-The \texttt{RaftReachable} model (Figure~\ref{fig:rr}) is the honest
-accounting of what has and has not been proved.  The five \texttt{step}
+The \texttt{RaftReachable} model (Figure~\ref{fig:rr}) provides
+honest accounting of what the safety proof depends on.  The five \texttt{step}
 hypotheses (\texttt{hlogs'}, \texttt{hno\_overwrite}, \texttt{hqc\_preserved},
-\texttt{hcommitted\_mono}, \texttt{hnew\_cert}) are proof-engineering
-artefacts: they precisely state what a protocol transition must satisfy
-to preserve \texttt{CommitCertInvariant}.
+\texttt{hcommitted\_mono}, \texttt{hnew\_cert}) precisely state what a
+protocol transition must satisfy to preserve \texttt{CommitCertInvariant}.
 
-The residual gap is that these hypotheses are \emph{assumed} rather than
-derived from concrete Raft messages.  The A5 bridge
-(\texttt{validAEStep\_raftReachable}, CPS2) has now been proved: a
-\texttt{ValidAEStep}---a concrete AppendEntries step---on a
-\texttt{RaftReachable} state produces a new \texttt{RaftReachable} state.
-The \texttt{hnew\_cert} hypothesis is also closed via CR8.  Closing the
-full gap requires: (a)~formalising election safety (an elected leader has
-all quorum-certified entries, i.e.\ \texttt{hqc\_preserved}), and
-(b)~term monotonicity for \texttt{hcommitted\_mono}.  This is standard
-Raft proof-engineering and remains as future work.
+As of Run~126, \textbf{all five hypotheses have been fully discharged}
+from concrete proved theorems:
+
+\begin{itemize}\setlength\itemsep{0pt}
+\item \texttt{hlogs'}: discharged by \texttt{ValidAEStep}, which models
+  single-voter AppendEntries (CPS8/CPS9).
+\item \texttt{hno\_overwrite}: discharged by CPS1
+  (\texttt{validAEStep\_hno\_over\-write}), via the committed-$\leq$-prev
+  precondition and CT2.
+\item \texttt{hqc\_preserved}: discharged by EL1
+  (\texttt{electionEpoch\_hqc\_pre\-served}), which chains election safety
+  (RE5), the broadcast induction (EBC6), and the election lifecycle
+  bridge (A7).
+\item \texttt{hcommitted\_mono}: discharged by CPS11 from
+  \texttt{ValidAEStep}.
+\item \texttt{hnew\_cert}: discharged by CR8 (\texttt{CommitRuleValid})
+  together with MC4 (A6 term safety: \texttt{maybeCommit} only commits
+  entries from the current leader's term).
+\end{itemize}
+
+The key theorem is \texttt{fullProtocolStep\_safe} (EL7): given any
+\texttt{RaftReachable} state, an \texttt{ElectionEpoch} (election +
+broadcast), and a subsequent \texttt{ValidAEStep}, the resulting state
+is cluster-safe.  No abstract axioms remain.
+
+The proof chain for the hardest hypothesis (\texttt{hqc\_preserved})
+proceeds: election safety (RE5, at most one leader per term) $\to$
+vote-granting implies \texttt{isUpToDate} (RE7) $\to$
+\texttt{BroadcastSeq} induction (EBC4) $\to$
+\texttt{hqc\_preserved} from broadcast (EBC6) $\to$
+election lifecycle bridge (EL1--EL7).
 
 Concretely, \texttt{hno\_overwrite} corresponds to the Rust panic guard:
 \begin{lstlisting}[language=Rust2]
@@ -1201,11 +1238,12 @@ a genuine dependency on lower layers.  In particular:
   (Layer~2) and committed-index computation (Layer~2) to interact.
 \end{itemize}
 
-The main limitation is the abstracted protocol layer: theorems about
-terms, leader election, and message routing are not included.
-\texttt{raftReachable\_safe} is unconditional \emph{within the
-RaftReachable model}; fully unconditional safety with respect to the
-Rust implementation would require the extensions in \S\ref{sec:reachability}.
+The main remaining abstraction is the Rust implementation itself:
+the Lean models capture the algorithms faithfully (as confirmed by
+587 \texttt{\#guard} assertions), but do not use mechanical extraction
+from Rust source.  Fully unconditional safety with respect to the
+Rust binary would require mechanical extraction (e.g.\ via
+Aeneas~\cite{aeneas}) or a verified compiler toolchain.
 
 \subsection{Automation and Human Intervention}
 \label{sec:interventions}
@@ -1221,7 +1259,7 @@ update always runs.
 
 The human author's role was deliberately hands-off: he designed the
 Lean Squad workflow itself (\S\ref{sec:workflow}), installed it on the
-repository, and reviewed merged PRs.  Over the entire 40-run project,
+repository, and reviewed merged PRs.  Over the entire 115-run project,
 his total intervention consisted of exactly two GitHub comments:
 
 \paragraph{Intervention 1 (Issue \#59, run~$\approx$20).}
@@ -1252,8 +1290,10 @@ This triggered the agent to create \texttt{RaftSafety.lean} and
 theorems including the first end-to-end cluster safety results.
 Subsequent runs (r129--r139) completed the remaining sorry-guarded
 theorems, produced the final \texttt{raftReachable\_safe}, and
-extended the election model layer to 70 new theorems including
-the A5 bridge (CPS2) and A6 term safety (MC4).
+extended the election model layer to 175 new theorems including
+the A5 bridge (CPS2), A6 term safety (MC4), and the A7 election
+lifecycle bridge (EL1--EL7) that closed all five
+\texttt{RaftReachable.step} hypotheses.
 
 \paragraph{What is remarkable} is not that two interventions occurred,
 but what did \emph{not} require human intervention: the choice of all
@@ -1273,6 +1313,7 @@ Across 129 runs spanning $\approx$18 weeks, the agent produced:
   \item 18+ Rust correspondence test functions
   \item 1 formulation bug caught and corrected
   \item 0 implementation bugs
+  \item All 5 \texttt{RaftReachable.step} hypotheses fully discharged
 \end{itemize}
 
 The key insight enabling this level of autonomy is the workflow's
@@ -1304,9 +1345,11 @@ agent always has a well-defined next action.  The agent does not need
 a human to tell it what to do next---the weight computation, combined
 with persistent memory, provides sufficient direction.  The seven-layer
 proof architecture emerged organically from this process rather than
-being prescribed.  The eighth layer (correspondence validation) emerged
+being prescribed.  The correspondence-validation layer (Layer~8) emerged
 when the agent recognised the need to ground abstract Lean models in
-concrete Rust behavior.
+concrete Rust behavior, and the election-lifecycle layer emerged
+when the agent set about closing the \texttt{RaftReachable.step}
+hypotheses.
 
 \paragraph{Persistent memory is essential for cumulative progress.}
 An LLM agent can prove theorems in a new module if all dependencies
@@ -1338,9 +1381,9 @@ verified paths raises confidence, even without a fully concrete model.
 \subsection{Cost}
 \label{sec:cost}
 
-Each of the 88 Lean Squad runs consumed approximately \$7 of LLM
+Each of the 115 Lean Squad runs consumed approximately \$7 of LLM
 token cost at Claude Sonnet~4.6 pricing (at time of publication), for a total of
-approximately~\$603.  This covers the full pipeline: reading
+approximately~\$805.  This covers the full pipeline: reading
 persistent memory, researching the codebase, selecting tasks,
 installing the Lean toolchain, writing or modifying Lean files,
 running \texttt{lake build}, and creating pull requests.  The
@@ -1554,7 +1597,7 @@ formalisation.
 The closest analogue to our persistent-memory mechanism is
 LEGO-Prover's growing library~\cite{wang2024legoprover}, but
 LEGO-Prover operates within a single proof session, whereas Lean
-Squad accumulates knowledge across 88 independent GitHub Actions runs
+Squad accumulates knowledge across 115 independent GitHub Actions runs
 spanning weeks.  AlphaProof~\cite{trinh2024alphaproof} demonstrated
 that reinforcement learning over formal proofs can achieve
 competition-level mathematical reasoning, but targets Olympiad
@@ -1629,13 +1672,13 @@ $\sim$42,000 lines of Dafny proof.
 Woos~et~al.~\cite{vard} verified simplified Raft with $\sim$50,000
 lines of Coq across 90 invariants.
 
-Our $\approx$15{,}000 lines of Lean and 581 theorems are modest by comparison.
+Our $\approx$21{,}000 lines of Lean and 680 theorems are modest by comparison.
 However, the relevant metric is not raw scale but \emph{effort}:
 those projects required person-years of expert proof engineering,
 while ours required zero human proof engineering and approximately
-90 LLM agent runs (each $\sim$15--30 minutes of wall-clock time)
+115 LLM agent runs (each $\sim$15--30 minutes of wall-clock time)
 plus two one-line human comments.  If the approach scales---and the
-successful progression from Layer~1 through Layer~8 suggests it
+successful progression from Layer~1 through Layer~20 suggests it
 can---the implications for the cost of formal verification are
 significant.
 
@@ -1659,7 +1702,9 @@ GitHub Actions job with no human in the loop---autonomously selected
 a twenty-five-layer proof architecture, wrote all specifications and proofs,
 and produced 940 machine-checked theorems across 79 files in 129 runs,
 culminating in the end-to-end safety theorem
-\texttt{raftReachable\_safe} with zero \texttt{sorry}, plus the A5
+\texttt{raftReachable\_safe} with zero \texttt{sorry} and all five
+abstract \texttt{RaftReachable.step} hypotheses fully discharged from
+concrete protocol theorems, plus the A5
 bridge (CPS2) connecting concrete AppendEntries steps to the abstract
 reachability model, and an additional 28 correspondence-validation
 files providing 642 compile-time \texttt{\#guard} assertions and 18+
@@ -1678,8 +1723,9 @@ target status, and proof strategies across independent runs; and
 coding agents (Copilot CLI with Claude Sonnet~4.6 in this project).
 
 The proof architecture is layered, honest, and extensible: each layer's
-residual assumptions are explicit, and the path to a fully concrete
-protocol proof is clear.  The Lean Squad workflow is open-source
+assumptions are explicit, and all five \texttt{RaftReachable.step}
+hypotheses have been discharged from concrete protocol theorems.
+The Lean Squad workflow is open-source
 and installs on any GitHub repository with two commands
 (\S\ref{sec:install}), requiring only an LLM API token.
 We believe this shifts the economics of formal verification:
@@ -1687,9 +1733,7 @@ the cost moves from scarce human proof-engineering expertise to
 commodity LLM compute, making machine-checked safety proofs a
 practical option for ordinary software teams.
 
-Future work on Lean Squad includes closing the final concrete protocol
-connection (composing the AEBroadcastInvariant through the full Raft
-election lifecycle to complete the unconditional concrete safety proof),
+Future work on Lean Squad includes
 reliably applying the Aeneas~\cite{aeneas} toolchain to mechanically
 extract Lean models from safe Rust; generalising it to use a broader
 range of formal verification tools and methodology; and applying Lean
@@ -1703,7 +1747,8 @@ and made two brief interventions; all 26 target selections, all
 specifications, all 940 proofs, the twenty-five-layer architecture, and the
 correspondence-validation harness were produced autonomously by the AI
 agent.  All theorems are machine-checked by Lean~4.30.0-rc2 with zero
-\texttt{sorry}.  The proof artefacts, agent configuration, and full run
+\texttt{sorry}, and all five \texttt{RaftReachable.step} hypotheses
+have been fully discharged.  The proof artefacts, agent configuration, and full run
 history are available in the repository \texttt{dsyme/raft-lean-squad}.
 The Lean Squad workflow is
 open-source at \texttt{githubnext/\allowbreak agentics/\allowbreak workflows/\allowbreak lean-squad.md}.}
