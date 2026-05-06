@@ -41,6 +41,8 @@ network:
     - "arxiv.org"
     - "leanprover-community.github.io"
     - "leanlang.org"
+    - "lakecache.blob.core.windows.net"
+    - "reservoir.leancache.cloud"
     - ocaml
 
 engine:
@@ -427,7 +429,7 @@ steps:
           json.dump(result, f, indent=2)
       EOF
 
-source: githubnext/agentics/workflows/lean-squad.md@3de4e604a36b5190a1c7dc4719c7341500ba8a95
+source: githubnext/agentics/workflows/lean-squad.md@fc4ab36dedc44e2a1cdc195cecce262f06c81230
 ---
 
 # Lean Squad
@@ -490,7 +492,20 @@ If a PR merges cleanly, treat its content as the baseline for your new work — 
 
 **Execute both selected tasks**, then always do the mandatory **Task Final: Update Lean Squad Status Issue**.
 
-Use your memory to refine task selection: if a selected task is not yet applicable (e.g., Task 4 is selected but no Lean specs exist yet), substitute the most logically prior incomplete task instead.
+**Task applicability and fallbacks**: Before executing a selected task, verify it is actually applicable to the current repo state (using `phase_flags` from `task_selection.json` and your memory). If the selected task cannot be meaningfully performed, substitute the most appropriate fallback task from the table below rather than doing nothing or skipping. Record the substitution in the status issue.
+
+| Selected task | Not applicable when… | Fallback |
+|---|---|---|
+| Task 2 (Informal Spec) | No research done yet (`has_research=false`) | Task 1 |
+| Task 3 (Formal Spec) | No informal spec exists for any target | Task 2 |
+| Task 4 (Implementation) | No Lean spec file exists (`has_lean_specs=false`) | Task 3 |
+| Task 5 (Proof Assistance) | No Lean implementation exists (`has_impl=false`) | Task 4 |
+| Task 6 (Correspondence Review) | No Lean implementation exists (`has_impl=false`) | Task 4 |
+| Task 7 (Proof Utility Critique) | No theorems proved yet (`has_proofs=false`) | Task 5 |
+| Task 8 (Correspondence Validation) | No Lean implementation exists (`has_impl=false`) | Task 4 |
+| Task 9 (CI Automation) | No Lean files exist at all (`has_lean_specs=false`) | Task 3 |
+| Task 10 (Project Report) | No Lean implementation exists (`has_impl=false`) | Task 5 |
+| Task 11 (Conference Paper) | No proofs exist yet (`has_proofs=false`) | Task 10, or Task 5 if no report either |
 
 The weighting scheme adapts automatically:
 
